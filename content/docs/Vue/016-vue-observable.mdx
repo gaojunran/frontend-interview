@@ -1,0 +1,77 @@
+---
+title: Vue.observable 你有了解过吗？
+---
+
+当然，这题我来模拟回答面试官的问题：
+
+---
+
+是的，我了解过 `Vue.observable`。
+
+在 **Vue 2.x** 中，`Vue.observable()` 是 Vue 提供的一个 API，用于手动创建响应式对象。其典型使用场景是用于**组件之外的状态管理**，例如自定义一个简单的全局状态管理工具，作为 Vuex 的轻量替代方案。
+
+例如：
+
+```js
+// store.js
+import Vue from 'vue'
+
+export const store = Vue.observable({
+  count: 0
+})
+
+export const mutations = {
+  increment() {
+    store.count++
+  }
+}
+```
+
+然后在组件中直接使用这个 `store` 对象：
+
+```js
+import { store, mutations } from './store'
+
+export default {
+  computed: {
+    count() {
+      return store.count
+    }
+  },
+  methods: {
+    increment() {
+      mutations.increment()
+    }
+  }
+}
+```
+
+---
+
+而在 **Vue 3 中**，不再推荐使用 `Vue.observable`，因为 Vue 3 推出了更加完整和灵活的响应式系统，主要通过：
+
+* `reactive()` —— 创建响应式对象
+* `ref()` —— 创建响应式基本类型或对象的引用
+
+所以 Vue 3 中可以这样写：
+
+```js
+// store.js
+import { reactive } from 'vue'
+
+export const store = reactive({
+  count: 0
+})
+```
+
+然后在组件中直接使用 `store.count`，就能自动响应更新。
+
+---
+
+**总结一下：**
+
+* `Vue.observable()` 是 Vue 2.x 中创建响应式对象的 API。
+* Vue 3 中已经被 Composition API 的 `reactive()` 所取代，功能更强大，语法也更现代。
+* 在 Vue 3 中推荐使用 `reactive` 和 `ref` 来管理响应式状态。
+
+

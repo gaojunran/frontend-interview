@@ -1,0 +1,76 @@
+---
+title: Vue 中的 $nextTick 有什么作用？
+---
+
+在 Vue 中，`$nextTick` 的作用是 **在下次 DOM 更新循环结束之后执行延迟回调**，可以用来在 DOM 更新完成后安全地获取更新后的 DOM 元素。
+
+---
+
+### 🧠 **为什么需要 `$nextTick`？**
+
+Vue 是一个**异步渲染**的框架，当你修改数据时，Vue 不会立刻更新 DOM，而是将数据的变更缓存起来，等到当前“同步任务”执行完毕后，再统一更新 DOM。这种机制提升了性能，但也意味着：
+
+> **当你在修改数据后立刻访问 DOM，可能拿到的还是旧的 DOM。**
+
+这时就需要 `$nextTick` 来确保你的操作在 DOM 更新后执行。
+
+---
+
+### ✅ **使用场景示例**
+
+#### 1. 修改数据后需要访问更新后的 DOM
+
+```vue
+<template>
+  <div>
+    <p ref="text">{{ msg }}</p>
+    <button @click="updateMsg">更新</button>
+  </div>
+</template>
+
+<script setup>
+import { ref, nextTick } from 'vue'
+
+const msg = ref('Hello')
+
+const updateMsg = () => {
+  msg.value = 'World'
+  
+  // 如果这里直接访问 DOM，msg 还没更新
+  nextTick(() => {
+    console.log('更新后的内容：', $refs.text.textContent) // 输出：World
+  })
+}
+</script>
+```
+
+---
+
+### 🔧 **在 Vue2 和 Vue3 中的区别**
+
+| 对比点  | Vue 2                           | Vue 3                            |
+| ---- | ------------------------------- | -------------------------------- |
+| 调用方式 | `this.$nextTick`                | `import { nextTick } from 'vue'` |
+| 返回值  | 不返回 Promise（Vue 2.1+支持 Promise） | 返回 Promise                       |
+
+#### Vue3 中用法更现代：
+
+```js
+import { nextTick } from 'vue'
+
+await nextTick()
+// 或者
+nextTick(() => {
+  // DOM 已更新
+})
+```
+
+---
+
+### 📝 总结
+
+* `$nextTick` 用于等待 DOM 更新完成后再执行操作。
+* 避免在 DOM 还未更新时就进行依赖 DOM 的逻辑。
+* Vue2 用 `this.$nextTick`，Vue3 推荐用 `nextTick()`。
+* 常用于动画处理、第三方插件初始化、手动操作 DOM 等场景。
+

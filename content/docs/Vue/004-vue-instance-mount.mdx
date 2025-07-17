@@ -1,0 +1,122 @@
+---
+title: Vue实例挂载的过程？
+---
+
+好的，下面是面试中关于 **Vue 3 实例挂载过程**的标准回答，可适当扩展细节以显示深入理解：
+
+---
+
+Vue3 实例挂载的过程主要包括以下几个步骤，可以从调用 `createApp()` 到组件渲染进行分解：
+
+---
+
+### 一、创建应用实例（`createApp`）
+
+* 使用 `createApp(App)` 创建一个应用实例 `app`。
+* `createApp` 返回的是一个包含应用上下文、全局配置、根组件等信息的对象。
+
+```js
+const app = createApp(App)
+```
+
+---
+
+### 二、配置应用（可选）
+
+* 可以通过 `app.use()` 注册插件，或通过 `app.component()` 注册全局组件等。
+
+```js
+app.use(router)
+app.component('MyComp', MyComp)
+```
+
+---
+
+### 三、调用 `app.mount('#app')`
+
+* 这是正式启动应用并挂载到 DOM 的入口。
+* 内部包含以下几个关键步骤：
+
+---
+
+## **挂载过程详细分解**
+
+### 1. 创建根组件的 vnode（虚拟节点）
+
+* Vue3 使用虚拟 DOM，`mount()` 会根据传入的根组件 `App` 创建一个 **vnode（虚拟节点）**。
+* vnode 是一个 JavaScript 对象，描述了组件的结构、属性等信息。
+
+```js
+const vnode = createVNode(App)
+```
+
+---
+
+### 2. 调用渲染器（Renderer）
+
+* Vue3 中渲染器是平台无关的，可用于 DOM、Canvas、甚至自定义环境。
+* 渲染器通过 `patch(null, vnode, container)` 将 vnode 渲染到 DOM 容器上。
+
+---
+
+### 3. 执行组件的生命周期钩子
+
+* 包括：
+
+  * `beforeCreate`
+  * `created`
+  * `beforeMount`
+  * `mounted`（在 DOM 渲染后触发）
+
+这些生命周期函数在内部会按顺序依次调用。
+
+---
+
+### 4. 设置响应式系统（Proxy）
+
+* Vue3 使用 `Proxy` 实现响应式，组件中的 `setup()` 会在挂载前执行，用来初始化响应式状态。
+
+```js
+setup(props, context) {
+  const state = reactive({ count: 0 })
+  return { state }
+}
+```
+
+---
+
+### 5. 执行渲染函数并更新 DOM
+
+* `setup` 返回的数据会传入组件的 `render` 函数。
+* Vue 会根据虚拟 DOM 对比和 patch 算法生成真实 DOM，并挂载到页面上。
+
+---
+
+## 总结流程图：
+
+```text
+createApp(App)
+   ↓
+app.mount('#app')
+   ↓
+创建 vnode（虚拟 DOM）
+   ↓
+调用 patch 渲染器 → 挂载 vnode 到真实 DOM
+   ↓
+执行 setup / 生命周期钩子
+   ↓
+生成真实 DOM → 插入到页面中
+```
+
+---
+
+## 面试建议补充：
+
+如果面试官继续追问，可以扩展以下方向：
+
+* `setup()` 在挂载过程中的执行时机
+* `effect()` 与响应式副作用收集机制
+* 区别于 Vue2 的响应式实现（Object.defineProperty vs Proxy）
+* 自定义渲染器时挂载流程的差异（如在 SSR、Canvas 环境中）
+
+

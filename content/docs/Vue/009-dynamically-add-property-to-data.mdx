@@ -1,0 +1,33 @@
+---
+title: 动态给 Vue2 的 data 添加一个新的属性时会发生什么？怎样解决？
+---
+
+当我们动态给 Vue 的 `data` 对象添加一个新的属性时，**这个新属性默认是非响应式的**，也就是说 Vue 无法检测到这个属性的变化，页面不会自动更新。
+
+这是因为 Vue 在初始化实例时，会遍历 `data` 中的属性并使用 `Object.defineProperty` 进行劫持（Vue 2.x 的响应式实现机制）。但对于之后动态新增的属性，Vue 无法自动进行劫持。
+
+---
+
+### 解决方法：
+
+1. **使用 `Vue.set` 或 `this.$set` 方法**
+
+```js
+Vue.set(this.someDataObject, 'newProp', newValue)
+// 或者
+this.$set(this.someDataObject, 'newProp', newValue)
+```
+
+这会告诉 Vue 手动将这个新属性添加为响应式的。
+
+2. **在 Vue 3 中使用 `reactive` 或 `ref`，动态添加属性时直接赋值即可响应**
+   Vue 3 使用 Proxy 实现响应式，可以自动侦测动态新增属性。
+
+3. **提前在 `data` 中声明所有需要用到的属性**
+   如果能预先声明所有属性，避免动态新增，就不会有这个问题。
+
+---
+
+总结：
+动态添加属性时，Vue 2 需要使用 `Vue.set` 或 `this.$set` 来保证新属性响应式，Vue 3 则天然支持动态属性响应式。
+

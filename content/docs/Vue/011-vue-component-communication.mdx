@@ -1,0 +1,98 @@
+---
+title: Vue3 组件之间的通信方式都有哪些？
+---
+
+在 Vue3 中，组件之间的通信方式可以根据组件关系的不同（父子、兄弟、跨层级）分为多种方式，下面是常见的几种通信方式：
+
+---
+
+### ✅ 一、父子组件通信
+
+#### 1. `props` （父 → 子）
+
+父组件通过 `props` 向子组件传递数据。
+
+```vue
+<Child :msg="message" />
+```
+
+#### 2. `emit` （子 → 父）
+
+子组件通过 `$emit` 向父组件发送事件，实现通知或回传数据。
+
+```js
+this.$emit('update-count', count)
+```
+
+---
+
+### ✅ 二、兄弟组件通信（没有直接关系）
+
+#### 3. **事件总线（Event Bus）**（不推荐）
+
+Vue3 中不再推荐这种方式，常见替代方案是 **mitt**：
+
+```js
+import mitt from 'mitt'
+const bus = mitt()
+bus.emit('event-name', data)
+bus.on('event-name', handler)
+```
+
+#### 4. **状态管理（如 Pinia）**
+
+使用 Pinia 管理全局状态，实现任意组件之间共享数据或通信。
+
+```js
+import { useCounterStore } from '@/stores/counter'
+const store = useCounterStore()
+store.count++
+```
+
+---
+
+### ✅ 三、跨层级组件通信
+
+#### 5. `provide / inject`
+
+祖先组件 `provide` 数据，任意后代组件通过 `inject` 获取，适合跨多层嵌套组件传值。
+
+```js
+// 父组件
+provide('theme', 'dark')
+// 子孙组件
+const theme = inject('theme')
+```
+
+---
+
+### ✅ 四、其他方式
+
+#### 6. `ref` + `expose`
+
+父组件通过 `ref` 获取子组件实例，调用子组件方法（需使用 `defineExpose` 暴露方法）。
+
+```js
+// 子组件
+defineExpose({ myMethod })
+
+// 父组件
+const childRef = ref()
+childRef.value.myMethod()
+```
+
+#### 7. 插槽（slot）
+
+通过插槽可以在父组件中传递内容到子组件，同时配合作用域插槽也可向上传值。
+
+---
+
+### ✅ 总结对比表
+
+| 关系      | 方式                     | 方向      | 特点                    |
+| ------- | ---------------------- | ------- | --------------------- |
+| 父子      | props / emit           | 单向 / 事件 | 简洁清晰，推荐               |
+| 兄弟 / 跨层 | mitt / Pinia / provide | 任意      | mitt 简单，Pinia 强大，推荐使用 |
+| 父对子     | ref + expose           | 方法调用    | 可调用子组件内部方法            |
+| 插槽通信    | slot / scoped-slot     | 双向      | 灵活传内容和数据              |
+

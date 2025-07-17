@@ -1,0 +1,85 @@
+---
+title: 你有写过自定义指令吗？自定义指令的应用场景有哪些？
+---
+
+当然有，Vue3 中自定义指令的使用方式相比 Vue2 略有调整，我在实际项目中也用过。下面是我的回答：
+
+---
+
+### ✅ 我有写过 Vue3 中的自定义指令。
+
+Vue3 中的自定义指令通过 `app.directive` 来全局注册，也可以在组件内通过 `directives` 选项局部注册。语法上比 Vue2 更加模块化，生命周期钩子也更清晰，主要包括：
+
+* `created`：指令绑定到元素时调用（只调用一次）
+* `beforeMount`：元素插入到 DOM 之前调用
+* `mounted`：元素插入到 DOM 后调用
+* `beforeUpdate`：所在组件更新之前调用
+* `updated`：所在组件更新之后调用
+* `beforeUnmount`：卸载前调用
+* `unmounted`：卸载后调用
+
+---
+
+### 📌 应用场景
+
+自定义指令在以下几种场景中非常有用：
+
+#### 1. **权限控制**
+
+```js
+// v-permission：根据用户角色动态控制元素是否显示
+app.directive('permission', {
+  mounted(el, binding) {
+    const userRole = getCurrentUserRole(); // 假设有这个函数
+    if (!binding.value.includes(userRole)) {
+      el.remove();
+    }
+  }
+});
+```
+
+#### 2. **自动聚焦**
+
+```js
+// v-focus：自动聚焦到输入框
+app.directive('focus', {
+  mounted(el) {
+    el.focus();
+  }
+});
+```
+
+#### 3. **防抖点击**
+
+```js
+// v-debounce：防止按钮重复点击
+app.directive('debounce', {
+  mounted(el, binding) {
+    let timer;
+    el.addEventListener('click', () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        binding.value();
+      }, 500);
+    });
+  }
+});
+```
+
+#### 4. **拖拽功能**
+
+实现一个元素的拖动功能，可封装成指令，便于复用。
+
+#### 5. **懒加载图片**
+
+图片在进入可视区域时再加载，减少加载压力。
+
+---
+
+### 🧠 小结
+
+Vue3 的自定义指令适用于**DOM 层面的重复性逻辑**，当某些功能不适合封装为组件、又需要频繁复用时，自定义指令就是很好的选择。相比 Vue2，Vue3 在指令的生命周期更细化，更适合做高可维护性的抽象封装。
+
+---
+
+

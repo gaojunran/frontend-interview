@@ -1,0 +1,65 @@
+---
+title: 谈谈你对 Vue3 双向绑定的理解？
+---
+
+在 Vue3 中，双向绑定的核心依然是 **响应式系统**，但相比 Vue2，Vue3 的实现机制发生了根本性变化。
+
+### 1. **响应式原理的变化**
+
+* Vue2 使用的是 `Object.defineProperty()` 来劫持对象的属性，存在一些局限性，比如不能监听新增属性、数组变动检测性能差。
+* **Vue3 引入了 Proxy**，替代了 `defineProperty`，实现了更强大、全面的响应式能力：
+
+  * 可以监听对象的新增/删除属性
+  * 更好地支持数组、Map、Set 等复杂结构
+  * 性能更优
+
+### 2. **双向绑定的实现**
+
+在 Vue3 中，双向绑定依然通过 `v-model` 实现，底层是利用 Proxy 劫持数据变化，再通过依赖追踪与更新机制进行视图更新。
+
+但 Vue3 对 `v-model` 做了增强，支持以下特性：
+
+* **默认绑定 `modelValue`，事件为 `update:modelValue`**
+* **支持多个 v-model 同时绑定不同属性**
+
+示例：
+
+```vue
+<ChildComponent v-model:title="bookTitle" v-model:price="bookPrice" />
+```
+
+子组件中通过 `props` 和 `emit` 实现双向绑定：
+
+```js
+props: {
+  title: String,
+  price: Number
+},
+emits: ['update:title', 'update:price']
+```
+
+### 3. **组合式 API 的支持**
+
+Vue3 的组合式 API 中，可以使用 `ref()` 和 `reactive()` 创建响应式数据对象，这些响应式对象在模板中也能实现双向绑定。
+
+```js
+const message = ref('hello')
+```
+
+在模板中使用：
+
+```html
+<input v-model="message" />
+```
+
+背后原理是：
+
+* `ref()` 创建了一个带有 getter/setter 的响应式对象
+* Vue 模板编译后会将 `v-model` 绑定成 `:value` 和 `@input` 的组合，实现绑定和更新
+
+---
+
+### 总结
+
+Vue3 的双向绑定基于更强大的 Proxy 实现响应式，`v-model` 更加灵活可扩展，同时组合式 API 提供了更清晰的方式来管理响应式数据，让双向绑定在更复杂的组件结构中也易于维护。
+

@@ -1,0 +1,188 @@
+---
+title: 说说你对 keep-alive 的理解是什么？
+---
+
+当然，这是一道很常见的 Vue 面试题，以下是一个清晰有条理的回答：
+
+---
+
+### 💡 **什么是 `keep-alive`？**
+
+`<keep-alive>` 是 Vue 提供的一个内置组件，用于**缓存组件实例**，避免不必要的重复渲染和销毁。
+
+当我们在页面之间切换组件时，通常会销毁当前组件，再创建新的组件。但有些情况下（如：表单填写、分页等），我们希望**保留组件的状态**，这时就可以使用 `keep-alive`。
+
+---
+
+### 📌 **基本使用**
+
+```vue
+<keep-alive>
+  <MyComponent v-if="show" />
+</keep-alive>
+```
+
+* 包裹的组件会被缓存，**再次激活时保留原有状态**。
+* 默认使用组件的 `name` 属性作为缓存标识。
+
+---
+
+### 🔁 **生命周期钩子**
+
+当组件被 `<keep-alive>` 包裹时，它的生命周期会有所不同：
+
+* `activated`：组件被激活（重新显示）时调用。
+* `deactivated`：组件被缓存（隐藏）时调用。
+
+这两个生命周期是 `keep-alive` 独有的。
+
+---
+
+### ⚙️ **常用属性**
+
+* `include`：指定哪些组件需要被缓存（支持字符串、正则、数组）
+* `exclude`：指定哪些组件不需要缓存
+* `max`：最多缓存多少组件实例（超过会 LRU 淘汰）
+
+```vue
+<keep-alive include="A,B" exclude="C" max="5">
+  <component :is="currentComponent" />
+</keep-alive>
+```
+
+---
+
+### 🧠 **Vue 3 中的变化**
+
+Vue 3 中 `keep-alive` 保留了基本功能，但在**类型支持和性能**上做了优化：
+
+1. **更好地与 Composition API 兼容**：
+
+   * `onActivated` 和 `onDeactivated` 可以直接在 `setup` 中使用：
+
+     ```ts
+     import { onActivated, onDeactivated } from 'vue'
+
+     setup() {
+       onActivated(() => {
+         console.log('activated')
+       })
+
+       onDeactivated(() => {
+         console.log('deactivated')
+       })
+     }
+     ```
+
+2. **性能更优**：
+
+   * Vue 3 使用 Proxy 重写响应式系统，缓存和激活组件的性能更高。
+
+3. **结合 Suspense 使用**：
+
+   * Vue 3 中可以结合 `<Suspense>` 处理异步组件的缓存，更灵活。
+
+---
+
+### ✅ **适用场景**
+
+* 表单页：防止切换后内容丢失
+* 多页签：缓存每个页签的状态
+* 页面中切换视图但需要保留状态的情况
+
+---
+
+### ⚠️ 注意点
+
+* 组件必须有 `name` 属性才能被正确识别和缓存（对于动态组件尤其重要）。
+* 频繁切换大量组件时，建议设置 `max` 避免内存占用过多。
+
+---
+
+### 总结
+
+`keep-alive` 是 Vue 提供的组件缓存机制，适用于需要**状态保留、性能优化**的场景。在 Vue 3 中，它变得更强大，支持 `setup` 中的生命周期钩子，性能也得到了提升。
+
+---
+
+## 🧪 示例场景：三页内容页签切换，保留每页的输入状态
+
+### ✅ 效果说明：
+
+* 有三个子组件：`PageA`、`PageB`、`PageC`
+* 切换页签时不会销毁组件
+* 每个页面中的输入框内容都会被保留（被缓存）
+
+---
+
+### 🔧 父组件 `App.vue`
+
+```vue
+<template>
+  <div>
+    <button @click="current = 'PageA'">Page A</button>
+    <button @click="current = 'PageB'">Page B</button>
+    <button @click="current = 'PageC'">Page C</button>
+
+    <keep-alive>
+      <component :is="current" />
+    </keep-alive>
+  </div>
+</template>
+
+<script setup>
+import PageA from './PageA.vue'
+import PageB from './PageB.vue'
+import PageC from './PageC.vue'
+
+import { ref } from 'vue'
+
+const current = ref('PageA')
+</script>
+```
+
+---
+
+### 🧱 示例子组件 `PageA.vue`
+
+```vue
+<template>
+  <div>
+    <h2>Page A</h2>
+    <input v-model="text" placeholder="输入一些内容 A" />
+  </div>
+</template>
+
+<script setup>
+import { ref, onActivated, onDeactivated } from 'vue'
+
+const text = ref('')
+
+onActivated(() => {
+  console.log('PageA activated')
+})
+
+onDeactivated(() => {
+  console.log('PageA deactivated')
+})
+</script>
+
+<script>
+export default {
+  name: 'PageA'  // 必须设置 name，keep-alive 才能识别
+}
+</script>
+```
+
+> `PageB.vue` 和 `PageC.vue` 结构类似，只需改下标题和占位文本。
+
+---
+
+### 🧠 总结说明：
+
+* 使用 `<component :is="...">` 加 `<keep-alive>` 实现动态组件缓存。
+* 每个组件保留 `name`，否则 `<keep-alive>` 无法正确识别。
+* 使用 `v-model` 绑定数据并不会因组件切换而丢失。
+* 可以在 `setup` 中使用 `onActivated` / `onDeactivated` 来处理激活逻辑，比如刷新数据等。
+
+
