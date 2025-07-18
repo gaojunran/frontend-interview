@@ -1,0 +1,95 @@
+---
+title: 说说你对闭包的理解？闭包使用场景？
+---
+
+当然可以，以下是以**被面试者角度**，清晰、有条理地回答“你对JavaScript闭包的理解？闭包的使用场景？”这个面试问题的回答示例：
+
+---
+
+面试官您好，我来谈一下我对 **JavaScript 中闭包（Closure）** 的理解。
+
+### 一、闭包的定义和原理
+
+闭包本质上是：
+
+> **函数能够“记住”并访问它定义时的作用域，即使函数在当前作用域之外被调用。**
+
+当一个函数在其外部作用域中引用了变量，并且该函数在外部被调用时，这种引用就形成了闭包。
+
+这是因为 JavaScript 中函数是一等对象，函数在创建时会捕获其作用域链（也叫词法环境），即使函数脱离了它原来的作用域，这个作用域链仍然会被保留在内存中。
+
+### 二、闭包的常见使用场景
+
+1. **模拟私有变量**
+
+   ```javascript
+   function createCounter() {
+     let count = 0;
+     return {
+       increment() { count++; return count; },
+       decrement() { count--; return count; }
+     };
+   }
+
+   const counter = createCounter();
+   console.log(counter.increment()); // 1
+   console.log(counter.decrement()); // 0
+   ```
+
+   这里 `count` 是无法从外部直接访问的，只能通过闭包中的方法操作。
+
+2. **延长变量的生命周期**
+
+   ```javascript
+   function delayLog() {
+     let msg = "Hello Closure!";
+     setTimeout(() => {
+       console.log(msg); // 即使 delayLog 执行完 msg 仍然可访问
+     }, 1000);
+   }
+
+   delayLog();
+   ```
+
+3. **函数工厂 / 柯里化函数**
+
+   ```javascript
+   function createAdder(x) {
+     return function(y) {
+       return x + y;
+     }
+   }
+
+   const add5 = createAdder(5);
+   console.log(add5(10)); // 15
+   ```
+
+4. **在循环中保留变量（解决 var 问题）**
+
+   ```javascript
+   for (var i = 0; i < 3; i++) {
+     (function(j) {
+       setTimeout(() => console.log(j), 1000); // 0, 1, 2
+     })(i);
+   }
+   ```
+
+   使用闭包“固定”住每一次的变量 `i`。
+
+### 三、闭包的优缺点
+
+* ✅ **优点：**
+
+  * 封装变量，形成私有作用域
+  * 延长变量生命周期
+  * 灵活创建函数工厂
+
+* ❌ **缺点：**
+
+  * 容易造成内存泄漏（如滥用导致变量长时间无法释放）
+  * 调试困难，作用域嵌套多时不易追踪
+
+### 四、小结
+
+闭包是 JavaScript 函数式编程的核心特性之一。虽然它容易被滥用导致性能问题，但在合理场景下（比如封装、异步处理、工厂函数等），闭包是非常强大且实用的工具。
+

@@ -1,0 +1,99 @@
+---
+title: 说说你对作用域链的理解？
+---
+
+JavaScript 中的 **作用域链（Scope Chain）** 是理解变量访问、闭包等核心机制的基础，下面我来详细讲讲它的概念和原理：
+
+---
+
+### 一、什么是作用域？
+
+**作用域（Scope）** 指的是变量的可访问范围。JavaScript 中主要有以下几种作用域：
+
+1. **全局作用域（Global Scope）**
+2. **函数作用域（Function Scope）**
+3. **块级作用域（Block Scope）**（`let` / `const` 引入）
+
+---
+
+### 二、作用域链的定义
+
+当我们访问一个变量时，JavaScript 引擎会按照一条“链”向上查找变量，这条链就是 **作用域链**。
+
+**作用域链的核心规则是：**
+
+> 当前作用域没有找到变量，就往上层作用域找，一直找到全局作用域。如果仍然找不到，就报 `ReferenceError`。
+
+---
+
+### 三、作用域链的形成过程
+
+作用域链是在**函数定义**时确定的，而不是在函数调用时。
+
+每个函数内部都有一个 `[[Environment]]` 隐式属性，指向它定义时的词法环境。这个链条最终连接到全局作用域。
+
+---
+
+### 四、代码示例说明
+
+```js
+var a = 10;
+
+function outer() {
+  var b = 20;
+
+  function inner() {
+    var c = 30;
+    console.log(a); // 10：从 global 作用域找
+    console.log(b); // 20：从 outer 的作用域找
+    console.log(c); // 30：从 inner 自己作用域找
+  }
+
+  inner();
+}
+
+outer();
+```
+
+作用域链结构如下：
+
+```
+inner -> outer -> global
+```
+
+变量查找顺序：`inner` → `outer` → `global`
+
+---
+
+### 五、作用域链与闭包的关系
+
+闭包（Closure）就是 **函数访问其外部函数作用域中的变量的能力**。本质上就是利用了作用域链。
+
+```js
+function createCounter() {
+  let count = 0;
+
+  return function () {
+    return ++count;
+  };
+}
+
+const counter = createCounter();
+console.log(counter()); // 1
+console.log(counter()); // 2
+```
+
+即使 `createCounter` 已经执行完返回了，`count` 依然被内部函数引用着。这就是因为作用域链还保留了对 `count` 的引用。
+
+---
+
+### 六、总结
+
+| 概念    | 说明                      |
+| ----- | ----------------------- |
+| 作用域   | 变量的可访问范围                |
+| 作用域链  | 变量查找时的链式结构，从当前作用域逐级向上查找 |
+| 形成时机  | 函数定义时形成                 |
+| 与闭包关系 | 闭包利用了作用域链保持对外部变量的引用     |
+
+

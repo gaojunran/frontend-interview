@@ -1,0 +1,144 @@
+---
+title: JavaScript 中的原型和原型链？
+---
+
+当然可以！JavaScript 中的原型（Prototype）和原型链（Prototype Chain）是理解其面向对象编程机制的核心，掌握这一点可以帮助你理解继承、作用域、`this`、`instanceof` 等重要概念。
+
+---
+
+## 一、什么是原型（Prototype）
+
+### 1.1 每个对象都有原型
+
+在 JavaScript 中，每个对象都有一个内部属性 `[[Prototype]]`（早期称为 `__proto__`，现代通过 `Object.getPrototypeOf()` 访问），这个属性指向另一个对象，这个对象就是它的 **原型对象**。
+
+> ✅ 注意：函数有 `prototype` 属性（用于构造函数创建的实例），普通对象没有 `prototype` 属性，但它们有 `__proto__`。
+
+### 1.2 原型对象的作用
+
+原型对象可以为多个实例对象共享方法和属性。例如：
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+Person.prototype.sayHello = function() {
+  console.log(`Hello, my name is ${this.name}`);
+};
+
+const p1 = new Person("Alice");
+const p2 = new Person("Bob");
+
+p1.sayHello(); // Hello, my name is Alice
+p2.sayHello(); // Hello, my name is Bob
+```
+
+这里 `sayHello` 是定义在 `Person.prototype` 上的，所有由 `Person` 构造的对象都会共享它。
+
+---
+
+## 二、什么是原型链（Prototype Chain）
+
+原型链是一种用于实现 **继承** 和 **属性查找机制** 的结构。
+
+### 2.1 属性查找过程
+
+当你访问一个对象的属性时，比如 `p1.sayHello`，JavaScript 会：
+
+1. 在 `p1` 自身上查找；
+2. 如果没有找到，就去 `p1.__proto__`（即 `Person.prototype`）上查找；
+3. 如果还找不到，就继续查找 `Person.prototype.__proto__`；
+4. 一直查到 `Object.prototype`，如果还找不到，返回 `undefined`。
+
+这个查找路径就是 **原型链**。
+
+```js
+p1 --> Person.prototype --> Object.prototype --> null
+```
+
+---
+
+## 三、构造函数、原型对象和实例之间的关系
+
+来看一个完整示意：
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+Person.prototype.sayHello = function() {
+  console.log("Hi");
+};
+
+const p = new Person("Tom");
+```
+
+* `p.__proto__ === Person.prototype` ✅
+* `Person.prototype.constructor === Person` ✅
+* `Person.__proto__ === Function.prototype` ✅
+* `Function.prototype.__proto__ === Object.prototype` ✅
+
+这个图示可以帮助你理解：
+
+```
+p
+│
+└──> Person.prototype
+       │
+       └──> Object.prototype
+               │
+               └──> null
+```
+
+---
+
+## 四、原型链中的继承
+
+```javascript
+function Animal() {
+  this.isAnimal = true;
+}
+Animal.prototype.eat = function() {
+  console.log("Eating...");
+};
+
+function Dog() {
+  this.isDog = true;
+}
+Dog.prototype = new Animal(); // 继承
+Dog.prototype.bark = function() {
+  console.log("Bark!");
+};
+
+const dog = new Dog();
+dog.eat(); // Eating... 继承自 Animal.prototype
+dog.bark(); // Bark!
+```
+
+此时原型链为：
+
+```
+dog
+│
+└──> Dog.prototype
+       │
+       └──> Animal.prototype
+               │
+               └──> Object.prototype
+```
+
+---
+
+## 五、总结重点
+
+| 概念          | 说明                                                    |
+| ----------- | ----------------------------------------------------- |
+| `__proto__` | 实例对象的内部原型指针，指向其构造函数的 `prototype`                      |
+| `prototype` | 函数对象特有，用于生成实例的原型                                      |
+| 构造函数        | 用于创建对象，同时建立原型链                                        |
+| 原型链（查找）     | 属性/方法在当前对象上找不到，会沿着原型链向上查找                             |
+| 原型链终点       | 所有对象最终的原型是 `Object.prototype`，它的 `__proto__` 为 `null` |
+
+
