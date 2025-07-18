@@ -1,0 +1,78 @@
+---
+title: 说说 Vue 3 中 Treeshaking 特性？举例说明一下？
+---
+
+在 Vue 3 中，**Tree Shaking** 是一项重要的优化特性，它能显著减小打包体积，提高加载性能。
+
+---
+
+### 🌲 什么是 Tree Shaking？
+
+Tree Shaking 是一种**删除 JavaScript 中未使用代码**的技术。通过静态分析 ES 模块（ESM）中哪些代码被使用、哪些未使用，最终在打包时“摇掉”那些没有被使用的部分。
+
+---
+
+### ✅ Vue 3 中支持 Tree Shaking 的原因：
+
+1. **完全基于 ES Module 开发**
+   Vue 3 的源码采用了 ES Module（ESM） 方式编写，静态结构可被打包工具（如 Rollup、ESBuild、Vite、Webpack）分析。
+
+2. **API 设计更利于按需导入（比如 Composition API）**
+   Vue 2 使用 Options API，全局注册的组件或 API 很难按需加载；Vue 3 的 Composition API 支持按函数方式导入，如：
+
+   ```js
+   import { ref, reactive } from 'vue'
+   ```
+
+   如果你只用到了 `ref`，打包时未使用的 `reactive` 可以被自动移除。
+
+---
+
+### 🎯 举个例子说明：
+
+#### ✅ 示例（Composition API 有利于 Tree Shaking）
+
+```js
+// main.js
+import { createApp, ref } from 'vue' // 只引入了 ref
+import App from './App.vue'
+
+const count = ref(0)
+
+createApp(App).mount('#app')
+```
+
+在这个例子中，如果没有用到 `reactive`、`computed` 等 API，打包工具（如 Vite 或 Rollup）会自动把它们从最终产物中移除。
+
+#### ❌ Vue 2 的问题（Options API 无法 Tree Shaking）
+
+```js
+export default {
+  data() {
+    return {
+      count: 0
+    }
+  }
+}
+```
+
+Vue 2 使用 `Vue` 实例方法，内部模块和全局注册方式使得 Tree Shaking 几乎无法实现。
+
+---
+
+### 📦 工具支持
+
+* **Vite / Rollup**：天然支持 Tree Shaking（基于 ESM）
+* **Webpack**：通过配置 `sideEffects: false` 和使用 ES Module 模式支持 Tree Shaking
+
+---
+
+### ✅ 总结
+
+| 特性                | Vue 2         | Vue 3       |
+| ----------------- | ------------- | ----------- |
+| 是否支持 Tree Shaking | ❌ 几乎不支持       | ✅ 原生支持      |
+| 模块类型              | CommonJS / 混合 | ESM（静态结构）   |
+| 优化手段              | 手动按需引入        | 自动按需去除未使用代码 |
+
+Vue 3 的 Tree Shaking 特性让我们只打包真正用到的功能，优化了应用体积，提高了加载效率，是现代前端性能优化的重要组成部分。

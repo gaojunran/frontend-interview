@@ -1,0 +1,204 @@
+---
+title: Vue3所采用的 Composition API 与 Vue2.x 使用的 Options API 有什么不同？
+---
+
+当面试官问到：
+
+> Vue3 所采用的 Composition API 与 Vue2.x 使用的 Options API 有什么不同？
+
+你可以从**写法组织方式、逻辑复用能力、TS 友好性**等几个方面进行对比：
+
+---
+
+### ✅ 一、写法组织方式不同
+
+* **Options API（Vue2.x）**：
+
+  * 按照“选项”（如 `data`、`methods`、`computed`）来组织逻辑。
+  * 不同功能分散在各个选项中，可读性差，难以维护大型组件。
+
+  ```js
+  export default {
+    data() {
+      return { count: 0 };
+    },
+    methods: {
+      increment() {
+        this.count++;
+      }
+    }
+  }
+  ```
+
+* **Composition API（Vue3）**：
+
+  * 使用 `setup()` 函数集中组织逻辑。
+  * 可以将**相关功能逻辑聚合在一起**，更清晰、更模块化。
+
+  ```js
+  import { ref } from 'vue';
+
+  export default {
+    setup() {
+      const count = ref(0);
+      const increment = () => count.value++;
+
+      return { count, increment };
+    }
+  }
+  ```
+
+---
+
+### ✅ 二、逻辑复用能力更强
+
+* **Options API** 中复用逻辑主要依赖于：
+
+  * mixins（易冲突，不透明）
+  * HOC（高阶组件，嵌套深）
+
+* **Composition API** 提供：
+
+  * **组合函数（Composables）**：通过函数封装逻辑，实现高内聚、可复用逻辑模块，代码更清晰。
+
+  ```js
+  // useCounter.js
+  export function useCounter() {
+    const count = ref(0);
+    const inc = () => count.value++;
+    return { count, inc };
+  }
+  ```
+
+---
+
+### ✅ 三、类型推导与 TypeScript 兼容性更好
+
+* Options API 对 TypeScript 的支持有限，类型推导不够智能。
+* Composition API 完全兼容 TS，能自动推导变量类型，提高开发体验和类型安全性。
+
+---
+
+### ✅ 四、生命周期使用方式不同
+
+* Options API：
+
+  ```js
+  mounted() {
+    console.log('组件已挂载');
+  }
+  ```
+
+* Composition API：
+
+  ```js
+  import { onMounted } from 'vue';
+
+  setup() {
+    onMounted(() => {
+      console.log('组件已挂载');
+    });
+  }
+  ```
+
+---
+
+### ✅ 总结一段话用于面试结尾：
+
+> Vue3 的 Composition API 更加灵活，能够让我们按照功能维度组织逻辑代码，解决了 Options API 在大型项目中逻辑分散、复用困难的问题。同时它更易于使用 TypeScript，提高了开发效率和可维护性。对于复杂逻辑或业务组件，Composition API 是更优选择。
+
+---
+
+面试官问：
+
+> Vue3 中的 Composition API 有哪些？
+
+你可以从 **核心 API** 和 **生命周期 API** 两大类来回答，并适当补充常见的 **工具函数** 和 **响应式 API**，下面是整理后的系统答案。
+
+---
+
+## ✅ 一、响应式相关 API（最核心）
+
+| API            | 说明                             |
+| -------------- | ------------------------------ |
+| `ref()`        | 创建基础类型或对象的响应式引用（`.value` 访问）   |
+| `reactive()`   | 创建一个响应式对象（只能处理对象）              |
+| `readonly()`   | 创建只读的响应式对象                     |
+| `shallowRef()` | 创建浅层响应式引用                      |
+| `toRef()`      | 把 reactive 对象中的某个属性变成一个 ref    |
+| `toRefs()`     | 把 reactive 对象整体转为由多个 ref 组成的对象 |
+| `isRef()`      | 判断是否为 ref                      |
+| `isReactive()` | 判断是否为 reactive 对象              |
+| `unref()`      | 获取 ref 的原始值（等价于 `.value`）      |
+
+---
+
+## ✅ 二、计算属性和监听
+
+| API             | 说明              |
+| --------------- | --------------- |
+| `computed()`    | 创建一个计算属性（具有缓存）  |
+| `watch()`       | 监听一个或多个响应式数据变化  |
+| `watchEffect()` | 自动依赖收集并执行的副作用函数 |
+
+---
+
+## ✅ 三、生命周期钩子函数
+
+在 `setup()` 中使用这些 API 替代 Vue2 中的 `mounted`, `created`, 等生命周期钩子。
+
+| API                 | 等价于 Options API 中的生命周期 |
+| ------------------- | ---------------------- |
+| `onBeforeMount()`   | beforeMount            |
+| `onMounted()`       | mounted                |
+| `onBeforeUpdate()`  | beforeUpdate           |
+| `onUpdated()`       | updated                |
+| `onBeforeUnmount()` | beforeDestroy          |
+| `onUnmounted()`     | destroyed              |
+| `onErrorCaptured()` | errorCaptured          |
+| `onActivated()`     | activated              |
+| `onDeactivated()`   | deactivated            |
+
+---
+
+## ✅ 四、依赖注入相关（跨组件通信）
+
+| API         | 说明          |
+| ----------- | ----------- |
+| `provide()` | 向后代组件提供一个值  |
+| `inject()`  | 从祖先组件中注入一个值 |
+
+---
+
+## ✅ 五、其他常用工具 API
+
+| API                    | 说明                   |
+| ---------------------- | -------------------- |
+| `defineComponent()`    | 定义组件时增强类型推导          |
+| `getCurrentInstance()` | 获取当前组件实例（比如访问 proxy） |
+| `nextTick()`           | 在 DOM 更新完成后执行回调      |
+
+---
+
+## ✅ 六、自定义组合函数（composable）
+
+虽然不是 Vue 内置 API，但在使用 Composition API 时会自己写：
+
+```ts
+// useMouse.ts
+export function useMouse() {
+  const x = ref(0);
+  const y = ref(0);
+  window.addEventListener('mousemove', e => {
+    x.value = e.pageX;
+    y.value = e.pageY;
+  });
+  return { x, y };
+}
+```
+
+---
+
+## ✅ 总结一句话（适合面试结束补充）：
+
+> Composition API 包括响应式 API（如 `ref`、`reactive`）、计算和监听（如 `computed`、`watch`）、生命周期钩子（如 `onMounted`）、依赖注入（如 `provide`/`inject`）等，是 Vue3 中用于组合逻辑、增强可维护性和类型安全的核心能力。

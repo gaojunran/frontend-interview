@@ -1,0 +1,77 @@
+---
+title: vue 项目本地开发完成后部署到服务器后报 404 是什么原因呢？
+---
+
+这个问题在 Vue 项目部署后很常见。我们来详细分析一下：
+
+---
+
+### ❓ 问题：Vue 项目部署到服务器后出现 404 错误，是什么原因？
+
+---
+
+### ✅ 回答：
+
+Vue 是一个**前端单页面应用框架（SPA）**，当你使用 `vue-router` 并设置为 `history` 模式时，所有路由其实都是由前端来控制的。**部署时出现 404 通常是因为服务器没有正确处理前端路由。**
+
+---
+
+### 🔍 原因分析：
+
+#### **1. 使用了 `history` 模式但服务器没有配置好**
+
+* Vue Router 的 `history` 模式不会在 URL 中带 `#`，比如 `/about`。
+* 但是当用户在浏览器直接访问 `yourdomain.com/about` 时，服务器会尝试去找 `/about` 这个路径的资源文件。
+* 如果服务器找不到这个路径上的 `index.html` 或静态资源，就会返回 **404**。
+
+#### ✅ 解决办法：
+
+##### 对于 Nginx：
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+意思是：如果找不到对应文件，就返回 `index.html`，由前端接管路由。
+
+##### 对于 Apache：
+
+在 `.htaccess` 中添加：
+
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+```
+
+---
+
+### ⚠️ 其他可能原因：
+
+#### 2. `publicPath` 或 `base` 设置不对
+
+* Vue CLI 项目中 `vue.config.js` 的 `publicPath` 默认是 `/`。
+* 如果项目部署在 **子路径**下，如 `yourdomain.com/myapp/`，需要设置：
+
+```js
+module.exports = {
+  publicPath: '/myapp/'
+}
+```
+
+否则静态资源路径会不对，也可能出现类似 404 的报错。
+
+---
+
+### ✅ 总结一句话：
+
+> Vue 项目部署后出现 404，多半是因为使用了 `history` 模式但服务器没有将所有路由重定向到 `index.html`，或者 `publicPath` 设置不正确。
+
+---

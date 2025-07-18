@@ -1,0 +1,122 @@
+---
+title: vue 要做权限管理该怎么做？如果控制到按钮级别的权限怎么做？
+---
+
+这是面试中常见的问题，考察你对 Vue3 权限体系的理解与实际落地能力。
+
+---
+
+## ✅ 面试官问题：
+
+**Vue3 要做权限管理该怎么做？如果要控制到按钮级别的权限又该怎么做？**
+
+---
+
+## ✅ 回答参考：
+
+在 Vue3 中做权限管理，通常包括两个层级：
+
+### 一、页面级权限控制（路由层面）
+
+1. **配合 Vue Router 的路由守卫做拦截**：
+
+   * 使用 `beforeEach` 钩子在路由跳转前判断用户是否有权限访问目标页面。
+
+2. **权限信息来源**：
+
+   * 通常登录后从后端获取当前用户的权限数据（如角色、权限码等）并存储到 `pinia/store` 或 `vuex` 中。
+   * 示例权限结构：
+
+     ```js
+     const userPermissions = ['user:add', 'user:edit', 'order:view'];
+     ```
+
+3. **路由配置带上权限标识**：
+
+   ```js
+   {
+     path: '/user',
+     component: UserPage,
+     meta: { requiresAuth: true, permissions: ['user:view'] }
+   }
+   ```
+
+4. **在全局守卫中校验**：
+
+   ```js
+   router.beforeEach((to, from, next) => {
+     const userPermissions = store.state.permissions;
+     const required = to.meta.permissions || [];
+
+     if (required.every(p => userPermissions.includes(p))) {
+       next();
+     } else {
+       next('/403'); // 跳转无权限页面
+     }
+   });
+   ```
+
+---
+
+### 二、按钮级权限控制（组件层面）
+
+1. **自定义指令方式（推荐）**：
+
+   创建一个权限指令，比如 `v-permission`，根据用户权限动态控制元素的显示或禁用。
+
+   ```js
+   app.directive('permission', {
+     mounted(el, binding) {
+       const userPermissions = store.state.permissions;
+       const required = binding.value;
+
+       if (!userPermissions.includes(required)) {
+         el.parentNode && el.parentNode.removeChild(el);
+       }
+     }
+   });
+   ```
+
+   使用方式：
+
+   ```html
+   <el-button v-permission="'user:add'">新增用户</el-button>
+   ```
+
+2. **封装组件或函数式工具判断**：
+
+   可以在业务中封装一个 `hasPermission` 工具方法，结合条件渲染使用：
+
+   ```js
+   const hasPermission = (key) => {
+     return store.state.permissions.includes(key);
+   };
+   ```
+
+   ```html
+   <el-button v-if="hasPermission('user:add')">新增用户</el-button>
+   ```
+
+---
+
+### 三、权限管理总结：
+
+| 层级 | 控制方式         | 适用场景      |
+| -- | ------------ | --------- |
+| 页面 | 路由守卫 + meta  | 菜单权限、页面访问 |
+| 按钮 | 自定义指令 / v-if | 按钮级、操作级权限 |
+
+---
+
+### 四、附加说明（面试加分点）：
+
+* **权限数据推荐从后端返回**，保持一致性。
+* **路由 + 菜单动态生成**：可根据权限过滤路由表再动态添加到路由中。
+* **按钮权限推荐用自定义指令统一处理**，避免到处写 `v-if`，利于维护。
+
+---
+
+如果你有实际项目经验，可以补一句：
+
+> 在我们项目中，权限是基于 RBAC（基于角色的权限控制）做的。登录后后端返回角色和权限码，我们动态生成可访问菜单并控制页面和按钮权限，按钮级权限用的是 `v-permission` 指令。
+

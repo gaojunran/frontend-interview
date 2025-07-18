@@ -1,0 +1,115 @@
+---
+title: 你是怎么处理vue项目中的错误的？
+---
+
+当面试官问我\*\*“你是怎么处理 Vue3 项目中的错误的？”\*\*，我会从以下几个方面进行回答，结构清晰、有逻辑地展现我的项目经验和对错误处理机制的理解：
+
+---
+
+### 1. **开发阶段错误处理**
+
+在开发阶段，常见的错误类型包括：运行时错误、接口错误、组件异常等，我主要采用以下方式来处理：
+
+#### ✅ 控制台调试 + ESLint
+
+* 使用 ESLint + Prettier 保证代码质量，减少低级错误；
+* 使用浏览器 DevTools 和 Vite 的热更新机制快速定位问题。
+
+#### ✅ TypeScript 静态类型检查（如果项目中有使用）
+
+* 能提前发现类型错误；
+* 尤其在接口响应数据不一致时非常有效。
+
+---
+
+### 2. **运行时错误处理**
+
+#### ✅ 全局错误捕获
+
+在 Vue3 中可以使用 `app.config.errorHandler` 全局处理错误：
+
+```ts
+const app = createApp(App);
+app.config.errorHandler = (err, instance, info) => {
+  console.error('全局错误捕获：', err);
+  // 可上报错误到 Sentry / 日志系统
+};
+```
+
+#### ✅ 异步错误处理（try...catch）
+
+对接口调用、异步操作都使用 `try...catch` 包裹，防止 Promise 抛出未捕获异常：
+
+```ts
+try {
+  const res = await api.getUser();
+} catch (error) {
+  console.error('接口请求失败', error);
+}
+```
+
+---
+
+### 3. **组件级错误边界处理**
+
+Vue3 中可以通过封装**错误边界组件**来局部兜底错误（类似 React 的 ErrorBoundary）：
+
+```ts
+onErrorCaptured((err, instance, info) => {
+  console.error('组件错误捕获：', err);
+  return false; // 返回 true 则阻止错误继续向上传播
+});
+```
+
+---
+
+### 4. **接口错误处理**
+
+对后端接口的错误响应统一处理，封装 Axios 拦截器：
+
+```ts
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    // 比如 token 失效、权限不足、服务异常等
+    if (error.response?.status === 401) {
+      router.push('/login');
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+### 5. **用户可见的错误提示**
+
+配合 UI 库（如 Element Plus / Ant Design Vue）使用全局提示：
+
+```ts
+ElMessage.error('操作失败，请稍后重试');
+```
+
+---
+
+### 6. **错误日志收集与上报（可选）**
+
+在生产环境使用第三方服务（如 Sentry、Fundebug、LogRocket）收集前端异常日志：
+
+```ts
+import * as Sentry from '@sentry/vue';
+
+Sentry.init({
+  app,
+  dsn: 'your-dsn',
+  integrations: [new BrowserTracing()],
+});
+```
+
+---
+
+### ✅ 总结：
+
+> 在 Vue3 项目中，我通过全局错误捕获、组件级 onErrorCaptured、Axios 拦截器、用户提示、错误日志上报等手段，形成了一套完善的错误处理机制，既保障了用户体验，也方便了线上问题的追踪和修复。
+
+

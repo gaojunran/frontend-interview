@@ -1,0 +1,138 @@
+---
+title: 用 Vue3 写过组件吗？如果想实现一个 Modal你会怎么设计？
+---
+
+是的，我用 Vue 3 写过多个组件，其中也包括 Modal（模态框）组件。下面是我在面试中会这样回答：
+
+---
+
+是的，我用 Vue 3 写过组件。如果要实现一个 Modal 组件，我会从以下几个方面进行设计：
+
+---
+
+### 💡 **一、组件功能设计要点**
+
+1. **是否显示**：通过 `v-model` 控制显示与隐藏。
+2. **插槽支持**：内容（body）、标题（header）、操作按钮（footer）都应该可插槽扩展。
+3. **遮罩点击关闭**：可以通过 props 控制是否点击遮罩关闭。
+4. **ESC关闭**：支持按键关闭，监听键盘事件。
+5. **过渡动画**：提供过渡动画增强用户体验。
+6. **可插入多个 Modal**：支持多层嵌套或多个 Modal 实例并存。
+
+---
+
+### 🛠 **二、组件结构设计**
+
+#### Props 设计
+
+```ts
+props: {
+  modelValue: Boolean, // 控制显示隐藏
+  title: String,       // 标题
+  closeOnClickOverlay: {
+    type: Boolean,
+    default: true
+  },
+  width: {
+    type: String,
+    default: '500px'
+  }
+}
+```
+
+#### emits
+
+```ts
+emits: ['update:modelValue', 'close', 'confirm']
+```
+
+---
+
+### 🧩 三、组件模板示例（使用 `<Teleport>`）
+
+```vue
+<template>
+  <Teleport to="body">
+    <Transition name="modal-fade">
+      <div v-if="modelValue" class="modal-overlay" @click="onOverlayClick">
+        <div class="modal-container" :style="{ width }" @click.stop>
+          <header class="modal-header">
+            <slot name="header">
+              <h3>{{ title }}</h3>
+            </slot>
+            <button class="modal-close" @click="close">×</button>
+          </header>
+
+          <section class="modal-body">
+            <slot></slot>
+          </section>
+
+          <footer class="modal-footer">
+            <slot name="footer">
+              <button @click="close">取消</button>
+              <button @click="confirm">确定</button>
+            </slot>
+          </footer>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+```
+
+---
+
+### 🎯 四、逻辑实现（`setup` 中）
+
+```ts
+import { onMounted, onUnmounted } from 'vue'
+
+setup(props, { emit }) {
+  const close = () => {
+    emit('update:modelValue', false)
+    emit('close')
+  }
+
+  const confirm = () => {
+    emit('confirm')
+    close()
+  }
+
+  const onOverlayClick = () => {
+    if (props.closeOnClickOverlay) close()
+  }
+
+  const onEsc = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close()
+  }
+
+  onMounted(() => window.addEventListener('keydown', onEsc))
+  onUnmounted(() => window.removeEventListener('keydown', onEsc))
+
+  return { close, confirm, onOverlayClick }
+}
+```
+
+---
+
+### ✨ 五、使用方式示例：
+
+```vue
+<Modal v-model="showModal" title="删除确认" @confirm="handleDelete">
+  <template #default>
+    确定要删除这条数据吗？
+  </template>
+</Modal>
+```
+
+---
+
+### ✅ 六、补充优化点（如果时间充裕）
+
+* 支持 `z-index` 管理，避免多个 modal 堆叠出问题
+* 支持异步 loading 状态（例如点击确定后按钮变 loading）
+* 可通过 slotProps 给插槽传入 action
+
+---
+
+这样一个 Modal 组件既满足了功能完整性，又保持了良好的可拓展性与复用性，符合实际项目中组件开发的最佳实践。是否需要我补充一下完整代码？

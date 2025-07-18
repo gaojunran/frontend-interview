@@ -1,0 +1,85 @@
+---
+title: 什么是虚拟DOM？如何实现一个虚拟DOM？说说你的思路
+---
+
+当然，以下是关于“Vue3 中的虚拟 DOM及其实现思路”的面试答法：
+
+---
+
+**一、什么是 Vue3 中的虚拟 DOM？**
+
+Vue3 中的虚拟 DOM（Virtual DOM）是一种使用 JavaScript 对真实 DOM 的一种**抽象表示**。它以一个**轻量的 JavaScript 对象树**的形式存在，表示真实 DOM 的结构、属性、事件等。
+
+在更新过程中，Vue 会先在内存中对虚拟 DOM 进行变更，然后通过**Diff 算法**（主要是双端对比和快速路径）计算出最小变更路径，最后一次性批量更新真实 DOM，提高性能和效率。
+
+Vue3 的虚拟 DOM 是基于其底层响应式系统与 `VNode` 节点进行工作，其核心模块是 `@vue/runtime-core` 中的 `h()` 函数与 `patch()` 函数。
+
+---
+
+**二、如何实现一个简单的虚拟 DOM？你的思路？**
+
+实现一个简化版的虚拟 DOM 大致可以分为 3 步：
+
+### 1. 定义 Virtual DOM 节点结构（VNode）
+
+```js
+function h(type, props = {}, children = []) {
+  return {
+    type,       // 元素类型，比如 'div'
+    props,      // 属性，比如 { id: 'app' }
+    children    // 子元素，可以是字符串或数组
+  };
+}
+```
+
+### 2. 渲染函数：将虚拟 DOM 转换成真实 DOM
+
+```js
+function render(vnode) {
+  if (typeof vnode === 'string') {
+    return document.createTextNode(vnode);
+  }
+
+  const el = document.createElement(vnode.type);
+
+  // 设置属性
+  for (const key in vnode.props) {
+    el.setAttribute(key, vnode.props[key]);
+  }
+
+  // 渲染子节点
+  vnode.children.forEach(child => {
+    el.appendChild(render(child));
+  });
+
+  return el;
+}
+```
+
+### 3. 简单的 diff 和 patch 算法（可选）
+
+实现一个最基础的 diff 算法比较两个 VNode，然后替换或修改 DOM。但完整 diff 较复杂，Vue3 用了 block tree + 静态提升 + patchFlag 优化性能。
+
+---
+
+**三、Vue3 中的虚拟 DOM 与 Vue2 的区别：**
+
+* **性能优化：**
+
+  * Vue3 中采用了静态提升（Hoist Static）和预编译 patch 标志（Patch Flag），使得 patch 更高效。
+* **Block Tree：**
+
+  * 将动态节点分组处理，避免无关节点 diff。
+* **VNode 类型更清晰：**
+
+  * Vue3 的 VNode 类型通过 `shapeFlag` 更高效地判断 vnode 类型。
+
+---
+
+**总结：**
+
+虚拟 DOM 是对真实 DOM 的抽象，用于提高渲染效率。在 Vue3 中，虚拟 DOM 结合响应式系统与优化后的 patch 算法，实现了性能更强、更易维护的视图更新机制。
+
+我平时在阅读 Vue3 源码或做一些优化调试的时候，会重点关注虚拟 DOM 的结构、VNode 的生成与 patch 流程，帮助理解 Vue3 的核心机制。
+
+

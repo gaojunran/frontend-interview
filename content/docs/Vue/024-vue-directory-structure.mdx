@@ -1,0 +1,100 @@
+---
+title: 说下你的 vue 项目的目录结构，如果是大型项目你该怎么划分结构和划分组件呢？
+---
+
+当然可以，以下是一个标准的 Vue3 项目目录结构说明，以及在大型项目中如何划分结构和组件的思路：
+
+---
+
+### ✅ 一、Vue3 项目的基础目录结构（基于 Vite + TypeScript）
+
+```
+├── public/                 # 静态资源目录
+├── src/
+│   ├── assets/             # 静态资源（图片、样式等）
+│   ├── components/         # 全局通用组件
+│   ├── views/              # 页面级组件（一个页面一个文件夹）
+│   ├── layouts/            # 页面布局组件（如后台管理常见的 layout）
+│   ├── router/             # 路由配置
+│   ├── store/              # 状态管理（如使用 Pinia）
+│   ├── api/                # 接口请求封装
+│   ├── utils/              # 工具函数
+│   ├── directives/         # 自定义指令
+│   ├── composables/        # 组合式 API 封装（如 useUser、useFetch）
+│   ├── constants/          # 常量定义，如枚举、配置项
+│   ├── types/              # TypeScript 类型定义
+│   ├── App.vue             # 根组件
+│   └── main.ts             # 项目入口
+├── vite.config.ts          # Vite 配置
+└── package.json
+```
+
+---
+
+### ✅ 二、大型项目如何划分结构和组件？
+
+#### 1. **模块化划分（按业务领域）**
+
+将项目按业务域拆分成模块，每个模块拥有自己的：
+
+* 页面（views）
+* 组件（components）
+* 状态（store）
+* API（api）
+
+例如：
+
+```
+src/
+├── modules/
+│   ├── user/
+│   │   ├── views/
+│   │   ├── components/
+│   │   ├── store/
+│   │   ├── api.ts
+│   │   └── index.ts
+│   └── order/
+```
+
+#### 2. **组件划分策略**
+
+* **基础组件（Base）**：如 `BaseButton`、`BaseInput`，放在 `components/base/`
+* **业务组件（Biz）**：和具体业务相关的组件，放在对应模块下
+* **页面组件（Page）**：每个页面是一个 view 文件夹，内部再细分逻辑组件
+
+#### 3. **组合式函数封装**
+
+将可复用逻辑抽取到 `composables/` 中，比如：
+
+```ts
+// useAuth.ts
+export function useAuth() {
+  const user = ref(null)
+  const login = async () => { ... }
+  return { user, login }
+}
+```
+
+#### 4. **自动化组织结构（推荐）**
+
+* 通过 Vite 插件如 `vite-plugin-pages` 自动生成路由
+* 使用 `vite-plugin-auto-import` 自动引入 `composables`、`store` 等
+
+---
+
+### ✅ 三、实际项目优化建议
+
+* **统一命名规范**：如组件使用 PascalCase，组合函数使用 `use` 开头
+* **按需加载**：页面组件、UI组件都按需加载，避免首屏过大
+* **权限模块单独管理**：如在 `router/permission.ts` 中做路由守卫
+* **响应式数据分离管理**：业务状态放 Pinia，全局状态和缓存状态分开管理
+
+---
+
+### ✅ 四、总结
+
+> 在 Vue3 大型项目中，推荐使用“按功能模块划分”的目录结构，将视图、组件、store、API 都聚合在对应业务域下，这样结构清晰、职责分明，有利于多人协作与后期维护。
+
+---
+
+如果面试官继续追问某一块，比如具体的 `composables` 怎么用，或者你的模块化设计怎么落地，我也可以进一步补充。需要我扩展某部分吗？
