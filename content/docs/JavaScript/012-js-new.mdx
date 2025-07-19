@@ -1,0 +1,103 @@
+---
+title: 说说new操作符具体干了什么？
+---
+
+`new` 操作符是 JavaScript 中用来创建一个用户定义类型的实例对象的关键机制。它的背后其实做了几件核心事情。我们可以一步步拆解 `new` 的具体行为：
+
+---
+
+### ✅ 一、`new` 操作符执行了哪些步骤？
+
+假设有如下代码：
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+const p = new Person('Tom');
+```
+
+其实 `new Person('Tom')` 大致做了以下 4 步：
+
+1. **创建一个新的空对象**：
+
+   ```js
+   const obj = {};
+   ```
+
+2. **将这个新对象的原型链接到构造函数的 `prototype` 上**：
+
+   ```js
+   obj.__proto__ = Person.prototype;
+   ```
+
+3. **将这个新对象绑定到构造函数的 `this` 上，并执行构造函数代码**：
+
+   ```js
+   Person.call(obj, 'Tom');  // 即 this.name = 'Tom'
+   ```
+
+4. **返回这个对象**：
+
+   * 如果构造函数返回的是一个对象，则返回这个对象；
+   * 如果构造函数没有显式返回对象，则默认返回新创建的对象。
+
+---
+
+### ✅ 二、模拟实现一个 `new`：
+
+```javascript
+function myNew(fn, ...args) {
+  const obj = Object.create(fn.prototype); // 步骤1 & 2
+  const result = fn.apply(obj, args);      // 步骤3
+  return (typeof result === 'object' && result !== null) ? result : obj; // 步骤4
+}
+```
+
+使用示例：
+
+```javascript
+function Animal(name) {
+  this.name = name;
+}
+const dog = myNew(Animal, 'Dog');
+console.log(dog.name); // Dog
+```
+
+---
+
+### ✅ 三、重点回顾
+
+| 步骤     | 说明                                     |
+| ------ | -------------------------------------- |
+| 创建对象   | 自动生成一个新的空对象                            |
+| 原型连接   | 设置该对象的 `__proto__` 指向构造函数的 `prototype` |
+| 调用构造函数 | 以该对象为 `this` 调用构造函数                    |
+| 返回值判断  | 如果构造函数返回对象类型，则使用它；否则返回新建对象             |
+
+---
+
+### ✅ 四、面试常问的陷阱点
+
+* 构造函数中如果返回的是一个 **对象类型**，`new` 最终会返回它。
+
+  ```js
+  function Foo() {
+    this.a = 1;
+    return { b: 2 };
+  }
+  const f = new Foo();
+  console.log(f); // { b: 2 }
+  ```
+
+* 构造函数中返回 **原始类型（如字符串、数字）** 会被忽略，返回创建的对象。
+
+  ```js
+  function Bar() {
+    this.a = 1;
+    return 42;
+  }
+  const b = new Bar();
+  console.log(b); // { a: 1 }
+  ```
+

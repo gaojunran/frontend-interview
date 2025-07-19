@@ -1,0 +1,120 @@
+---
+title: 说说 JavaScript 中内存泄漏的几种情况？
+---
+
+在 JavaScript 中，\*\*内存泄漏（Memory Leak）\*\*是指不再使用的对象依然被引用，从而无法被垃圾回收器释放，导致内存占用越来越多。以下是常见的几种内存泄漏情况：
+
+---
+
+### 一、意外的全局变量
+
+**原因：** 未使用 `let` / `const` / `var` 声明变量，自动挂载到全局对象。
+
+```javascript
+function foo() {
+  leak = "I am global"; // 没有用 let/const/var 声明
+}
+foo();
+// leak 持续存在于全局作用域，无法回收
+```
+
+---
+
+### 二、闭包未释放
+
+**原因：** 闭包函数长期持有外部变量的引用，导致其无法被垃圾回收。
+
+```javascript
+function outer() {
+  let largeObj = new Array(1000000).fill('leak');
+  return function inner() {
+    console.log(largeObj.length);
+  };
+}
+
+const hold = outer(); // largeObj 永远不会被释放
+```
+
+---
+
+### 三、定时器或回调未清除
+
+**原因：** `setInterval`、`setTimeout` 或事件监听器未及时清理，引用无法释放。
+
+```javascript
+let obj = { name: 'leak' };
+setInterval(() => {
+  console.log(obj.name);
+}, 1000);
+// 即使不再使用 obj，它仍被定时器引用，无法回收
+```
+
+> ✅ 解决方法：使用 `clearInterval()`，或在不需要时移除监听器。
+
+---
+
+### 四、DOM 引用未清除
+
+**原因：** JS 中保留了已从文档中移除的 DOM 元素的引用。
+
+```javascript
+let dom = document.getElementById("leak");
+document.body.removeChild(dom);
+// dom 变量仍然引用着该 DOM 节点，无法回收
+```
+
+处理方法：`dom = null;` 断开引用。
+
+---
+
+### 五、缓存过度或不当
+
+**原因：** 不合理地缓存对象，尤其是在使用 Map、Set、数组等结构时。
+
+```javascript
+const cache = {};
+function addToCache(key, value) {
+  cache[key] = value;
+}
+// 永远存入 cache，不做清理，可能造成大量内存泄漏
+```
+
+---
+
+### 六、闭包 + DOM 引用混用
+
+**场景：** 闭包函数引用了 DOM 节点，导致 DOM 节点无法释放。
+
+```javascript
+function bindEvent() {
+  let element = document.getElementById("btn");
+  element.onclick = function () {
+    console.log(element.innerText); // 闭包引用了 element
+  };
+  // 即使删除了元素，也无法回收
+}
+```
+
+---
+
+### 七、WeakMap / WeakSet 使用不当的替代
+
+**原因：** 该结构适用于弱引用，但如果使用普通 Map/Set，则强引用会导致泄漏。
+
+---
+
+### 如何排查和避免内存泄漏？
+
+* **开发阶段工具：**
+
+  * Chrome DevTools → Memory → 堆快照（Heap snapshot）
+  * Performance → Timeline 分析
+* **最佳实践：**
+
+  * 使用 `let` / `const` 声明变量
+  * 使用 `WeakMap` 或 `WeakSet` 做缓存
+  * 定时器和事件要手动移除
+  * 小心使用闭包
+  * 销毁组件时，清除一切引用
+
+

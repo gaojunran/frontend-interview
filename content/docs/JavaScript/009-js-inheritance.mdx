@@ -1,0 +1,189 @@
+---
+title: Javascript 如何实现继承？
+---
+
+JavaScript 实现继承的方式有很多，主要包括以下几种：
+
+---
+
+## ✅ 1. 原型链继承（Prototype Chain Inheritance）
+
+```js
+function Parent() {
+  this.name = "parent";
+}
+Parent.prototype.sayHello = function () {
+  console.log("Hello from Parent");
+};
+
+function Child() {}
+Child.prototype = new Parent(); // 核心
+
+const child = new Child();
+child.sayHello(); // Hello from Parent
+```
+
+### 缺点：
+
+* 所有实例共享父类引用类型属性（如数组/对象）。
+* 创建子类实例时，不能给父类传参。
+
+---
+
+## ✅ 2. 借用构造函数继承（Constructor Borrowing）
+
+```js
+function Parent(name) {
+  this.name = name;
+}
+
+function Child(name) {
+  Parent.call(this, name); // 核心
+}
+
+const child = new Child("Tom");
+console.log(child.name); // Tom
+```
+
+### 缺点：
+
+* 无法继承父类原型上的方法。
+* 方法每次都会在实例中创建一份。
+
+---
+
+## ✅ 3. 组合继承（原型链 + 构造函数）
+
+```js
+function Parent(name) {
+  this.name = name;
+  this.colors = ["red", "blue"];
+}
+Parent.prototype.sayName = function () {
+  console.log(this.name);
+};
+
+function Child(name, age) {
+  Parent.call(this, name); // 第一次调用
+  this.age = age;
+}
+
+Child.prototype = new Parent(); // 第二次调用
+Child.prototype.constructor = Child;
+
+const child1 = new Child("Tom", 20);
+child1.sayName(); // Tom
+```
+
+### 缺点：
+
+* `Parent` 被调用了两次，浪费内存。
+
+---
+
+## ✅ 4. 原型式继承（`Object.create`）
+
+```js
+const parent = {
+  name: "parent",
+  sayHello() {
+    console.log("Hello from parent");
+  },
+};
+
+const child = Object.create(parent); // 核心
+child.name = "child";
+child.sayHello(); // Hello from parent
+```
+
+### 缺点：
+
+* 共享引用类型属性的问题仍然存在。
+
+---
+
+## ✅ 5. 寄生式继承（Parasitic Inheritance）
+
+```js
+function createChild(original) {
+  const clone = Object.create(original); // 核心
+  clone.sayHi = function () {
+    console.log("Hi");
+  };
+  return clone;
+}
+
+const parent = { name: "parent" };
+const child = createChild(parent);
+child.sayHi(); // Hi
+```
+
+---
+
+## ✅ 6. 寄生组合式继承（推荐，ES5最佳方案）
+
+```js
+function inheritPrototype(child, parent) {
+  child.prototype = Object.create(parent.prototype); // 不调用父构造函数
+  child.prototype.constructor = child;
+}
+
+function Parent(name) {
+  this.name = name;
+}
+Parent.prototype.sayName = function () {
+  console.log(this.name);
+};
+
+function Child(name, age) {
+  Parent.call(this, name);
+  this.age = age;
+}
+
+inheritPrototype(Child, Parent);
+
+const child = new Child("Tom", 20);
+child.sayName(); // Tom
+```
+
+---
+
+## ✅ 7. ES6 Class 继承（最现代写法）
+
+```js
+class Parent {
+  constructor(name) {
+    this.name = name;
+  }
+
+  sayName() {
+    console.log(this.name);
+  }
+}
+
+class Child extends Parent {
+  constructor(name, age) {
+    super(name); // 调用父构造函数
+    this.age = age;
+  }
+}
+
+const child = new Child("Tom", 18);
+child.sayName(); // Tom
+```
+
+---
+
+## ✅ 总结对比
+
+| 方式           | 是否继承实例属性 | 是否继承原型方法 | 缺点         |
+| ------------ | -------- | -------- | ---------- |
+| 原型链继承        | ✅        | ✅        | 引用类型共享     |
+| 构造函数继承       | ✅        | ❌        | 无法复用方法     |
+| 组合继承         | ✅        | ✅        | 父类构造函数调用两次 |
+| 寄生组合继承       | ✅        | ✅        | ⭐推荐方案      |
+| ES6 class 继承 | ✅        | ✅        | 语法糖，底层仍是原型 |
+
+---
+
+需要详细讲某一种方式的原理或底层实现吗？

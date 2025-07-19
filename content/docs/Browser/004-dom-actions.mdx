@@ -1,0 +1,190 @@
+---
+title: DOM常见的操作有哪些？
+---
+
+在 JavaScript 中，**DOM（文档对象模型）** 是浏览器提供的一套 API，允许开发者通过 JavaScript 操作 HTML 或 XML 文档的结构、样式和内容。
+
+下面我们来系统讲讲 **DOM 的常见操作**，并配有一些例子说明：
+
+---
+
+## 一、获取 DOM 元素
+
+### 1. `getElementById`
+
+```js
+const title = document.getElementById('main-title');
+```
+
+### 2. `getElementsByClassName`（返回 HTMLCollection）
+
+```js
+const items = document.getElementsByClassName('item');
+```
+
+### 3. `getElementsByTagName`
+
+```js
+const divs = document.getElementsByTagName('div');
+```
+
+### 4. `querySelector` / `querySelectorAll`
+
+```js
+const firstItem = document.querySelector('.item');
+const allItems = document.querySelectorAll('.item'); // NodeList
+```
+
+---
+
+## 二、修改元素内容
+
+### 1. `innerText` / `textContent`
+
+```js
+element.innerText = 'Hello';     // 只获取可见文本，受 CSS 影响
+element.textContent = 'Hello';   // 获取所有文本，包含隐藏的
+```
+
+### 2. `innerHTML` / `outerHTML`
+
+```js
+element.innerHTML = '<span>Hi</span>';   // 设置/获取子元素
+element.outerHTML = '<div>New</div>';    // 替换整个元素
+```
+
+---
+
+## 三、修改属性和样式
+
+### 1. `setAttribute` / `getAttribute` / `removeAttribute`
+
+```js
+element.setAttribute('data-id', '123');
+const id = element.getAttribute('data-id');
+element.removeAttribute('data-id');
+```
+
+### 2. 修改 `class`、`id`
+
+```js
+element.className = 'active';       // 直接设置类名
+element.id = 'new-id';
+```
+
+### 3. 使用 `classList`
+
+```js
+element.classList.add('visible');
+element.classList.remove('hidden');
+element.classList.toggle('active');
+element.classList.contains('active'); // 返回 true/false
+```
+
+### 4. 修改 `style`
+
+```js
+element.style.color = 'red';
+element.style.backgroundColor = 'yellow';
+```
+
+---
+
+## 四、创建、插入、删除节点
+
+### 1. 创建节点
+
+```js
+const newDiv = document.createElement('div');
+newDiv.textContent = 'I am new';
+```
+
+### 2. 插入节点
+
+```js
+parent.appendChild(newDiv);             // 添加为最后一个子节点
+parent.insertBefore(newDiv, sibling);   // 插入到某个节点前
+```
+
+### 3. 删除节点
+
+```js
+parent.removeChild(child);
+element.remove(); // 现代浏览器支持，直接删除自身
+```
+
+---
+
+## 五、事件绑定与移除
+
+### 1. `addEventListener`
+
+```js
+button.addEventListener('click', function() {
+  alert('Clicked!');
+});
+```
+
+### 2. `removeEventListener`
+
+```js
+function handler() {
+  console.log('Removed');
+}
+button.addEventListener('click', handler);
+button.removeEventListener('click', handler);
+```
+
+---
+
+## 六、遍历 DOM 节点
+
+```js
+element.parentNode
+element.children
+element.firstChild
+element.lastChild
+element.nextSibling
+element.previousSibling
+```
+
+也可以用 `NodeList.forEach` 或 `for...of` 遍历 `querySelectorAll` 返回的结果。
+
+---
+
+## 七、尺寸和位置相关
+
+```js
+element.offsetWidth     // 元素的可见宽度（包括 padding 和 border）
+element.offsetHeight
+element.clientWidth     // 不包括 border
+element.scrollTop       // 当前滚动位置
+element.getBoundingClientRect(); // 获取元素相对于视口的位置和尺寸
+```
+
+---
+
+## 八、其他常用操作
+
+### 1. 操作表单元素
+
+```js
+input.value = 'hello';       // 获取/设置 input 的值
+checkbox.checked = true;     // 是否选中
+select.options               // 所有选项
+```
+
+### 2. 动态添加脚本或样式
+
+```js
+const script = document.createElement('script');
+script.src = 'xxx.js';
+document.body.appendChild(script);
+```
+
+---
+
+## 总结一句话：
+
+> **DOM 操作核心是：获取元素、操作属性/样式、插入/删除、事件绑定。掌握这些就是操作页面的基础。**
+

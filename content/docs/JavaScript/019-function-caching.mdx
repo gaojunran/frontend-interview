@@ -1,0 +1,133 @@
+---
+title: Javascript中如何实现函数缓存？函数缓存有哪些应用场景？
+---
+
+在 JavaScript 中，**函数缓存**（Function Caching），也叫 **记忆化（Memoization）**，是一种性能优化技术：通过缓存函数调用的结果，避免对相同输入重复计算，从而提高性能。
+
+---
+
+### 一、如何实现函数缓存？
+
+**基本实现思路：**
+
+1. 使用一个缓存对象（如 `Map` 或普通对象 `{}`）存储输入与结果的映射；
+2. 每次调用函数前，先检查缓存中是否已有对应结果；
+3. 如果有，直接返回缓存结果；
+4. 如果没有，执行计算并将结果存入缓存。
+
+#### ✅ 示例1：简单加法函数的缓存实现
+
+```javascript
+function memoize(fn) {
+  const cache = new Map();
+  return function (...args) {
+    const key = JSON.stringify(args); // 注意：参数需要可序列化
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// 用法
+function add(a, b) {
+  console.log('Computing...');
+  return a + b;
+}
+
+const memoizedAdd = memoize(add);
+
+console.log(memoizedAdd(1, 2)); // 输出 Computing... 3
+console.log(memoizedAdd(1, 2)); // 输出 3（来自缓存）
+```
+
+---
+
+#### ✅ 示例2：递归函数（如斐波那契）的缓存
+
+```javascript
+function memoizedFib(n, cache = {}) {
+  if (n <= 1) return n;
+  if (cache[n]) return cache[n];
+  cache[n] = memoizedFib(n - 1, cache) + memoizedFib(n - 2, cache);
+  return cache[n];
+}
+
+console.log(memoizedFib(40)); // 高效计算，不重复递归
+```
+
+---
+
+### 二、函数缓存的应用场景
+
+#### ✅ 1. **高频调用且计算代价高的函数**
+
+* 如复杂计算、递归、大量数据处理等。
+* 例：斐波那契数列、阶乘、路径查找。
+
+#### ✅ 2. **不变输入时的函数优化**
+
+* 输入参数不变，输出也不变（纯函数），适合缓存。
+* 例：根据配置渲染 UI 结构、处理数据格式化、转码等。
+
+#### ✅ 3. **避免重复网络请求（可配合缓存）**
+
+* 同一参数下避免重复发起请求。
+
+```javascript
+const fetchData = memoize(async function(url) {
+  const res = await fetch(url);
+  return res.json();
+});
+```
+
+#### ✅ 4. **虚拟滚动、图表等性能敏感场景**
+
+* 如滚动分页、折线图数据密集渲染，通过缓存部分计算结果避免卡顿。
+
+---
+
+### 三、注意事项
+
+| 注意点   | 说明                                          |
+| ----- | ------------------------------------------- |
+| 参数序列化 | 使用 `JSON.stringify(args)` 有限制（不能处理函数、循环引用等） |
+| 缓存大小  | 可以设置最大缓存数或使用 `LRU Cache` 算法                 |
+| 输入类型  | 适合可预测、可序列化的参数。函数、DOM 节点等不推荐                 |
+| 纯函数   | 最适合缓存的是**纯函数**（无副作用、同输入输出恒定）                |
+
+---
+
+### 四、进阶实现：支持复杂缓存策略的 memoize 函数
+
+```javascript
+function memoize(fn, resolver) {
+  const cache = new Map();
+  return function (...args) {
+    const key = resolver ? resolver(...args) : JSON.stringify(args);
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+```
+
+可以通过 `resolver` 来定制 key 生成逻辑。
+
+---
+
+### 总结
+
+| 内容   | 要点                               |
+| ---- | -------------------------------- |
+| 核心原理 | 输入 => key；结果 => 缓存；再次输入相同则返回缓存结果 |
+| 适用函数 | 纯函数、参数可序列化、计算量大、调用频繁的函数          |
+| 实现方式 | 使用闭包 + `Map` 或对象存储中间结果           |
+| 优势   | 提升性能，减少重复计算                      |
+| 风险   | 占用内存、不适用于动态变化的输入                 |
+

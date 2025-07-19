@@ -1,0 +1,120 @@
+---
+title: bind、call、apply 区别？
+---
+
+在 JavaScript 中，`bind`、`call` 和 `apply` 都是 `Function.prototype` 上的方法，作用都是**改变函数执行时的 `this` 指向**，但它们在使用方式和行为上有明显区别。
+
+---
+
+## 一、核心区别概览：
+
+| 方法      | 是否立即执行 | 参数形式       | 返回值               |
+| ------- | ------ | ---------- | ----------------- |
+| `call`  | ✅ 是    | 依次传参（参数列表） | 函数执行结果            |
+| `apply` | ✅ 是    | 传数组（参数数组）  | 函数执行结果            |
+| `bind`  | ❌ 否    | 依次传参（参数列表） | 返回绑定 `this` 后的新函数 |
+
+---
+
+## 二、用例举例
+
+```javascript
+function greet(greeting, punctuation) {
+  console.log(`${greeting}, ${this.name}${punctuation}`);
+}
+
+const person = { name: 'Nebula' };
+
+greet.call(person, 'Hello', '!');    // Hello, Nebula!
+greet.apply(person, ['Hi', '...']);  // Hi, Nebula...
+const boundGreet = greet.bind(person, 'Hey');
+boundGreet('?');                     // Hey, Nebula?
+```
+
+---
+
+## 三、原理实现讲解（简易版）
+
+### ✅ `call` 的原理实现：
+
+```javascript
+Function.prototype.myCall = function (context, ...args) {
+  context = context || globalThis;
+  const fnSymbol = Symbol();
+  context[fnSymbol] = this;        // 把函数临时挂到 context 上
+  const result = context[fnSymbol](...args); // 执行函数
+  delete context[fnSymbol];        // 删除临时属性
+  return result;                   // 返回结果
+};
+```
+
+---
+
+### ✅ `apply` 的原理实现：
+
+```javascript
+Function.prototype.myApply = function (context, argsArray) {
+  context = context || globalThis;
+  const fnSymbol = Symbol();
+  context[fnSymbol] = this;
+  const result = Array.isArray(argsArray)
+    ? context[fnSymbol](...argsArray)
+    : context[fnSymbol]();
+  delete context[fnSymbol];
+  return result;
+};
+```
+
+---
+
+### ✅ `bind` 的原理实现：
+
+```javascript
+Function.prototype.myBind = function (context, ...args) {
+  const self = this;
+  return function (...moreArgs) {
+    return self.apply(context, [...args, ...moreArgs]);
+  };
+};
+```
+
+✅ **高级版 bind（考虑 `new` 的情况）**：
+
+```javascript
+Function.prototype.myBind = function (context, ...args) {
+  const self = this;
+
+  function boundFunction(...moreArgs) {
+    // 如果是用 new 调用，this instanceof boundFunction 为 true
+    const isNew = this instanceof boundFunction;
+    const thisArg = isNew ? this : context;
+    return self.apply(thisArg, [...args, ...moreArgs]);
+  }
+
+  // 保留原型链
+  boundFunction.prototype = Object.create(self.prototype);
+  return boundFunction;
+};
+```
+
+---
+
+## 四、适用场景
+
+| 方法      | 典型用途                      |
+| ------- | ------------------------- |
+| `call`  | 快速调用、继承构造函数               |
+| `apply` | 数组参数调用（比如 Math.max.apply） |
+| `bind`  | 延迟调用、事件回调中预绑定 `this`      |
+
+---
+
+## 五、小结口诀
+
+* **call 用逗号**（参数逗号分隔）
+* **apply 用数组**（参数包成数组）
+* **bind 不执行**（返回函数延后用）
+
+---
+
+如你想深入了解 `new + bind` 组合的坑、或者和箭头函数结合时的细节，我可以继续展开。

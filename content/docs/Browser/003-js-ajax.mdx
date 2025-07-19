@@ -1,0 +1,81 @@
+---
+title: ajax原理是什么？如何实现？
+---
+
+AJAX（Asynchronous JavaScript and XML）的原理是：**通过 JavaScript 在不重新加载整个页面的情况下，与服务器进行异步数据交换**。这使得网页可以局部更新，从而提高用户体验。
+
+---
+
+### 一、AJAX 原理简述：
+
+AJAX 的核心是使用 `XMLHttpRequest`（或 `fetch`）对象来向服务器发送 HTTP 请求，并处理服务器返回的数据，而不刷新页面。
+
+#### 流程如下：
+
+1. 用户触发事件（如点击按钮）
+2. JavaScript 创建 `XMLHttpRequest` 对象（或 `fetch`）
+3. 发送 HTTP 请求到服务器（GET/POST 等）
+4. 服务器处理请求并返回数据（通常是 JSON 或 HTML）
+5. JavaScript 接收响应并通过 DOM 操作更新页面内容
+
+---
+
+### 二、使用原生 JavaScript 实现 AJAX（使用 `XMLHttpRequest`）：
+
+```javascript
+const xhr = new XMLHttpRequest();
+xhr.open('GET', '/api/data', true); // true 表示异步
+xhr.onreadystatechange = function () {
+  if (xhr.readyState === 4 && xhr.status === 200) {
+    const data = JSON.parse(xhr.responseText);
+    console.log('接收到数据:', data);
+    document.getElementById('result').innerText = data.message;
+  }
+};
+xhr.send();
+```
+
+---
+
+### 三、使用现代 `fetch` 实现 AJAX：
+
+```javascript
+fetch('/api/data')
+  .then(response => {
+    if (!response.ok) throw new Error('请求失败');
+    return response.json();
+  })
+  .then(data => {
+    console.log('接收到数据:', data);
+    document.getElementById('result').innerText = data.message;
+  })
+  .catch(error => {
+    console.error('请求出错:', error);
+  });
+```
+
+---
+
+### 四、AJAX 的应用场景：
+
+* 表单异步提交
+* 无刷新分页
+* 模糊搜索 / 自动补全
+* 聊天室实时消息加载
+* 局部内容更新（如新闻列表、评论区）
+
+---
+
+### 五、AJAX 的优缺点：
+
+✅ 优点：
+
+* 无需刷新页面就能与服务器通信
+* 提高用户体验，减少带宽消耗
+
+❌ 缺点：
+
+* 搜索引擎不易抓取异步内容（虽然 SPA SEO 现在已有解决方案）
+* 增加了 JS 逻辑的复杂度
+* 异步操作需要妥善处理回调、异常等问题
+

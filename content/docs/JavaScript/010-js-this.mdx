@@ -1,0 +1,144 @@
+---
+title: 谈谈对 JavaScript 的 this 的理解？
+---
+
+`this` 是 JavaScript 中一个非常核心但又容易混淆的概念。它的值并不是在函数定义时确定的，而是在函数**执行时**决定的，具体取决于**函数的调用方式**。下面我从几个角度讲清楚它：
+
+---
+
+### 一、基本理解
+
+`this` 代表的是 **调用当前函数的对象**，或者说是**函数运行时所在的上下文对象**。
+
+---
+
+### 二、常见情况分类
+
+#### 1. **全局作用域或普通函数调用**
+
+```js
+function show() {
+  console.log(this);
+}
+show(); // 浏览器中：window；严格模式下：undefined
+```
+
+* 在非严格模式下，普通函数中 `this` 默认指向 `window`。
+* 严格模式 (`'use strict'`) 下为 `undefined`。
+
+---
+
+#### 2. **对象方法调用**
+
+```js
+const obj = {
+  name: 'Alice',
+  sayHi() {
+    console.log(this.name);
+  }
+};
+obj.sayHi(); // this 指向 obj，输出 'Alice'
+```
+
+* 调用函数的对象是谁，`this` 就指向谁。
+
+---
+
+#### 3. **构造函数调用**
+
+```js
+function Person(name) {
+  this.name = name;
+}
+const p = new Person('Bob');
+console.log(p.name); // 'Bob'
+```
+
+* 构造函数中，`this` 指向新创建的实例对象。
+
+---
+
+#### 4. **箭头函数**
+
+```js
+const obj = {
+  name: 'Alice',
+  sayHi: () => {
+    console.log(this.name);
+  }
+};
+obj.sayHi(); // undefined
+```
+
+* 箭头函数没有自己的 `this`，它会**继承外层函数或作用域的 this**。
+* 一般用于保持 `this` 不变的场景（比如回调、定时器等）。
+
+---
+
+#### 5. **call / apply / bind 显式绑定**
+
+```js
+function show() {
+  console.log(this.name);
+}
+const user = { name: 'Charlie' };
+show.call(user); // 'Charlie'
+```
+
+* `call` 和 `apply` 是立即调用，并改变 `this`。
+* `bind` 返回一个新函数，`this` 被永久绑定。
+
+---
+
+#### 6. **事件监听中的 this**
+
+```js
+const btn = document.querySelector('button');
+btn.onclick = function () {
+  console.log(this); // this 指向当前按钮元素
+};
+```
+
+* DOM 事件中，`this` 通常指向触发事件的 DOM 元素。
+
+* 如果换用箭头函数，`this` 会指向外部作用域的 `this`：
+
+```js
+btn.onclick = (e) => {
+  console.log(e.currentTarget); // 正确访问按钮元素
+};
+```
+
+---
+
+### 三、常见误区举例
+
+```js
+const obj = {
+  name: 'Tom',
+  getName: function () {
+    return this.name;
+  }
+};
+const fn = obj.getName;
+console.log(fn()); // undefined，因为 this 丢失了
+```
+
+解决方案：`bind(obj)`、或使用箭头函数、或显式调用 `call(obj)`。
+
+---
+
+### 四、小结
+
+| 调用方式            | this 指向                             |
+| --------------- | ----------------------------------- |
+| 普通函数调用          | 非严格模式下是 `window`；严格模式下是 `undefined` |
+| 方法调用            | 调用该方法的对象                            |
+| 构造函数调用          | 新创建的实例对象                            |
+| 箭头函数            | 外层作用域的 `this`                       |
+| call/apply/bind | 显式绑定的对象                             |
+| DOM 事件处理函数      | 触发事件的 DOM 元素                        |
+
+
+
+
