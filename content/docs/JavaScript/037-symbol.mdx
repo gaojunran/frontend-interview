@@ -1,0 +1,150 @@
+---
+title: 讲一下 JavaScript 的 Symbol？
+---
+
+`Symbol` 是 ES6 引入的一种新的原始数据类型（primitive type），表示**唯一值**，主要用于对象属性的唯一标识符，避免属性名冲突。
+
+---
+
+## 一、Symbol 的基本用法
+
+```js
+const sym = Symbol();       // 创建一个唯一的 Symbol
+console.log(typeof sym);    // 'symbol'
+
+const sym2 = Symbol('desc'); // 可以传入描述信息，方便调试
+console.log(sym2.toString()); // Symbol(desc)
+```
+
+---
+
+## 二、Symbol 的特性
+
+### ✅ 唯一性
+
+每个 Symbol 值都是唯一的，即使描述相同：
+
+```js
+Symbol('a') === Symbol('a'); // false
+```
+
+### ✅ 不能与其他类型进行运算
+
+```js
+let s = Symbol('s');
+// console.log(s + 'abc'); // TypeError
+console.log(String(s));    // 可以用 String() 显式转换
+```
+
+---
+
+## 三、Symbol 作为对象属性名
+
+```js
+const key = Symbol('myKey');
+const obj = {
+  [key]: 'value'
+};
+
+console.log(obj[key]); // 'value'
+```
+
+相比普通字符串属性，Symbol 属性不会被以下方法枚举出来：
+
+* `for...in`
+* `Object.keys()`
+* `JSON.stringify()`
+
+但可以通过 `Object.getOwnPropertySymbols(obj)` 访问：
+
+```js
+const symbols = Object.getOwnPropertySymbols(obj);
+console.log(symbols); // [Symbol(myKey)]
+```
+
+---
+
+## 四、Symbol 的用途
+
+### 1. 避免命名冲突（私有属性）
+
+```js
+const uid = Symbol('uid');
+
+class User {
+  constructor(name) {
+    this.name = name;
+    this[uid] = 123;
+  }
+}
+```
+
+### 2. 模拟私有属性
+
+```js
+const _secret = Symbol('secret');
+
+class MyClass {
+  constructor() {
+    this[_secret] = 'hidden';
+  }
+
+  getSecret() {
+    return this[_secret];
+  }
+}
+```
+
+### 3. 定义对象内部行为（Symbol 内置值）
+
+ES6 提供了一些**内置 Symbol 常量**，可以用来自定义对象的默认行为：
+
+| Symbol 内置值                  | 用途说明                                         |
+| --------------------------- | -------------------------------------------- |
+| `Symbol.iterator`           | 迭代器接口（`for...of`）                            |
+| `Symbol.toStringTag`        | 改变 `Object.prototype.toString.call(obj)` 返回值 |
+| `Symbol.toPrimitive`        | 对象转换为原始值的钩子                                  |
+| `Symbol.hasInstance`        | 控制 `instanceof` 行为                           |
+| `Symbol.isConcatSpreadable` | 控制 `concat()` 是否展开                           |
+
+示例：
+
+```js
+const obj = {
+  [Symbol.toStringTag]: 'MyObject'
+};
+
+console.log(Object.prototype.toString.call(obj)); // [object MyObject]
+```
+
+---
+
+## 五、Symbol.for 与 Symbol.keyFor
+
+```js
+const s1 = Symbol.for('globalKey');
+const s2 = Symbol.for('globalKey');
+console.log(s1 === s2); // true，使用全局注册表，复用 Symbol
+
+console.log(Symbol.keyFor(s1)); // 'globalKey'
+```
+
+区别：
+
+* `Symbol()` 每次返回新的 Symbol；
+* `Symbol.for()` 会在全局 Symbol 注册表中搜索并复用已有的 Symbol。
+
+---
+
+## 六、总结
+
+| 特性        | 说明                  |
+| --------- | ------------------- |
+| 唯一性       | 每个 Symbol 值都是唯一的    |
+| 安全性       | 不会被常规遍历方法枚举         |
+| 作用        | 常用于定义对象私有属性、避免属性冲突  |
+| 内置 Symbol | 可用于自定义对象的底层行为       |
+| 与字符串的区别   | 字符串属性可能冲突，Symbol 不会 |
+
+
+

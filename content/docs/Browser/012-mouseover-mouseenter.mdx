@@ -1,0 +1,76 @@
+---
+title: mouseover 和 mouseenter 的区别是什么？
+---
+
+`mouseover` 和 `mouseenter` 都是 JavaScript 中的鼠标事件，用于监听鼠标指针移入元素时的行为，但它们之间有几个关键区别：
+
+---
+
+## ✅ 1. **事件冒泡行为不同**
+
+这是两者最主要的区别。
+
+| 事件类型         | 是否冒泡  | 描述                                         |
+| ------------ | ----- | ------------------------------------------ |
+| `mouseover`  | ✅ 会冒泡 | 当鼠标进入元素或其**子元素**时都会触发。                     |
+| `mouseenter` | ❌ 不冒泡 | 只有当鼠标首次进入**当前元素本身**时才触发，**不会因进入子元素而再次触发**。 |
+
+---
+
+### 🔍 举个例子：
+
+```html
+<div id="parent" style="padding: 20px; background: lightblue;">
+  Parent
+  <div id="child" style="margin-top: 10px; background: lightgreen;">Child</div>
+</div>
+```
+
+```js
+document.getElementById("parent").addEventListener("mouseover", () => {
+  console.log("mouseover on parent");
+});
+
+document.getElementById("parent").addEventListener("mouseenter", () => {
+  console.log("mouseenter on parent");
+});
+```
+
+**当鼠标移动到 `child` 元素上：**
+
+* `mouseover` 会再次触发（因为是冒泡的）。
+* `mouseenter` **不会触发**，因为没离开 `parent` 元素。
+
+---
+
+## ✅ 2. **监听子元素行为时的选择**
+
+* 如果你需要**对子元素的进入也有反应**：用 `mouseover`
+* 如果你只关心**进入当前元素本身**：用 `mouseenter`
+
+---
+
+## ✅ 3. **对应的离开事件也有区别**
+
+* `mouseover` ↔ `mouseout`
+* `mouseenter` ↔ `mouseleave`
+
+其中：
+
+* `mouseout`：会在离开元素**或其子元素**时触发（冒泡）
+* `mouseleave`：只有在离开当前元素本身时触发（不冒泡）
+
+---
+
+## ✅ 总结
+
+| 比较点    | `mouseover` | `mouseenter`  |
+| ------ | ----------- | ------------- |
+| 是否冒泡   | ✅ 是         | ❌ 否           |
+| 子元素移入  | ✅ 会再次触发     | ❌ 不会触发        |
+| 对应离开事件 | `mouseout`  | `mouseleave`  |
+| 使用场景   | 复杂交互、需要冒泡   | 简单区域检测、无子元素影响 |
+
+如果你只关心元素本身的进入/离开，不希望被子元素干扰，推荐使用 `mouseenter` / `mouseleave`。
+
+

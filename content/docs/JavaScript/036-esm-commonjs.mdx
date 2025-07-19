@@ -1,0 +1,168 @@
+---
+title: ESM 和 CommonJS 有什么区别？
+---
+
+ESM（ECMAScript Modules）和 CommonJS（CJS）是 JavaScript 中两种主要的模块化规范。它们的目标都是**将代码拆分成多个模块并复用**，但在语法、加载方式、特性等方面有显著差异。
+
+下面从多个方面详细讲讲它们的区别：
+
+---
+
+## 一、语法区别
+
+### CommonJS：
+
+* 使用 `require` 引入模块
+* 使用 `module.exports` 或 `exports` 导出模块
+
+```js
+// 导出
+const sum = (a, b) => a + b;
+module.exports = sum;
+
+// 引入
+const sum = require('./sum');
+```
+
+### ESM：
+
+* 使用 `import` 引入模块
+* 使用 `export` 导出模块
+
+```js
+// 导出
+export const sum = (a, b) => a + b;
+
+// 引入
+import { sum } from './sum.js';
+```
+
+---
+
+## 二、加载方式
+
+### CommonJS：
+
+* **同步加载**
+* 适用于 Node.js 中加载本地模块（I/O 操作）
+* 执行时立即加载整个模块（**运行时加载**）
+
+### ESM：
+
+* **异步加载**
+* 更适合浏览器环境，也逐渐在 Node.js 中支持
+* 是 **编译时静态分析** 的（可实现 tree-shaking）
+
+---
+
+## 三、是否支持 Tree Shaking（代码优化）
+
+* ✅ **ESM 支持 Tree Shaking**
+
+  * 因为是静态结构，import/exports 在编译时就能确定哪些没被用
+* ❌ **CommonJS 不支持 Tree Shaking**
+
+  * require 是运行时调用，无法静态分析依赖
+
+---
+
+## 四、模块是否单例
+
+两者都满足**模块只加载一次**，在第一次加载后会被缓存。
+
+---
+
+## 五、导入导出的灵活性
+
+### CommonJS：
+
+* `module.exports` 可以导出任意类型（对象、函数、字符串等）
+* `require` 是一个函数，可以在任何地方使用（例如条件判断中）
+
+```js
+if (需要模块A) {
+  const A = require('./a');
+}
+```
+
+### ESM：
+
+* `import` 必须在**模块顶层**使用，不能放在 if、函数中
+* `export` 必须明确指定导出标识符
+
+---
+
+## 六、顶层 `this`
+
+```js
+// CommonJS 中
+console.log(this); // 指向 module.exports（一个对象）
+
+// ESM 中
+console.log(this); // undefined
+```
+
+---
+
+## 七、默认导出 vs 命名导出
+
+| 特性   | CommonJS                 | ESM                             |
+| ---- | ------------------------ | ------------------------------- |
+| 默认导出 | `module.exports = xxx`   | `export default xxx`            |
+| 命名导出 | `exports.name = xxx`     | `export const name = xxx`       |
+| 导入默认 | `require('module')`      | `import xxx from 'module'`      |
+| 导入命名 | `require('module').name` | `import { name } from 'module'` |
+
+---
+
+## 八、在 Node.js 中的使用差异
+
+Node.js 支持两者，但默认仍是 **CommonJS**。
+
+* `.cjs` 扩展名：表示 CommonJS 模块
+* `.mjs` 扩展名：表示 ESM 模块
+* 也可以通过 `package.json` 中指定：
+
+  ```json
+  {
+    "type": "module"
+  }
+  ```
+
+---
+
+## 九、兼容性问题
+
+* **CommonJS** 是 Node.js 的默认模块系统，兼容最广。
+* **ESM** 是未来趋势，浏览器原生支持，也逐渐被 Node 采纳，但要注意路径、扩展名等要求更严格。
+
+---
+
+## 十、应用场景总结
+
+| 场景                    | 推荐使用                  |
+| --------------------- | --------------------- |
+| 浏览器项目（前端构建）           | ESM                   |
+| Node.js 工具或脚本         | CommonJS（兼容性好）        |
+| 需要 Tree Shaking 优化的项目 | ESM                   |
+| 需要动态加载模块              | CommonJS（require 更灵活） |
+
+---
+
+## 总结
+
+| 特性              | CommonJS                   | ESM                       |
+| --------------- | -------------------------- | ------------------------- |
+| 导入语法            | `require()`                | `import`                  |
+| 导出语法            | `module.exports / exports` | `export / export default` |
+| 加载方式            | 同步，运行时加载                   | 异步，编译时静态加载                |
+| Tree Shaking 支持 | ❌                          | ✅                         |
+| 顶层 this         | 指向 exports 对象              | `undefined`               |
+| 是否动态导入          | ✅（任意位置）                    | ❌（只能顶层）                   |
+
+---
+
+如果你在做前端开发（比如用 Vite、Webpack、Rollup 等工具），建议使用 **ESM**。
+
+如果你在写传统 Node.js 项目，或者做兼容旧系统开发，**CommonJS** 仍然可靠。
+

@@ -1,0 +1,98 @@
+---
+title: \"use strict\" 有什么用？
+---
+
+`"use strict"` 是 JavaScript 中的严格模式（strict mode）指令。它的作用是让 JavaScript 在更严格的条件下运行，从而帮助你编写更健壮、更安全、更规范的代码。
+
+---
+
+## 🔧 一句话总结
+
+> `use strict` 会让 JavaScript 抛出更多错误，避免一些“默认容错”的行为，让潜在的 bug 曝光。
+
+---
+
+## 📌 开启方式
+
+```js
+"use strict"; // 必须写在文件或函数顶部
+```
+
+* 可以作用于整个脚本文件（放在最顶端）
+* 也可以只作用于某个函数内部
+
+```js
+function foo() {
+  "use strict";
+  // 严格模式只在这个函数内生效
+}
+```
+
+---
+
+## 📋 严格模式的主要特性
+
+### 1. 禁止使用未声明的变量
+
+```js
+"use strict";
+x = 10; // 报错：x is not defined
+```
+
+### 2. 禁止 this 指向全局对象
+
+```js
+"use strict";
+function f() {
+  console.log(this); // undefined，而不是 window
+}
+f();
+```
+
+### 3. 禁止删除变量或函数
+
+```js
+"use strict";
+var a = 1;
+delete a; // 报错
+```
+
+### 4. 禁止重复定义参数
+
+```js
+"use strict";
+function foo(a, a) {} // 报错：Duplicate parameter name not allowed
+```
+
+### 5. 禁止八进制字面量
+
+```js
+"use strict";
+var num = 0123; // 报错
+```
+
+### 6. 新增保留字不能作为变量名
+
+如：`implements`, `interface`, `let`, `package`, `private`, `protected`, `public`, `static`, `yield`
+
+---
+
+## ✅ 使用严格模式的好处
+
+* **提前发现错误**，如变量未声明就使用
+* **防止意外的全局变量污染**
+* **提升安全性**，避免不小心修改全局对象
+* **更适合未来的 ECMAScript 规范**
+* **便于 JS 引擎优化性能**
+
+---
+
+## 🚫 注意事项
+
+* 严格模式可能会导致旧代码不兼容
+* 某些第三方库可能不支持严格模式（现在已很少见）
+
+---
+
+如果你在使用模块（`<script type="module">` 或 ES6 的 `import`），**模块默认就是严格模式**，不需要手动写 `"use strict"`。
+

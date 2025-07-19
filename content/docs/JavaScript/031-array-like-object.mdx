@@ -1,0 +1,162 @@
+---
+title: 什么是 JavaScript 的类数组对象？
+---
+
+在 JavaScript 中，**类数组对象（Array-like Object）**指的是**具有 `length` 属性并且按索引方式存储元素**的对象，但它并不真正是一个 `Array` 实例。
+
+---
+
+### ✅ 特征
+
+类数组对象通常具备以下几个特征：
+
+1. **拥有 `length` 属性**
+2. **键名是非负整数（即数组索引）**
+3. **不是 `Array` 的实例（`Array.isArray(obj)` 为 false）**
+
+---
+
+### 📌 常见的类数组对象
+
+以下是一些常见的类数组对象：
+
+| 类数组对象       | 描述                                    |
+| ----------- | ------------------------------------- |
+| `arguments` | 函数中访问所有传入参数的对象                        |
+| DOM 节点列表    | 如 `document.querySelectorAll()` 返回的结果 |
+| `String` 对象 | 可以通过索引访问字符，具有 `length`                |
+
+---
+
+### 🆚 数组区别
+
+```javascript
+const arr = [1, 2, 3];
+console.log(Array.isArray(arr)); // true
+
+const obj = {
+  0: 'a',
+  1: 'b',
+  length: 2
+};
+console.log(Array.isArray(obj)); // false
+```
+
+虽然 `obj` 看起来像数组，但它并没有数组的方法（如 `push`、`map` 等）。
+
+---
+
+### 🛠 如何将类数组转换为真正数组
+
+```javascript
+// 方法1：Array.from()
+Array.from(obj);
+
+// 方法2：展开运算符（需先转成可迭代对象）
+[...Array.from(obj)];
+
+// 方法3：slice.call（适用于 arguments 等老写法）
+Array.prototype.slice.call(obj);
+```
+
+---
+
+### 📎 示例：`arguments` 是类数组
+
+```javascript
+function demo() {
+  // 注意：这个 arguments 不是参数，而是可在函数内访问的一个对象
+  // 如果用 ...args 参数收集，则为真正的数组
+  console.log(arguments);           // 类数组对象
+  console.log(Array.isArray(arguments)); // false
+  const args = Array.from(arguments);
+  console.log(args);                // 真数组
+}
+demo(1, 2, 3);
+```
+
+---
+
+### ✅ 总结
+
+\*\*类数组对象不是数组，但长得像数组。\*\*通常在操作 DOM 或函数参数时会遇到它。为了更方便使用，常常需要将它转为真正的数组。
+
+---
+
+## 补充：
+
+> ❌ **不能通过更改原型让类数组对象成为真正的数组，且也无法避免逐项拷贝。**
+
+我们来详细拆解一下这个问题：
+
+---
+
+## 🔍 1. 给类数组对象设置数组原型能行吗？
+
+你可以试着这么做：
+
+```javascript
+const obj = { 0: 'a', 1: 'b', length: 2 };
+Object.setPrototypeOf(obj, Array.prototype);
+```
+
+此时 `obj` 会拥有数组的方法，比如：
+
+```javascript
+obj.forEach(x => console.log(x)); // 输出 a, b
+```
+
+### 但注意：
+
+* `Array.isArray(obj)` 仍然是 `false`：
+
+  ```javascript
+  console.log(Array.isArray(obj)); // false
+  ```
+* 它不是一个真正的数组，没有 `[[ArrayLength]]` 内部槽（这是数组的底层机制）。
+* 某些原生操作会识别不出来，例如某些 DOM 或 API 要求参数是原生数组时会报错。
+
+> ✅ 所以，你“可以调用数组方法”，但这个对象**本质上不是数组**，只是“长得像 + 临时用上了数组方法”。
+
+---
+
+## 🔧 2. 能不能避免逐项拷贝？
+
+不行。因为：
+
+* 真正的数组在底层内存中是以连续方式存储的，有特殊的内部结构。
+* 类数组对象是普通对象，不能复用数组结构。
+* `Array.from()`、`slice()`、`扩展语法` 本质都是 **创建一个新数组并逐项复制**。
+
+> 所以，无论你怎么改原型，都无法避免“拷贝”的过程。只有通过 `Array.from(obj)` 或其他方式明确转换时，才能得到一个真正的 `Array` 实例。
+
+---
+
+## ✅ 正确的做法
+
+如果你真的需要一个“真正的数组”，并且想要高效地使用数组方法：
+
+```javascript
+const realArray = Array.from(obj);  // 明确地转换一次
+```
+
+或者更高性能（对 `arguments` 之类）：
+
+```javascript
+const realArray = new Array(obj.length);
+for (let i = 0; i < obj.length; i++) {
+  realArray[i] = obj[i];
+}
+```
+
+---
+
+## 🧠 总结
+
+| 方法                                            | 是否真正数组 | 是否避免拷贝 | 说明             |
+| --------------------------------------------- | ------ | ------ | -------------- |
+| `Object.setPrototypeOf(obj, Array.prototype)` | ❌      | ❌      | 只是“借用”方法，不是真数组 |
+| `Array.from(obj)` / `[...obj]`                | ✅      | ❌      | 创建新数组，逐项拷贝     |
+| 手动构造新数组并复制                                    | ✅      | 部分优化   | 更灵活，但仍然是复制过程   |
+
+> ⚠️ 修改原型只是“借壳”，不会改变对象的底层结构，也不会提升性能，实际开发中不推荐使用。

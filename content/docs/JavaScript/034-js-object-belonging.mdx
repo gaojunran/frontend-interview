@@ -1,0 +1,100 @@
+---
+title: JavaScript 怎么判断一个对象属于哪个类？
+---
+
+在 JavaScript 中，判断一个对象属于哪个“类”（即构造函数）有几种常见的方法，取决于你想判断的是哪种“归属”：
+
+---
+
+### ✅ 方法一：`instanceof` 运算符
+
+```js
+obj instanceof Constructor
+```
+
+**作用：** 判断对象是否是某个构造函数的实例，或者其原型链上是否有该构造函数的原型。
+
+```js
+class Animal {}
+class Dog extends Animal {}
+
+const d = new Dog();
+
+console.log(d instanceof Dog);    // true
+console.log(d instanceof Animal); // true
+console.log(d instanceof Object); // true
+```
+
+---
+
+### ✅ 方法二：`Object.getPrototypeOf` + `===`  或 `__proto__`
+
+```js
+Object.getPrototypeOf(obj) === Constructor.prototype
+```
+
+```js
+console.log(Object.getPrototypeOf(d) === Dog.prototype); // true
+```
+
+---
+
+### ✅ 方法三：`constructor` 属性（不推荐修改原型时使用）
+
+```js
+d.constructor === Dog // true
+```
+
+⚠️ 注意：如果手动修改了原型链，`constructor` 可能不再准确。
+
+```js
+function Person() {}
+Person.prototype = {};
+
+const p = new Person();
+console.log(p.constructor === Person); // false
+```
+
+---
+
+### ✅ 方法四：使用 `Object.prototype.toString.call()`
+
+```js
+Object.prototype.toString.call(obj)
+```
+
+这个方式常用于判断原生类型，例如：
+
+```js
+Object.prototype.toString.call([]);         // "[object Array]"
+Object.prototype.toString.call({});         // "[object Object]"
+Object.prototype.toString.call(new Date()); // "[object Date]"
+```
+
+自定义类会返回 `[object Object]`，不能区分哪个类，因此主要用于判断内建对象类型。
+
+---
+
+### ✅ 总结选择：
+
+| 场景                        | 推荐方法                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| 判断对象是否是某类或其子类的实例          | `instanceof`                                         |
+| 判断对象的直接构造函数               | `obj.constructor === SomeClass`（谨慎使用）                |
+| 判断原型关系                    | `Object.getPrototypeOf(obj) === SomeClass.prototype` |
+| 判断内建类型（Array、Date、RegExp） | `Object.prototype.toString.call(obj)`                |
+
+如需更强的类型标识，可以考虑在类中手动加一个自定义标识：
+
+```js
+class MyClass {
+  static type = 'MyClass';
+  get [Symbol.toStringTag]() {
+    return MyClass.type;
+  }
+}
+
+const obj = new MyClass();
+console.log(Object.prototype.toString.call(obj)); // [object MyClass]
+```
+

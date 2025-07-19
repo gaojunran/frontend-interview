@@ -1,0 +1,149 @@
+---
+title: 讲一下 Proxy？
+---
+
+在 JavaScript 中，`Proxy` 是 ES6 引入的一个强大特性，它可以用来**拦截并自定义对象的基本操作**，如属性的读取、赋值、删除、函数调用等。简单来说，`Proxy` 就是在目标对象和外部操作之间架了一层“代理”。
+
+---
+
+## 🔧 基本语法
+
+```js
+const proxy = new Proxy(target, handler);
+```
+
+* `target`：要代理的目标对象（可以是对象、数组、函数等）
+* `handler`：一个对象，定义各种操作的捕获器（trap）
+
+---
+
+## 🧲 常见 trap（拦截器）
+
+```js
+const handler = {
+  get(target, prop, receiver) {
+    // 拦截读取属性
+  },
+  set(target, prop, value, receiver) {
+    // 拦截设置属性
+  },
+  has(target, prop) {
+    // 拦截 in 操作符
+  },
+  deleteProperty(target, prop) {
+    // 拦截 delete 操作
+  },
+  ownKeys(target) {
+    // 拦截 Object.keys()、for...in
+  },
+  apply(target, thisArg, args) {
+    // 拦截函数调用
+  },
+  construct(target, args, newTarget) {
+    // 拦截 new 操作符
+  }
+}
+```
+
+---
+
+## ✅ 示例：属性访问拦截
+
+```js
+const person = {
+  name: 'Tom',
+  age: 18
+};
+
+const proxy = new Proxy(person, {
+  get(target, prop) {
+    console.log(`访问了属性 ${prop}`);
+    return target[prop];
+  },
+  set(target, prop, value) {
+    console.log(`设置属性 ${prop} 为 ${value}`);
+    target[prop] = value;
+    return true;
+  }
+});
+
+proxy.name;          // 访问了属性 name -> 'Tom'
+proxy.age = 20;      // 设置属性 age 为 20
+```
+
+---
+
+## 🧠 使用场景
+
+### 1. 数据验证
+
+```js
+const user = new Proxy({}, {
+  set(target, prop, value) {
+    if (prop === 'age' && typeof value !== 'number') {
+      throw new TypeError('age 必须是数字');
+    }
+    target[prop] = value;
+    return true;
+  }
+});
+
+user.age = 25;  // OK
+user.age = '25'; // 抛错
+```
+
+### 2. 自动填充默认值
+
+```js
+const withDefault = new Proxy({}, {
+  get: (target, prop) => prop in target ? target[prop] : '默认值'
+});
+
+console.log(withDefault.name); // 默认值
+```
+
+### 3. 观察数据变化（响应式，Vue3 就用 Proxy 实现的响应式）
+
+```js
+function reactive(obj) {
+  return new Proxy(obj, {
+    get(target, prop) {
+      console.log('读取属性：', prop);
+      return Reflect.get(target, prop);
+    },
+    set(target, prop, value) {
+      console.log('设置属性：', prop, '=', value);
+      return Reflect.set(target, prop, value);
+    }
+  });
+}
+
+const state = reactive({ count: 0 });
+state.count++;
+```
+
+---
+
+## 🧱 `Reflect` 的搭配使用
+
+通常我们会搭配 [`Reflect`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Reflect) 来完成默认行为，确保行为一致性：
+
+```js
+const proxy = new Proxy(obj, {
+  get(target, prop, receiver) {
+    return Reflect.get(target, prop, receiver);
+  },
+  set(target, prop, value, receiver) {
+    return Reflect.set(target, prop, value, receiver);
+  }
+});
+```
+
+---
+
+## 🚫 注意事项
+
+* `Proxy` 是一层**包装**，不会修改原对象，除非你对原对象直接操作；
+* 有些内建操作无法被 Proxy 拦截（如 `Object.defineProperty` 中的某些行为）；
+* `Proxy` 不兼容 IE。
+
