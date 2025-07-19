@@ -1,0 +1,90 @@
+---
+title: 什么是防抖和节流？有什么区别？如何实现？
+---
+
+在 JavaScript 中，**防抖（Debounce）** 和 **节流（Throttle）** 是两种常用于优化高频率事件触发的性能手段，比如 `scroll`、`resize`、`input`、`mousemove`、`keyup` 等事件。
+
+---
+
+## 一、什么是防抖（Debounce）？
+
+**定义：**
+防抖是指某个函数在事件触发 **n 秒后执行**，如果在 n 秒内事件再次被触发，则重新计时。
+
+**应用场景：**
+
+* 搜索框输入建议（input 输入停止后再发送请求）
+* 窗口大小变化（resize）
+* 表单验证
+
+**实现代码：**
+
+```javascript
+function debounce(fn, delay = 300) {
+  let timer = null;
+  return function (...args) {
+    // 解释：每次调用流程固定：清除定时器 -> 设置定时器
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
+}
+```
+
+**使用方式：**
+
+```javascript
+window.addEventListener('resize', debounce(() => {
+  console.log('Resized');
+}, 500));
+```
+
+---
+
+## 二、什么是节流（Throttle）？
+
+**定义：**
+节流是指某个函数在 **一定时间内只执行一次**，即使这段时间内多次触发，也只会按节流间隔执行。
+
+**应用场景：**
+
+* 页面滚动事件监听（scroll）
+* 页面拖拽（mousemove）
+* 防止按钮重复点击
+
+**实现代码：**
+
+```javascript
+function throttle(fn, delay = 300) {
+  let lastTime = 0;
+  return function (...args) {
+    // 解释：仅在到时间之后再执行
+    const now = Date.now();
+    if (now - lastTime >= delay) {
+      lastTime = now;
+      fn.apply(this, args);
+    }
+  };
+}
+```
+
+**使用方式：**
+
+```javascript
+window.addEventListener('scroll', throttle(() => {
+  console.log('Scroll event');
+}, 200));
+```
+
+---
+
+## 三、区别总结
+
+| 对比点  | 防抖（Debounce） | 节流（Throttle）  |
+| ---- | ------------ | ------------- |
+| 执行时机 | 停止触发后延迟执行    | 间隔固定时间执行一次    |
+| 触发频率 | 高频触发时不会执行    | 高频触发时按间隔执行    |
+| 场景   | 输入搜索、防止重复提交等 | 滚动监听、游戏/拖拽事件等 |
+
+

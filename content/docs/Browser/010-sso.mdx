@@ -1,0 +1,97 @@
+---
+title: 什么是单点登录？如何实现？
+---
+
+单点登录（**SSO，Single Sign-On**）是一种**用户认证机制**，它允许用户在一次登录后，**访问多个相互信任的系统**，而**无需在每个系统中重复登录**。
+
+---
+
+## 🧠 举个例子：
+
+你登录了公司内部的门户网站（如 `portal.company.com`），接着你去访问邮件系统（`mail.company.com`）、文件系统（`drive.company.com`），这些服务就会自动识别你已经登录，无需再输入用户名和密码。
+
+---
+
+## ✅ 单点登录的核心目标：
+
+* 一次登录，多系统通用
+* 提升用户体验
+* 中央化认证，提高安全性
+
+---
+
+## 🧩 实现原理概述（以前后端分离场景 + JavaScript 举例）：
+
+1. ### 登录请求
+
+   用户访问子系统 A 时未登录，跳转到统一的认证中心（如：`sso.company.com/login`）。
+
+2. ### 登录成功，生成 Token（或 Session）
+
+   登录成功后，认证中心会生成一个全局唯一的令牌（如 `JWT`），并通过跳转回原系统 A，携带 token。
+
+3. ### 子系统验证 Token
+
+   子系统 A 拿到 Token，通过后端调用认证中心 API 验证其合法性，验证成功后给用户设置本地登录状态（如设置 `cookie` 或 `localStorage` 标识登录）。
+
+4. ### 访问子系统 B
+
+   用户访问系统 B，系统发现未登录，再次跳转到认证中心；
+   但此时用户**已经在认证中心登录**，所以会直接返回 token，再次完成登录。
+
+---
+
+## 📦 JavaScript 客户端简化流程：
+
+### 1. 用户未登录，跳转 SSO：
+
+```javascript
+// 检测是否登录
+if (!localStorage.getItem("token")) {
+  // 跳转统一认证中心
+  const currentUrl = encodeURIComponent(window.location.href);
+  window.location.href = `https://sso.example.com/login?redirect=${currentUrl}`;
+}
+```
+
+### 2. 登录成功回调带 token：
+
+```javascript
+// 登录后重定向回来，带上 token
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token");
+
+if (token) {
+  localStorage.setItem("token", token);
+  // 去掉 URL 中的 token 参数
+  window.history.replaceState(null, "", window.location.pathname);
+}
+```
+
+### 3. 后续请求带 token（前后端分离）：
+
+```javascript
+fetch("/api/user/info", {
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  },
+});
+```
+
+---
+
+## 🔐 安全要点：
+
+* Token 建议用 JWT（并签名防篡改）
+* 使用 HTTPS 避免 Token 泄露
+* 可以用 HttpOnly Cookie 管理登录态，避免 XSS 读取
+* Token 有过期机制，防止长期有效
+
+---
+
+## 🔁 常用技术：
+
+* Token（如 JWT）
+* Cookie + Session（配合跨域 CORS + 统一域名）
+* OAuth2 协议（如：Google 登录、GitHub 登录）
+

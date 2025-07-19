@@ -1,0 +1,96 @@
+---
+title: 什么是 JavaScript 中的包装类型？
+---
+
+在 JavaScript 中，\*\*包装类型（Wrapper Object）\*\*是指 JavaScript 为原始类型（primitive types）提供的一种机制，使它们能够像对象一样使用。
+
+---
+
+### 🌟 一句话解释
+
+> 包装类型是 JavaScript 用来“临时将原始值变成对象”的机制，从而让原始值拥有对象的方法和属性。
+
+---
+
+### 🔹 哪些是原始类型？
+
+原始类型有：
+
+* `String`
+* `Number`
+* `Boolean`
+* `Symbol`
+* `BigInt`
+* `null`
+* `undefined`
+
+其中，**`String`、`Number` 和 `Boolean`** 是可以使用包装类型的（`Symbol` 和 `BigInt` 也有对象形式，但使用方式不同）。
+
+---
+
+### 🔹 包装类型有哪些？
+
+JS 中对应的包装对象如下：
+
+| 原始类型    | 包装对象      |
+| ------- | --------- |
+| string  | `String`  |
+| number  | `Number`  |
+| boolean | `Boolean` |
+
+---
+
+### 🔹 举个例子：包装类型的自动转换
+
+```javascript
+let str = "hello";
+console.log(str.toUpperCase()); // "HELLO"
+```
+
+你可能会疑问：`str` 是一个原始字符串，怎么还能调用 `.toUpperCase()` 方法？
+
+这是因为在执行 `str.toUpperCase()` 时，JavaScript 会自动：
+
+1. 临时创建一个 `String` 包装对象：
+
+   ```javascript
+   let temp = new String("hello");
+   ```
+2. 调用 `toUpperCase()` 方法。
+3. 丢弃这个包装对象，保留原始值。
+
+---
+
+### 🔹 手动使用包装对象（不推荐）：
+
+```javascript
+let num = new Number(123);    // 不推荐
+let bool = new Boolean(false); // 不推荐
+```
+
+虽然你可以手动用构造函数创建包装对象，但**这通常会导致意料之外的行为**：
+
+```javascript
+let b = new Boolean(false);
+console.log(b);       // [Boolean: false]
+console.log(b == false); // true
+console.log(b === false); // false ❗️
+
+if (b) {
+  console.log("被当成 true"); // ✅ 会打印
+}
+```
+
+> ⚠️ 包装对象是对象，因此在布尔上下文中都为 `true`，即使内容是 `false`。
+
+---
+
+### 🔹 小结
+
+| 特点      | 包装类型                          |
+| ------- | ----------------------------- |
+| 作用      | 让原始值可以调用方法                    |
+| 自动转换    | JavaScript 自动完成               |
+| 手动使用    | 可能导致错误，不推荐                    |
+| 常见的包装类型 | `String`, `Number`, `Boolean` |
+

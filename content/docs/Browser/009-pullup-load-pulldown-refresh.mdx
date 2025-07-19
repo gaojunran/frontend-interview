@@ -1,0 +1,125 @@
+---
+title: 如何实现上拉加载，下拉刷新？
+---
+
+在 JavaScript 中，实现**上拉加载**和**下拉刷新**的方式主要有两种场景：
+
+* 在浏览器页面中（通常是移动端 H5）
+* 在框架中（如 Vue / React 项目中）
+
+以下是最通用的实现思路，适用于浏览器和框架：
+
+---
+
+## 🌀 一、下拉刷新实现原理
+
+### ✅ 实现思路
+
+1. 监听用户触摸事件 `touchstart`、`touchmove`、`touchend`
+2. 当用户在页面顶部且向下滑动，触发“下拉刷新”
+3. 展示加载动画，执行刷新逻辑
+4. 加载完成后，隐藏动画，页面恢复原状
+
+### 🧩 代码示例（下拉刷新）
+
+```html
+<div id="scroll-container">
+  <div id="refresh-tip">下拉刷新...</div>
+  <div id="content">内容区</div>
+</div>
+```
+
+```css
+#refresh-tip {
+  height: 50px;
+  text-align: center;
+  line-height: 50px;
+  transform: translateY(-50px); /* 默认隐藏 */
+  transition: transform 0.3s;
+}
+```
+
+```js
+let startY = 0;
+let isRefreshing = false;
+
+const container = document.getElementById('scroll-container');
+const tip = document.getElementById('refresh-tip');
+
+container.addEventListener('touchstart', e => {
+  if (container.scrollTop === 0) {
+    startY = e.touches[0].clientY;
+  }
+});
+
+container.addEventListener('touchmove', e => {
+  const distance = e.touches[0].clientY - startY;
+  if (distance > 50 && container.scrollTop === 0 && !isRefreshing) {
+    tip.style.transform = 'translateY(0)';
+  }
+});
+
+container.addEventListener('touchend', () => {
+  if (tip.style.transform === 'translateY(0)') {
+    isRefreshing = true;
+    // 模拟加载数据
+    setTimeout(() => {
+      tip.style.transform = 'translateY(-50px)';
+      isRefreshing = false;
+    }, 1500);
+  }
+});
+```
+
+---
+
+## ⬆️ 二、上拉加载实现原理
+
+### ✅ 实现思路
+
+1. 监听滚动事件 `scroll`
+2. 判断滚动到页面底部（或容器底部）
+3. 展示“加载中”，执行加载数据操作
+4. 加载完成后追加数据，隐藏加载动画
+
+### 🧩 代码示例（上拉加载）
+
+```js
+const container = document.getElementById('scroll-container');
+let isLoading = false;
+
+container.addEventListener('scroll', () => {
+  if (isLoading) return;
+
+  const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+  if (scrollBottom < 10) {
+    isLoading = true;
+    // 模拟异步加载
+    setTimeout(() => {
+      const newItem = document.createElement('div');
+      newItem.textContent = '新加载的内容';
+      container.appendChild(newItem);
+      isLoading = false;
+    }, 1500);
+  }
+});
+```
+
+---
+
+## 📱 小技巧
+
+* 移动端注意使用 `touch` 事件，避免 `scroll` 事件卡顿
+* 可结合节流（throttle）或防抖（debounce）优化性能
+* 使用第三方库（如 `better-scroll`、`iscroll`、`mescroll.js`）可以更优雅地处理兼容性和动画问题
+
+---
+
+## ✅ 第三方库推荐
+
+| 库名              | 说明                  |
+| --------------- | ------------------- |
+| `better-scroll` | 轻量滚动库，支持下拉刷新、上拉加载   |
+| `mescroll.js`   | 专门用于 H5 上拉加载/下拉刷新的库 |
+| `iscroll`       | 兼容性较强，但不再更新维护       |
+

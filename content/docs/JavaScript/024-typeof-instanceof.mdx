@@ -1,0 +1,92 @@
+---
+title: typeof 和 instanceof 有什么区别？
+---
+
+`typeof` 和 `instanceof` 都是 JavaScript 中用于判断类型的操作符，但它们的用途、适用对象和返回值有所不同。
+
+---
+
+## 🔍 一、`typeof` 操作符
+
+### ✅ 用法：
+
+```js
+typeof value
+```
+
+### ✅ 返回值（字符串）：
+
+| 类型        | 返回值           |
+| --------- | ------------- |
+| 数字        | `"number"`    |
+| 字符串       | `"string"`    |
+| 布尔值       | `"boolean"`   |
+| 未定义       | `"undefined"` |
+| 函数        | `"function"`  |
+| 对象 / null | `"object"`    |
+| Symbol    | `"symbol"`    |
+| BigInt    | `"bigint"`    |
+
+### ✅ 示例：
+
+```js
+typeof 42            // "number"
+typeof 'hello'       // "string"
+typeof true          // "boolean"
+typeof undefined     // "undefined"
+typeof function(){}  // "function"
+typeof null          // "object"   <- 特例，是 JS 历史遗留问题
+typeof {}            // "object"
+```
+
+---
+
+## 🧱 二、`instanceof` 操作符
+
+### ✅ 用法：
+
+```js
+value instanceof Constructor
+```
+
+### ✅ 判断对象是否是某构造函数的 **实例（或其原型链上的实例）**
+
+### ✅ 示例：
+
+```js
+[] instanceof Array         // true
+{} instanceof Object        // true
+new Date() instanceof Date  // true
+function(){} instanceof Function // true
+[] instanceof Object        // true，因为 Array.prototype.__proto__ === Object.prototype
+```
+
+---
+
+## ⚠️ 三、区别对比
+
+| 对比项        | `typeof`               | `instanceof`    |
+| ---------- | ---------------------- | --------------- |
+| 用途         | 判断基本类型                 | 判断对象是否由某构造函数创建  |
+| 返回值        | 字符串                    | 布尔值             |
+| 可判断的类型     | 原始类型（number、string...） | 引用类型（对象、数组、函数等） |
+| 对 null 的判断 | `"object"`（错误表现）       | `false`         |
+| 原型链是否参与    | 否                      | 是（通过原型链查找）      |
+
+---
+
+## ✅ 什么时候用哪个？
+
+* 判断原始类型（number、string、boolean 等）：**用 `typeof`**
+* 判断某个对象属于哪个类（比如是 Array、Date、RegExp）：**用 `instanceof`**
+
+---
+
+## 👀 补充：`Array.isArray`
+
+判断数组更准确的方法不是 `typeof` 或 `instanceof`，而是：
+
+```js
+Array.isArray([]) // true
+```
+

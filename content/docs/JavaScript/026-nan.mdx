@@ -1,0 +1,64 @@
+---
+title: Number.isNaN 和 isNaN 有什么区别？typeof NaN 的结果是？
+---
+
+这三个问题涉及 JavaScript 中关于 `NaN`（Not a Number）的判断与类型机制，我们逐一来讲解：
+
+---
+
+### ✅ 一、`Number.isNaN` 和 `isNaN` 的区别：
+
+#### 1. `isNaN(value)`
+
+* 是全局函数。
+* **特点**：会先将参数 **强制转换为数字**，然后判断是不是 `NaN`。
+* **缺点**：容易误判。
+
+```javascript
+isNaN("abc")    // true，因为 "abc" 转换成数字是 NaN
+isNaN(undefined) // true，因为 undefined 转换成数字是 NaN
+isNaN('123')     // false，'123' 转换成 123
+isNaN(NaN)       // true
+```
+
+#### 2. `Number.isNaN(value)`
+
+* 是 `Number` 的方法。
+* **特点**：**不进行类型转换**，只有值本身是 `NaN` 才返回 `true`。
+* **更安全**、**推荐使用**。
+
+```javascript
+Number.isNaN("abc")    // false，不做类型转换
+Number.isNaN(undefined) // false
+Number.isNaN('123')     // false
+Number.isNaN(NaN)       // true ✅
+```
+
+✅ **总结：**
+
+| 方法               | 是否类型转换 | 判断更严格 | 推荐使用  |
+| ---------------- | ------ | ----- | ----- |
+| `isNaN()`        | ✅ 是    | ❌ 否   | ❌ 不推荐 |
+| `Number.isNaN()` | ❌ 否    | ✅ 是   | ✅ 推荐  |
+
+---
+
+### ✅ 二、`typeof NaN` 的结果是？
+
+```javascript
+typeof NaN // "number"
+```
+
+#### ⚠️ 解释：
+
+虽然 `NaN` 代表 "不是一个数字"（Not a Number），但它的 **类型仍然是 `number`**。这其实是 JavaScript 的历史遗留问题。
+
+```javascript
+console.log(typeof NaN === 'number'); // true
+```
+
+---
+
+### ✅ 补充建议：
+
+如果你要判断一个值是否真的为 `NaN`，**推荐使用 `Number.isNaN(value)`**，它不会被字符串、`undefined` 等干扰，更加准确。

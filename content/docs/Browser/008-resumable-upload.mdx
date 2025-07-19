@@ -1,0 +1,137 @@
+---
+title: 大文件上传如何做断点续传？
+---
+
+在 JavaScript 中实现大文件上传的 **断点续传**，核心思想是：
+
+> **将文件分片上传，并记录上传进度，出错后从上次中断的地方继续上传。**
+
+以下是详细的实现方案，适用于前端配合后端接口的场景（比如 Node.js 后端）：
+
+---
+
+### 一、前端实现思路
+
+#### 1. 分片上传（slice 分片）
+
+```javascript
+function sliceFile(file, chunkSize = 1 * 1024 * 1024) { // 默认1MB一片
+  const chunks = [];
+  let current = 0;
+
+  while (current < file.size) {
+    chunks.push(file.slice(current, current + chunkSize));
+    current += chunkSize;
+  }
+
+  return chunks;
+}
+```
+
+---
+
+#### 2. 生成文件唯一标识（fileId）
+
+通常使用文件名 + 大小 + MD5 或直接计算文件的 `hash` 值：
+
+```javascript
+// 简化版 hash 示例（实际用 spark-md5 计算）
+function getFileHash(file) {
+  return `${file.name}-${file.size}`;
+}
+```
+
+> 推荐用 `spark-md5` 对文件内容生成 hash
+
+---
+
+#### 3. 上传每个分片
+
+```javascript
+async function uploadChunk(chunk, index, fileHash) {
+  const formData = new FormData();
+  formData.append('chunk', chunk);
+  formData.append('index', index);
+  formData.append('fileHash', fileHash);
+
+  return fetch('/upload-chunk', {
+    method: 'POST',
+    body: formData
+  });
+}
+```
+
+---
+
+#### 4. 查询哪些分片已上传
+
+```javascript
+async function getUploadedChunks(fileHash) {
+  const res = await fetch(`/upload-status?fileHash=${fileHash}`);
+  const data = await res.json();
+  return data.uploaded || [];
+}
+```
+
+---
+
+#### 5. 上传全部分片（可断点续传）
+
+```javascript
+async function uploadFile(file) {
+  const fileHash = getFileHash(file);
+  const chunks = sliceFile(file);
+  const uploadedIndexes = await getUploadedChunks(fileHash);
+
+  for (let i = 0; i < chunks.length; i++) {
+    if (!uploadedIndexes.includes(i)) {
+      await uploadChunk(chunks[i], i, fileHash);
+    }
+  }
+
+  // 通知后端合并
+  await fetch('/merge-chunks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileHash, total: chunks.length })
+  });
+}
+```
+
+---
+
+### 二、后端配合接口（逻辑概述）
+
+1. `/upload-chunk`
+
+   * 接收 chunk、index、fileHash
+   * 存储为 `{fileHash}/{index}` 的结构
+
+2. `/upload-status?fileHash=xxx`
+
+   * 返回当前已上传的 chunk 索引数组
+
+3. `/merge-chunks`
+
+   * 接收 `{fileHash, total}`，将所有分片合并为完整文件
+
+---
+
+### 三、优化建议
+
+* 使用 Web Worker 或 SparkMD5 做文件 hash 运算（避免阻塞 UI）
+* 添加断点续传记录（localStorage/IndexedDB）
+* 支持上传进度条（`xhr.upload.onprogress`）
+
+---
+
+### 四、可选库推荐
+
+* [`spark-md5`](https://github.com/satazor/js-spark-md5)：前端计算 hash
+* [`resumable.js`](https://github.com/23/resumable.js)：封装好的断点续传上传库
+* [`tus.io`](https://tus.io/)：基于 HTTP 的可断点续传协议
+
+---
+
+如果你需要我提供完整的前端代码或后端（Node.js/Express）接口实现，也可以告诉我。
+

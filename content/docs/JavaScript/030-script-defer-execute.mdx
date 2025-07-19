@@ -1,0 +1,129 @@
+---
+title: JavaScript 脚本延迟加载的方法有哪些？
+---
+
+在 JavaScript 中，实现**脚本延迟加载（延迟执行）**可以有效提升页面加载性能，以下是常用的几种延迟加载方法：
+
+---
+
+### ✅ 一、使用 `defer` 属性
+
+```html
+<script src="script.js" defer></script>
+```
+
+#### 特点：
+
+* 脚本延迟到 **HTML 解析完成后执行**。
+* 按照顺序加载和执行（即使多个 script）。
+* 只对外部脚本有效。
+
+#### 适用场景：
+
+页面加载完成后执行脚本，适用于初始化逻辑。
+
+---
+
+### ✅ 二、使用 `async` 属性
+
+```html
+<script src="script.js" async></script>
+```
+
+#### 特点：
+
+* 脚本 **异步加载**，下载完成后立即执行。
+* **不保证执行顺序**。
+* 也只对外部脚本有效。
+
+#### 适用场景：
+
+不依赖其他脚本、独立功能的脚本，例如广告、分析工具等。
+
+---
+
+### ✅ 三、动态创建 `<script>` 标签（懒加载）
+
+```javascript
+const script = document.createElement('script');
+script.src = 'script.js';
+script.onload = () => {
+  console.log('Script loaded');
+};
+document.body.appendChild(script);
+```
+
+#### 特点：
+
+* 可根据条件动态加载 JS 文件。
+* 适用于按需加载或懒加载模块。
+
+---
+
+### ✅ 四、使用模块化 + 懒加载（例如 `import()`）
+
+```javascript
+button.addEventListener('click', async () => {
+  const module = await import('./module.js');
+  module.doSomething();
+});
+```
+
+#### 特点：
+
+* 现代浏览器支持。
+* 支持模块系统，按需加载。
+
+---
+
+### ✅ 五、结合 `setTimeout` / `requestIdleCallback`
+
+```javascript
+// 等待空闲再执行（兼容性差）
+requestIdleCallback(() => {
+  const script = document.createElement('script');
+  script.src = 'script.js';
+  document.body.appendChild(script);
+});
+
+// 或简单延迟
+setTimeout(() => {
+  const script = document.createElement('script');
+  script.src = 'script.js';
+  document.body.appendChild(script);
+}, 1000);
+```
+
+---
+
+### ✅ 六、使用 IntersectionObserver 实现懒加载（页面滚动到可见再加载脚本）
+
+```javascript
+const observer = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) {
+    const script = document.createElement('script');
+    script.src = 'lazy-script.js';
+    document.body.appendChild(script);
+    observer.disconnect();
+  }
+});
+observer.observe(document.querySelector('#lazy-load-anchor'));
+```
+
+---
+
+### 总结对比：
+
+| 方法                   | 是否阻塞解析 | 保证顺序 | 支持动态控制 | 适用场景         |
+| -------------------- | ------ | ---- | ------ | ------------ |
+| `defer`              | ❌      | ✅    | ❌      | 页面初始化逻辑      |
+| `async`              | ❌      | ❌    | ❌      | 独立脚本、第三方库    |
+| 动态创建 `<script>`      | ❌      | ✅    | ✅      | 条件加载/懒加载     |
+| `import()`           | ❌      | ✅    | ✅      | 现代模块、按需加载    |
+| `setTimeout`/`idle`  | ❌      | ✅    | ✅      | 延迟执行、不阻塞用户交互 |
+| IntersectionObserver | ❌      | ✅    | ✅      | 可视区域加载，性能优化  |
+
+---
+
+需要根据具体场景选择合适的方案，比如初始化时用 `defer`，用户交互或滚动后加载用 `import()` 或 `IntersectionObserver`。如需示例代码我也可以帮你写。
+

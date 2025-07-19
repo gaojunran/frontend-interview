@@ -1,0 +1,113 @@
+---
+title: JavaScript 中 Map 和 Object 的区别 是什么？
+---
+
+在 JavaScript 中，`Map` 和 `Object` 都可以用来存储键值对，但它们有一些**重要的区别**，使用场景也不同：
+
+---
+
+## ✅ 一张对比表先看整体区别：
+
+| 特性     | `Object`                        | `Map`                        |
+| ------ | ------------------------------- | ---------------------------- |
+| 键的类型   | 只能是字符串或 Symbol                  | 任意类型（对象、函数、基本类型等）            |
+| 键的顺序   | 无序（ES6之后表现为插入顺序，但不是保证）          | 有序（按照插入顺序迭代）                 |
+| 原型上的键  | 有原型链上的属性（可能会被当作键）               | 没有原型链干扰（纯净）                  |
+| 迭代性    | 不可直接迭代（需 `Object.keys/entries`） | 可直接使用 `for...of` 或 `forEach` |
+| 性能     | 适用于小规模结构或 JSON 数据               | 在频繁增删查数据时性能更优                |
+| 属性个数统计 | 需 `Object.keys(obj).length`     | 直接使用 `map.size`              |
+| 序列化支持  | 可用 `JSON.stringify()`           | 不支持直接序列化                     |
+
+---
+
+## 🧠 详细解释：
+
+### 1. **键的类型不同**
+
+```js
+const obj = {};
+const map = new Map();
+
+obj[1] = 'value';
+map.set(1, 'value');
+
+console.log(obj['1']);     // 'value' -> 自动转为字符串键
+console.log(map.get(1));   // 'value' -> 保持数字类型键
+```
+
+> **Map 允许键为对象、函数、数字等，而 Object 的键会被自动转为字符串。**
+
+---
+
+### 2. **键值顺序**
+
+```js
+const obj = { b: 2, a: 1 };
+const map = new Map([['b', 2], ['a', 1]]);
+
+console.log(Object.keys(obj)); // ['b', 'a']（虽然看似有序，但非严格保证）
+console.log([...map.keys()]);  // ['b', 'a']
+```
+
+> Map 保证插入顺序，Object 则不能完全保证。
+
+---
+
+### 3. **性能差异**
+
+* `Map` 在频繁插入、查找和删除操作时，性能更优。
+* `Object` 更轻便，用于构建静态结构（如配置对象）更合适。
+
+---
+
+### 4. **迭代方式**
+
+```js
+// Object
+const obj = { a: 1, b: 2 };
+for (let key in obj) {
+  console.log(key, obj[key]);
+}
+
+// Map
+const map = new Map([['a', 1], ['b', 2]]);
+for (let [key, value] of map) {
+  console.log(key, value);
+}
+```
+
+> `Map` 直接支持迭代，结构更清晰。
+
+---
+
+### 5. **避免原型污染**
+
+```js
+const obj = {};
+obj.__proto__ = 'polluted';
+
+console.log(obj.toString); // 已被污染
+
+const map = new Map();
+map.set('__proto__', 'safe');
+console.log(map.get('__proto__')); // 'safe'
+```
+
+> `Map` 是“纯净”的结构，不受原型链干扰。
+
+---
+
+## ✅ 什么时候用 Map？什么时候用 Object？
+
+| 需求               | 推荐       |
+| ---------------- | -------- |
+| 键值对需要任意类型的键      | ✅ Map    |
+| 保证插入顺序           | ✅ Map    |
+| 频繁增删查键值对         | ✅ Map    |
+| 简单的数据结构（配置、JSON） | ✅ Object |
+| 需要 JSON 序列化      | ✅ Object |
+
+---
+
+需要 demo 或应用场景的话也可以告诉我，我可以帮你演示。
+

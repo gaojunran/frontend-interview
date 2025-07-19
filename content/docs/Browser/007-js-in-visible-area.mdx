@@ -1,0 +1,79 @@
+---
+title: 如何判断一个元素是否在可视区域中？
+---
+
+在 JavaScript 中，判断一个元素是否在**可视区域**（即视口）内，最常用的方法是使用 DOM 元素的 `getBoundingClientRect()` 方法。
+
+---
+
+### ✅ 方法一：使用 `getBoundingClientRect()`
+
+这是最常见、最简单的方式：
+
+```javascript
+function isInViewport(el) {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+```
+
+#### 📌 解释：
+
+* `getBoundingClientRect()` 返回一个元素的大小及其相对于视口的位置。
+* `top` / `bottom` / `left` / `right` 表示元素的边界相对于视口的位置。
+* `window.innerHeight` 是视口的高度。
+
+#### 👀 注意：
+
+上面的判断是“元素**完全在**可视区域中”。如果你希望判断“**部分在**”也算在视口内，可以稍微放宽条件：
+
+```javascript
+function isPartiallyInViewport(el) {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.bottom >= 0 &&
+    rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right >= 0 &&
+    rect.left <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+```
+
+---
+
+### ✅ 方法二：使用 `IntersectionObserver`（推荐用于懒加载）
+
+现代浏览器中可以使用 `IntersectionObserver`，它可以监听元素进入或离开可视区域：
+
+```javascript
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      console.log('元素进入视口');
+    } else {
+      console.log('元素离开视口');
+    }
+  });
+});
+
+observer.observe(document.querySelector('#your-element'));
+```
+
+---
+
+### ✅ 应用场景：
+
+* 图片懒加载
+* 无限滚动（下拉加载）
+* 元素动画触发（滚动到可视区域时执行动画）
+* 数据上报（广告曝光）
+
+---
+
+如需更精细控制（如可视比例），你可以用 `entry.intersectionRatio` 进行判断。
+
