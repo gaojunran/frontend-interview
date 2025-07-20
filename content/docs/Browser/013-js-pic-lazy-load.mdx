@@ -1,0 +1,90 @@
+---
+title: 网站开发中，如何实现图片的懒加载？
+---
+
+在 JavaScript 开发中，**图片懒加载（Lazy Load）** 是一种优化性能的技术，目的是延迟加载页面中不在可视区域的图片，等用户滚动到可视区域时再加载这些图片，从而加快首屏加载速度、减少带宽消耗。
+
+实现懒加载的方式有两种主流方法：
+
+---
+
+## ✅ 方法一：使用原生 `loading="lazy"`（最简单）
+
+HTML 直接加上属性：
+
+```html
+<img src="image.jpg" loading="lazy" alt="懒加载图片">
+```
+
+**优点：**
+
+* 简洁、无需 JavaScript
+* 已在现代浏览器中得到广泛支持
+
+**缺点：**
+
+* 不支持高级自定义（例如动画效果、加载失败处理）
+
+---
+
+## ✅ 方法二：使用 `IntersectionObserver`（推荐）
+
+```html
+<!-- HTML -->
+<img data-src="image.jpg" alt="懒加载图片" class="lazy">
+```
+
+```js
+// JavaScript
+const images = document.querySelectorAll('img.lazy');
+
+const observer = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const img = entry.target;
+      img.src = img.dataset.src;
+      img.classList.remove('lazy');
+      observer.unobserve(img);
+    }
+  });
+});
+
+images.forEach(img => observer.observe(img));
+```
+
+### ✅ 优点
+
+* 兼容性好（除 IE）
+* 可控制图片进入视口的阈值
+* 可用于懒加载其他元素（如 iframe、视频）
+
+---
+
+## ❗ 旧方法（监听 `scroll` 事件）— 不推荐
+
+```js
+window.addEventListener('scroll', function () {
+  const images = document.querySelectorAll('img.lazy');
+  images.forEach(img => {
+    if (img.getBoundingClientRect().top < window.innerHeight) {
+      img.src = img.dataset.src;
+      img.classList.remove('lazy');
+    }
+  });
+});
+```
+
+**缺点：**
+
+* 每次滚动都触发
+* 性能差、容易卡顿
+* 需配合 `throttle` 或 `debounce` 优化
+
+---
+
+## 🔧 补充建议
+
+* 懒加载时最好先设置占位图（loading placeholder）或使用 `background-color`
+* 可配合 `fade-in` 动画增加体验感
+* 为 SEO 重要图片仍需优先加载
+
