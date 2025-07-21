@@ -1,0 +1,100 @@
+---
+title: 如何实现两栏布局，右侧自适应？三栏布局中间自适应呢？
+---
+
+这是经典的 CSS 布局问题，下面分别说明 **两栏布局右侧自适应** 和 **三栏布局中间自适应** 的实现方式，包括现代写法。
+
+---
+
+## ✅ 一、两栏布局：左固定，右自适应
+
+### 🎯 目标：
+
+* 左侧固定宽度，例如 `200px`
+* 右侧宽度自适应，撑满剩余空间
+
+### ✅ 方法 1：Flex 布局（推荐）
+
+```html
+<div class="container">
+  <div class="left">左侧</div>
+  <div class="right">右侧</div>
+</div>
+```
+
+```css
+.container {
+  display: flex;
+}
+.left {
+  width: 200px;
+  background: lightblue;
+}
+.right {
+  flex: 1;
+  background: lightgreen;
+}
+```
+
+### ✅ 方法 2：Grid 布局
+
+```css
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+```
+
+---
+
+## ✅ 二、三栏布局：左右固定，中间自适应
+
+### 🎯 目标：
+
+* 左右两栏固定宽度，例如 `200px`
+* 中间一栏宽度自适应，撑满剩余空间
+
+### ✅ 方法 1：Flex 布局（推荐）
+
+```html
+<div class="container">
+  <div class="left">左侧</div>
+  <div class="middle">中间</div>
+  <div class="right">右侧</div>
+</div>
+```
+
+```css
+.container {
+  display: flex;
+}
+.left,
+.right {
+  width: 200px;
+  background: lightblue;
+}
+.middle {
+  flex: 1;
+  background: lightgreen;
+}
+```
+
+### ✅ 方法 2：Grid 布局
+
+```css
+.container {
+  display: grid;
+  grid-template-columns: 200px 1fr 200px;
+}
+```
+
+---
+
+## 🔍 小结
+
+| 布局类型    | 推荐方法      | 优点          |
+| ------- | --------- | ----------- |
+| 两栏右侧自适应 | Flex/Grid | 简洁、响应式强     |
+| 三栏中间自适应 | Flex/Grid | 布局清晰，适合现代开发 |
+
+如需兼容旧浏览器（IE），可以考虑 `float + margin`、`absolute + padding` 等老写法，但现代开发中 Flex/Grid 是首选。是否需要兼容旧浏览器？我可以再补充对应写法。

@@ -1,0 +1,101 @@
+---
+title: css3动画有哪些？
+---
+
+CSS3 动画主要包括以下两大类技术：
+
+---
+
+## ✅ 一、过渡（Transitions）
+
+### 概念：
+
+CSS 过渡（`transition`）用于在元素的属性值发生变化时平滑地过渡到新的值。
+
+### 语法：
+
+```css
+transition: property duration timing-function delay;
+```
+
+### 示例：
+
+```css
+.box {
+  transition: all 0.3s ease-in-out;
+}
+.box:hover {
+  transform: scale(1.2);
+}
+```
+
+### 常用属性：
+
+* `transition-property`：要过渡的属性（如 `width`, `opacity`）
+* `transition-duration`：动画持续时间
+* `transition-timing-function`：过渡速率（如 `linear`, `ease`, `ease-in-out`）
+* `transition-delay`：延迟时间
+
+---
+
+## ✅ 二、关键帧动画（Animations）
+
+### 概念：
+
+通过定义关键帧（`@keyframes`）来实现更加复杂的动画效果。
+
+### 语法：
+
+```css
+@keyframes move {
+  0%   { left: 0; }
+  100% { left: 200px; }
+}
+
+.box {
+  position: relative;
+  animation: move 2s infinite alternate;
+}
+```
+
+### `animation` 属性包括：
+
+* `animation-name`：关键帧名称
+* `animation-duration`：持续时间
+* `animation-timing-function`：缓动函数
+* `animation-delay`：延迟时间
+* `animation-iteration-count`：循环次数（如 `infinite`）
+* `animation-direction`：方向（如 `alternate`, `reverse`）
+* `animation-fill-mode`：结束状态（如 `forwards`、`backwards`）
+
+---
+
+## ✅ 三、其他相关技术
+
+### 1. `transform`（常与动画配合使用）
+
+用于旋转、缩放、位移、倾斜等变换：
+
+```css
+transform: rotate(45deg);
+transform: scale(1.2);
+```
+
+### 2. `will-change`
+
+提示浏览器提前做优化，提高动画性能：
+
+```css
+will-change: transform, opacity;
+```
+
+---
+
+## ✅ 四、常见应用场景
+
+* 悬浮按钮放大/变色（`transition`）
+* 加载动画（`animation + keyframes`）
+* 骨架屏 loading 动画
+* 轮播图切换
+* 元素进场/离场动效（结合 JS）
+

@@ -1,0 +1,116 @@
+---
+title: CSS让元素水平垂直居中的方法有哪些？如果元素不定宽高呢？
+---
+
+CSS让元素水平垂直居中，有很多种方法，不同情况（定宽高、不定宽高、内联元素、块级元素等）会有不同的方案。你问了“不定宽高”的情况，我会重点说几种常用且支持不定宽高的居中方案，也会顺带提下定宽高的经典方案。
+
+---
+
+## 1. Flexbox（弹性盒模型）【推荐，适用于不定宽高】
+
+```css
+.parent {
+  display: flex;
+  justify-content: center; /* 水平居中 */
+  align-items: center;     /* 垂直居中 */
+  height: 100vh;           /* 示例：让父容器有高度 */
+}
+```
+
+* 这个方法非常简单，子元素宽高不确定也可以完美居中。
+* 父元素必须有高度（或者撑满父级容器高度）。
+
+---
+
+## 2. CSS Grid 布局【推荐，适用于不定宽高】
+
+```css
+.parent {
+  display: grid;
+  place-items: center; /* 同时设置水平垂直居中 */
+  height: 100vh;       /* 父元素需有高度 */
+}
+```
+
+* 语法简洁，支持现代浏览器。
+* 适合一对一子元素居中。
+
+---
+
+## 3. 绝对定位 + transform（经典方案，支持不定宽高）
+
+```css
+.parent {
+  position: relative;
+  height: 100vh;
+}
+
+.child {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+```
+
+* 子元素宽高不确定也能居中。
+* 父元素需要 `position: relative`。
+* transform 做了自身宽高的偏移。
+
+---
+
+## 4. 行内块 + text-align + vertical-align（不推荐但适用于某些情况）
+
+```css
+.parent {
+  text-align: center;
+  height: 100vh;
+  line-height: 100vh; /* 只适用于单行文本，且高度确定 */
+}
+
+.child {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: normal;
+}
+```
+
+* 仅适合单行文本或固定高度的块元素。
+* 不适合复杂布局或多行内容。
+
+---
+
+## 5. table + table-cell（兼容老旧浏览器）
+
+```css
+.parent {
+  display: table;
+  height: 100vh;
+  width: 100%;
+}
+
+.child {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+}
+```
+
+* 支持不定宽高。
+* 兼容IE8+。
+* 但代码语义不够直观，且现在不推荐用。
+
+---
+
+# 总结
+
+| 方法                      | 支持不定宽高 | 兼容性     | 备注          |
+| ----------------------- | ------ | ------- | ----------- |
+| Flexbox                 | 是      | 现代浏览器良好 | 最推荐，写法简洁    |
+| Grid                    | 是      | 现代浏览器良好 | 语法更简洁       |
+| 绝对定位+transform          | 是      | 所有主流浏览器 | 经典方案，兼容好    |
+| inline-block+text-align | 受限     | 所有浏览器   | 仅适合单行文本     |
+| table-cell              | 是      | IE8+    | 兼容老浏览器，但不推荐 |
+
+
+
