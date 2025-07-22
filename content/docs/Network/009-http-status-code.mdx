@@ -1,0 +1,110 @@
+---
+title: 说说HTTP 常见的状态码有哪些，适用场景？
+---
+
+HTTP 状态码是服务器对客户端请求的响应标识，表示请求的处理结果。它们是三位数字，分为五大类，常见状态码及其适用场景如下：
+
+---
+
+## 🌐 1xx 信息性响应（Informational）
+
+> 表示请求已接收，继续处理。
+
+* **100 Continue**
+  客户端应继续请求，通常用于发送大文件前的“探测”。
+
+* **101 Switching Protocols**
+  请求服务器切换协议，常见于 HTTP/1.1 升级为 WebSocket。
+
+---
+
+## ✅ 2xx 成功（Success）
+
+> 请求成功被服务器接收并处理。
+
+* **200 OK**
+  最常见，表示请求成功（GET/POST/PUT/DELETE 都可能返回）。
+
+* **201 Created**
+  请求成功并创建了新资源，常见于 POST 请求（如创建用户、发布文章）。
+
+* **204 No Content**
+  请求成功但无返回内容，常用于删除成功等不需要返回内容的场景。
+
+---
+
+## 🔁 3xx 重定向（Redirection）
+
+> 需要客户端进一步操作才能完成请求。
+
+* **301 Moved Permanently**
+  资源永久重定向到新地址。浏览器会缓存，SEO 友好。
+
+* **302 Found（或 Moved Temporarily）**
+  临时重定向。客户端应使用新地址访问，但以后还用原地址。
+
+* **304 Not Modified**
+  客户端缓存的资源未修改，可使用缓存内容。配合 `If-Modified-Since` 或 `ETag` 使用。
+
+---
+
+## ❌ 4xx 客户端错误（Client Error）
+
+> 请求有误，服务器拒绝处理。
+
+* **400 Bad Request**
+  请求语法错误，如参数缺失、格式错误。
+
+* **401 Unauthorized**
+  需要身份验证（如 JWT token、Basic Auth），但未提供或无效。
+
+* **403 Forbidden**
+  服务器拒绝访问资源，即使已认证也无权限。
+
+* **404 Not Found**
+  请求资源不存在，最常见错误之一。
+
+* **405 Method Not Allowed**
+  请求方法不被允许（如 `DELETE` 在不支持删除的接口上使用）。
+
+* **429 Too Many Requests**
+  请求频率过高，被限流。通常用于防止刷接口。
+
+---
+
+## 💥 5xx 服务器错误（Server Error）
+
+> 服务器处理请求出错。
+
+* **500 Internal Server Error**
+  通用服务器错误，程序抛异常或配置错误。
+
+* **501 Not Implemented**
+  服务器不支持请求的方法。
+
+* **502 Bad Gateway**
+  网关/代理服务器从上游服务器收到无效响应。常见于反向代理架构。
+
+* **503 Service Unavailable**
+  服务器暂时不可用（如维护、过载）。常配合 `Retry-After` 使用。
+
+* **504 Gateway Timeout**
+  网关/代理等待上游服务器响应超时。
+
+---
+
+## ✅ 常见应用场景小结：
+
+| 场景      | 状态码                         | 说明        |
+| ------- | --------------------------- | --------- |
+| 成功获取数据  | `200 OK`                    | 常见 GET 请求 |
+| 创建新数据   | `201 Created`               | POST 创建资源 |
+| 删除数据    | `204 No Content`            | DELETE 成功 |
+| 浏览器缓存验证 | `304 Not Modified`          | 资源未变      |
+| 用户未登录   | `401 Unauthorized`          | 需要 Token  |
+| 无权限操作   | `403 Forbidden`             | 用户权限不足    |
+| 页面不存在   | `404 Not Found`             | URL 有误    |
+| 服务器崩溃   | `500 Internal Server Error` | 后端报错      |
+| 接口限流    | `429 Too Many Requests`     | 请求频繁      |
+| 后端接口超时  | `504 Gateway Timeout`       | 上游超时      |
+

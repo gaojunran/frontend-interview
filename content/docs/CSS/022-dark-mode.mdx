@@ -1,0 +1,157 @@
+---
+title: 如何使用 CSS 实现网站的暗黑模式 (Dark Mode)？
+---
+
+当然，讲讲如何用 **CSS 实现暗黑模式（Dark Mode）**，从基础思路到具体实现细节。
+
+---
+
+## 1. 暗黑模式简介
+
+暗黑模式就是网站整体色调切换为深色背景，浅色文字，减少眼睛疲劳，提升夜间或低光环境下的阅读体验。
+
+---
+
+## 2. 实现暗黑模式的思路
+
+* **核心思想**：定义两套配色方案（浅色和深色），根据用户选择或系统偏好切换。
+* CSS 负责定义样式和颜色，JavaScript 可用来动态切换。
+
+---
+
+## 3. 常用实现方法
+
+### 方法一：使用 CSS 媒体查询 `prefers-color-scheme`
+
+现代浏览器支持 `prefers-color-scheme` 媒体查询，自动根据系统的浅色/暗色模式偏好应用对应样式。
+
+```css
+/* 默认浅色模式 */
+body {
+  background-color: #fff;
+  color: #000;
+}
+
+/* 当系统偏好暗色模式时 */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #121212;
+    color: #eee;
+  }
+}
+```
+
+* **优点**：无需用户操作，自动适配系统。
+* **缺点**：无法由网站自己控制切换，完全依赖系统设置。
+
+---
+
+### 方法二：使用 CSS 变量和类切换
+
+这种方法最灵活，配合 JS 切换类名，实现用户手动切换暗黑模式。
+
+#### 1) 定义 CSS 变量：
+
+```css
+:root {
+  --bg-color: #fff;
+  --text-color: #000;
+}
+
+/* 暗黑模式变量 */
+.dark-mode {
+  --bg-color: #121212;
+  --text-color: #eee;
+}
+
+/* 使用变量 */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+```
+
+#### 2) 通过 JS 切换 `.dark-mode` 类：
+
+```js
+const toggleDarkMode = () => {
+  document.documentElement.classList.toggle('dark-mode');
+};
+```
+
+你可以绑定按钮点击事件，来切换主题。
+
+#### 3) 持久化用户选择（可选）
+
+用 `localStorage` 保存用户选择，下次访问自动切换。
+
+```js
+const savedMode = localStorage.getItem('darkMode');
+if (savedMode === 'enabled') {
+  document.documentElement.classList.add('dark-mode');
+}
+
+const toggleDarkMode = () => {
+  if (document.documentElement.classList.contains('dark-mode')) {
+    document.documentElement.classList.remove('dark-mode');
+    localStorage.setItem('darkMode', 'disabled');
+  } else {
+    document.documentElement.classList.add('dark-mode');
+    localStorage.setItem('darkMode', 'enabled');
+  }
+};
+```
+
+---
+
+### 方法三：结合两种方式（推荐）
+
+* 默认使用 `prefers-color-scheme` 适配系统
+* 提供切换按钮，用户手动覆盖系统设置
+
+```css
+/* 默认配色跟随系统 */
+body {
+  background-color: var(--bg-color, #fff);
+  color: var(--text-color, #000);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #121212;
+    --text-color: #eee;
+  }
+}
+
+.dark-mode {
+  --bg-color: #121212;
+  --text-color: #eee;
+}
+```
+
+---
+
+## 4. 其他细节和建议
+
+* **图片和图标**：考虑暗色版本，或者使用 CSS 过滤器调节。
+* **动画和过渡**：切换主题时可以加 `transition` 让切换更平滑。
+
+```css
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+```
+
+* **字体和可读性**：暗色模式下，避免用纯黑（#000）背景，推荐深灰（#121212、#181818），文字颜色不要纯白，推荐稍微柔和点的浅灰色。
+* **测试覆盖范围**：确保所有组件和元素都支持暗黑模式。
+
+---
+
+## 5. 小结
+
+| 方法                   | 优点               | 缺点           |
+| -------------------- | ---------------- | ------------ |
+| prefers-color-scheme | 自动根据系统切换，无需额外 JS | 无法用户手动切换     |
+| CSS 变量 + 类切换         | 用户可自定义切换，灵活      | 需写 JS 逻辑，稍复杂 |
+| 两者结合                 | 最佳体验，自动+手动       | 实现复杂度略高      |
+
