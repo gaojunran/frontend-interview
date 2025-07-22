@@ -112,5 +112,19 @@ CSS让元素水平垂直居中，有很多种方法，不同情况（定宽高�
 | inline-block+text-align | 受限     | 所有浏览器   | 仅适合单行文本     |
 | table-cell              | 是      | IE8+    | 兼容老浏览器，但不推荐 |
 
+---
 
+补充：
+
+```css
+.box {
+  display: flex;
+}
+.item {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+```
+
+需要父元素有明确的高度，子元素用 `margin-top: auto` 和 `margin-bottom: auto` 实现垂直居中。
 

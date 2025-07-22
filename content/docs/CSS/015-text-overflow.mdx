@@ -1,0 +1,60 @@
+---
+title: 如何实现单行／多行文本溢出的省略样式？
+---
+
+在 CSS 中，**文本溢出显示省略号（...）** 是一个常见需求，适用于 **单行** 和 **多行** 文本。两者的实现方式略有不同。
+
+---
+
+## ✅ 一、单行文本溢出显示省略号
+
+```css
+.ellipsis-single-line {
+  white-space: nowrap;        /* 不换行 */
+  overflow: hidden;           /* 超出隐藏 */
+  text-overflow: ellipsis;    /* 超出显示省略号 */
+  width: 200px;               /* 必须设置宽度 */
+}
+```
+
+### 示例：
+
+```html
+<div class="ellipsis-single-line">这是一段非常非常非常长的文本，需要截断。</div>
+```
+
+---
+
+## ✅ 二、多行文本溢出显示省略号（适用于 2 行或更多）
+
+### 方法一：使用 `-webkit-line-clamp`（需配合 `display: -webkit-box`）
+
+```css
+.ellipsis-multi-line {
+  display: -webkit-box;             /* 创建弹性伸缩盒子 */
+  -webkit-box-orient: vertical;     /* 垂直排列 */
+  -webkit-line-clamp: 2;            /* 限制显示 2 行 */
+  overflow: hidden;                 /* 超出隐藏 */
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+```
+
+### 示例：
+
+```html
+<div class="ellipsis-multi-line">
+  这是一段非常非常非常长的文本，可能会换行很多次，希望限制在两行以内，超出的部分用省略号表示。
+</div>
+```
+
+> ⚠️ 注意：`-webkit-line-clamp` 是非标准属性，兼容性不完美，但在现代主流浏览器（Chrome、Safari、Edge）中已普遍支持。
+
+---
+
+## ✅ 三、小贴士
+
+* 若要实现任意行数（如3行、5行）省略，直接修改 `-webkit-line-clamp: 3` 即可；
+* 使用 `width` 或 `max-width` 控制宽度才能生效；
+* 在移动端开发和 UI 框架中（如 Vue、React），经常将这些样式封装为公共类名（如 `.text-ellipsis`、`.line-clamp-2`）。
+

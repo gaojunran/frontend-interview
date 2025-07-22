@@ -1,0 +1,152 @@
+---
+title: 你是怎么理解 Decorator 的？使用场景？
+---
+
+> 注：目前装饰器模式实装在 TypeScript 中，在 ES 中还没有正式加入，但 Babel 已经支持了。
+
+---
+
+## 1. 什么是 Decorator（装饰器）？
+
+Decorator 是一种 **用于修改类或类成员（属性、方法）行为的语法糖**，它本质上是一个 **函数**，用来对类、方法、属性进行装饰（增强、改造）。
+
+虽然 ES6 规范里没有正式包含装饰器，但它在 ES7 及之后的提案中变得越来越流行，并且被 TypeScript 和 Babel 等工具广泛支持。
+
+### 形象理解：
+
+装饰器就像给类或者类的方法穿上一层“外套”，给它添加额外的功能，而不修改原始代码。
+
+---
+
+## 2. 装饰器的语法（示例）
+
+```js
+function readonly(target, key, descriptor) {
+  descriptor.writable = false;  // 设置方法为只读，禁止改写
+  return descriptor;
+}
+
+class Person {
+  @readonly
+  say() {
+    console.log("Hello");
+  }
+}
+
+const p = new Person();
+p.say();  // Hello
+p.say = function() { console.log("Hi"); };  // 不能改写 say 方法（因为 readonly）
+p.say();  // 仍然输出 Hello
+```
+
+---
+
+## 3. 装饰器的参数和作用对象
+
+* **类装饰器**：装饰整个类，参数是类构造函数，可以返回一个新的构造函数。
+* **方法装饰器**：装饰类的方法，参数是目标对象、方法名、方法描述符（descriptor）。
+* **访问器装饰器**：装饰 getter/setter。
+* **属性装饰器**：装饰类的属性（目前的装饰器提案里比较复杂，不像方法装饰器有 descriptor）。
+* **参数装饰器**：装饰方法参数（用得比较少）。
+
+---
+
+## 4. 使用场景
+
+### 4.1 日志埋点 / 性能监控
+
+给方法加一个装饰器，自动打印调用日志，记录时间，监控性能。
+
+```js
+function log(target, key, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = function(...args) {
+    console.log(`Calling ${key} with`, args);
+    const result = original.apply(this, args);
+    console.log(`Result:`, result);
+    return result;
+  }
+  return descriptor;
+}
+```
+
+### 4.2 权限校验
+
+调用某个方法之前，自动检测当前用户权限。
+
+```js
+function checkPermission(target, key, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = function(...args) {
+    if (!this.hasPermission) {
+      throw new Error("No permission");
+    }
+    return original.apply(this, args);
+  }
+  return descriptor;
+}
+```
+
+### 4.3 自动绑定 this
+
+防止事件回调函数中 this 指向错误。
+
+```js
+function autobind(target, key, descriptor) {
+  const original = descriptor.value;
+  return {
+    configurable: true,
+    get() {
+      return original.bind(this);
+    }
+  };
+}
+```
+
+### 4.4 缓存结果（Memoization）
+
+对方法结果进行缓存，避免重复计算。
+
+```js
+function memoize(target, key, descriptor) {
+  const original = descriptor.value;
+  const cache = new Map();
+  descriptor.value = function(arg) {
+    if (cache.has(arg)) return cache.get(arg);
+    const result = original.call(this, arg);
+    cache.set(arg, result);
+    return result;
+  }
+  return descriptor;
+}
+```
+
+### 4.5 注入依赖 / 自动注册
+
+用于依赖注入（DI）框架，比如 Angular 使用装饰器实现自动注入依赖。
+
+```js
+function Inject(service) {
+  return function(target, key) {
+    target[key] = new service();
+  }
+}
+```
+
+---
+
+## 5. 优点
+
+* **代码更简洁**：无需在方法内部写重复逻辑，关注业务本身。
+* **增强复用性**：同样的装饰器可以在不同类、方法间复用。
+* **职责分离**：核心业务和辅助功能解耦。
+
+---
+
+## 6. 总结
+
+* 装饰器本质上是个高阶函数，作用于类或类成员。
+* 它提供一种声明式写法，用于增强或修改类的行为。
+* 常用在日志、权限校验、缓存、绑定、依赖注入等场景。
+* 虽然不是 ES6 标准，但在 TS 和 Babel 中被广泛支持，未来有望成为标准。
+

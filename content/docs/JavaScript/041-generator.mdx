@@ -1,0 +1,113 @@
+---
+title: 你是怎么理解ES6中 Generator的？使用场景？
+---
+
+好的，我来给你讲讲我对 **ES6 中 Generator** 的理解，以及它的使用场景。
+
+---
+
+## 什么是 Generator？
+
+Generator 是 ES6 引入的一种特殊函数，它可以暂停函数的执行，并且在需要的时候恢复执行。用 `function*` 关键字定义，调用时返回一个 **迭代器对象**。
+
+**基本特点：**
+
+* 使用 `function*` 定义。
+* 执行函数不会立即执行函数体，而是返回一个迭代器对象。
+* 通过迭代器的 `.next()` 方法控制函数执行，每次执行到 `yield` 关键字暂停，返回一个值。
+* 可以通过 `next()` 传参，向 Generator 内部传值。
+* 可以用来实现异步流程的同步写法。
+
+---
+
+## Generator 语法示例
+
+```js
+function* gen() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+const iterator = gen();
+
+console.log(iterator.next()); // { value: 1, done: false }
+console.log(iterator.next()); // { value: 2, done: false }
+console.log(iterator.next()); // { value: 3, done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+```
+
+---
+
+## 我对 Generator 的理解
+
+1. **迭代器的简写**
+   Generator 是实现迭代器协议的一种简洁写法，使用它可以方便写出复杂的迭代逻辑，比如生成无限序列、递归遍历等。
+
+2. **可以暂停和恢复函数执行**
+   传统函数一次执行到底，Generator 可以「暂停执行点」，后续再继续，这样做可以让控制流更灵活。
+
+3. **双向通信**
+   通过 `next()` 传递的参数，可以把数据传给 Generator 内部，Generator 也通过 `yield` 把数据输出，实现双向通信。
+
+4. **异步控制的基础**
+   在 async/await 出现之前，Generator 配合 co 等库是异步流程控制的利器，让异步代码写得像同步代码一样清晰。
+
+---
+
+## Generator 的使用场景
+
+1. **实现自定义迭代器**
+   比如你想用 Generator 简单地写一个范围生成器：
+
+   ```js
+   function* range(start, end) {
+     for (let i = start; i <= end; i++) {
+       yield i;
+     }
+   }
+
+   for (let num of range(1, 5)) {
+     console.log(num); // 1 2 3 4 5
+   }
+   ```
+
+2. **异步流程控制**（尤其是 Generator + co 模式）
+   在 async/await 诞生之前，用 Generator 写异步代码很流行：
+
+   ```js
+   const co = require('co');
+
+   co(function* () {
+     const data = yield fetchData();
+     console.log(data);
+   });
+   ```
+
+3. **惰性计算 / 无限序列**
+   Generator 可以实现懒计算，不用一次性生成全部数据：
+
+   ```js
+   function* infinite() {
+     let i = 0;
+     while(true) {
+       yield i++;
+     }
+   }
+   ```
+
+4. **复杂流程状态机**
+   Generator 可以自然地实现状态机逻辑，控制流程切换，比如游戏开发或复杂算法里。
+
+5. **中断和恢复执行**
+   Generator 允许代码在多个步骤间暂停，可以做一些「协作式多任务调度」的实验。
+
+---
+
+## 总结
+
+* Generator 是一种控制函数执行流程的工具。
+* 主要特点是可以暂停和恢复执行，支持双向数据传递。
+* 用途包括自定义迭代、异步流程控制、惰性计算和状态机实现。
+* ES6 async/await 基于 Generator 概念，但更简单，async/await 现在更常用。
+
