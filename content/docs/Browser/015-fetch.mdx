@@ -1,0 +1,73 @@
+---
+title: 	说说你对 fetch 的理解，它有哪些优点和不足？
+---
+
+当然！关于 JavaScript 的 `fetch`，我帮你详细梳理一下。
+
+---
+
+## 一、什么是 fetch？
+
+`fetch` 是现代浏览器提供的用于发起网络请求的接口，是基于 Promise 设计的，用来替代传统的 `XMLHttpRequest`（XHR）。它主要用来请求资源，比如 GET/POST 请求数据，获取文件等。
+
+```js
+fetch(url, options)
+  .then(response => {
+    // 处理响应
+  })
+  .catch(error => {
+    // 处理错误
+  });
+```
+
+---
+
+## 二、fetch 的优点
+
+1. **基于 Promise，写法更简洁**
+   相比 XMLHttpRequest 复杂的事件监听回调，fetch 使用 Promise 使异步请求代码更清晰、易读、方便链式调用。
+
+2. **支持更丰富的请求和响应类型**
+   fetch 支持多种请求方式（GET、POST、PUT、DELETE 等），以及方便处理多种响应格式（JSON、文本、Blob、FormData、ArrayBuffer）。
+
+3. **更好的响应流处理能力**
+   fetch 的 Response 对象支持流式读取，方便处理大文件下载或分段传输。
+
+4. **默认跨域请求更安全**
+   fetch 默认不发送 cookie，需要手动设置 `credentials`，提高了跨域请求的安全性。
+
+5. **接口统一，易于扩展**
+   fetch 是基于标准接口设计的，易于扩展和与现代 API（如 Service Workers、Cache API）结合。
+
+---
+
+## 三、fetch 的不足
+
+1. **不支持请求超时**
+   fetch 本身没有内置超时机制，需要借助外部手段（比如 `AbortController`）来实现。
+
+2. **不会自动拒绝 HTTP 错误状态**
+   即使服务器返回 4xx、5xx 状态码，fetch 依然会认为是成功的 Promise，只是 `response.ok` 会是 false，需要手动判断状态码。
+
+3. **兼容性问题**
+   旧版浏览器不支持 fetch，需要使用 polyfill 或回退到 XMLHttpRequest。
+
+4. **不支持上传进度监听**
+   fetch 不支持监控请求上传的进度，XHR 可以通过 `upload.onprogress` 实现。
+
+5. **跨域请求默认不发送 cookie**
+   有时这可能会带来额外配置麻烦，比如必须设置 `credentials: 'include'` 才能发送和接收 cookie。
+
+---
+
+## 四、总结
+
+| 优点              | 不足              |
+| --------------- | --------------- |
+| 基于 Promise，代码简洁 | 不支持超时机制         |
+| 支持多种响应数据类型      | HTTP 错误状态不会自动抛错 |
+| 支持响应流读取         | 兼容性需 polyfill   |
+| 默认更安全的跨域策略      | 不支持上传进度监听       |
+| 统一标准接口，易扩展      | 发送 cookie 需额外配置 |
+
+

@@ -1,0 +1,154 @@
+---
+title: JavaScript 中对象创建的方式有哪些？
+---
+
+在 JavaScript 中，对象（Object）的创建方式主要有以下几种，每种方式适用于不同的场景和需求：
+
+---
+
+### ✅ 1. **对象字面量（Object Literal）**
+
+最常见也最简单的一种方式。
+
+```js
+const obj = {
+  name: 'Alice',
+  age: 25,
+  sayHi() {
+    console.log(`Hi, I'm ${this.name}`);
+  }
+};
+```
+
+---
+
+### ✅ 2. **`new Object()` 构造函数**
+
+使用内置的 `Object` 构造函数：
+
+```js
+const obj = new Object();
+obj.name = 'Bob';
+obj.age = 30;
+```
+
+本质上等价于对象字面量方式，不推荐大量使用。
+
+---
+
+### ✅ 3. **工厂函数（Factory Function）**
+
+通过函数封装对象的创建逻辑，适合需要创建多个结构相同的对象：
+
+```js
+function createPerson(name, age) {
+  return {
+    name,
+    age,
+    sayHi() {
+      console.log(`Hi, I'm ${name}`);
+    }
+  };
+}
+
+const p1 = createPerson('Tom', 20);
+const p2 = createPerson('Jerry', 22);
+```
+
+---
+
+### ✅ 4. **构造函数（Constructor Function）+ `new`**
+
+模拟类的行为，适合需要创建多个带有同一原型的对象。
+
+```js
+function Person(name, age) {
+  this.name = name;
+  this.age = age;
+  this.sayHi = function () {
+    console.log(`Hi, I'm ${this.name}`);
+  };
+}
+
+const p = new Person('John', 28);
+```
+
+> ⚠️ 方法写在构造函数里会导致每个实例都有一份，推荐使用原型方式优化。
+
+---
+
+### ✅ 5. **`Object.create()`**
+
+创建一个以指定对象为原型的新对象。
+
+```js
+const proto = {
+  greet() {
+    console.log('Hello');
+  }
+};
+
+const obj = Object.create(proto);
+obj.name = 'Lucy';
+```
+
+适合需要自定义原型链的场景。
+
+---
+
+### ✅ 6. **ES6 `class` 语法**
+
+语法糖，本质上是构造函数 + 原型的封装，推荐在现代开发中使用：
+
+```js
+class Person {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+
+  sayHi() {
+    console.log(`Hi, I'm ${this.name}`);
+  }
+}
+
+const p = new Person('Anna', 26);
+```
+
+---
+
+### ✅ 7. **对象解构 / 合并**
+
+不是“创建”方式，但经常用于复制或组合对象：
+
+```js
+const obj1 = { a: 1 };
+const obj2 = { ...obj1, b: 2 };  // 扩展运算符
+```
+
+---
+
+### ✅ 8. **JSON 方式（从字符串创建）**
+
+适用于反序列化场景：
+
+```js
+const jsonStr = '{"name":"Eva","age":24}';
+const obj = JSON.parse(jsonStr);
+```
+
+---
+
+### ✅ 总结
+
+| 方式              | 是否推荐   | 特点说明             |
+| --------------- | ------ | ---------------- |
+| 对象字面量           | ✅ 常用   | 简洁、易读            |
+| `new Object()`  | ❌ 少用   | 等价于字面量但冗长        |
+| 工厂函数            | ✅ 推荐   | 灵活，不涉及原型         |
+| 构造函数 + new      | ⚠️ 较旧  | 有原型链，方法共享需手动添加原型 |
+| Object.create() | ✅ 推荐   | 原型控制灵活，适合继承      |
+| `class`         | ✅ 推荐   | 面向对象，ES6推荐写法     |
+| JSON.parse()    | ✅ 特定场景 | 用于数据反序列化         |
+
+如果你有某个使用场景，我可以帮你推荐最合适的方式。

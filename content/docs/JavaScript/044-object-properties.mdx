@@ -1,0 +1,120 @@
+---
+title: JavaScript 对象属性分为哪些类？如何获得对象非原型链上的属性？
+---
+
+在 JavaScript 中，对象的属性大致可以分为以下几类：
+
+---
+
+### 一、**属性的分类（根据来源和特性）**
+
+#### 1. **自身属性（own properties）**
+
+* 定义在对象本身上的属性，不包括原型链上的属性。
+* 包括：
+
+  * 数据属性（data properties）：有 `value` 值。
+  * 访问器属性（accessor properties）：有 `get` 和 `set` 方法。
+
+#### 2. **继承属性（inherited properties）**
+
+* 来自原型链（`[[Prototype]]`）的属性。
+
+---
+
+### 二、**属性的分类（根据枚举性）**
+
+* **可枚举属性（enumerable）**：
+
+  * `for...in`、`Object.keys()` 可以遍历到。
+* **不可枚举属性（non-enumerable）**：
+
+  * 默认不会出现在枚举操作中，比如 `Object.keys()`。
+  * 比如：`Object.prototype.toString`。
+
+---
+
+### 三、**属性的分类（根据键的类型）**
+
+* **字符串键属性**（常见）：
+
+  * 普通的字符串属性，如 `"name"`。
+* **符号键属性**（`Symbol`）：
+
+  * 更隐蔽，不会出现在普通的枚举中。
+  * 如：`obj[Symbol('id')] = 123`
+
+---
+
+### 四、**如何获取对象的“非原型链上的属性”？**
+
+也就是 **“自身属性”**，可以使用以下方法：
+
+#### ✅ 1. `Object.keys(obj)`
+
+* 返回对象自身的 **可枚举字符串键** 属性。
+
+#### ✅ 2. `Object.getOwnPropertyNames(obj)`
+
+* 返回对象自身的 **所有字符串键**（包括不可枚举的）。
+
+#### ✅ 3. `Object.getOwnPropertySymbols(obj)`
+
+* 返回对象自身的 **所有 Symbol 键**。
+
+#### ✅ 4. `Reflect.ownKeys(obj)`
+
+* 返回对象自身的 **所有键**（包括字符串和 Symbol，无论是否可枚举）。
+* ✅ 最全面的方法。
+
+#### ✅ 5. `obj.hasOwnProperty(key)`
+
+* 判断某个属性是不是对象的自身属性（不包括继承的）。
+
+---
+
+### 示例：
+
+```js
+const sym = Symbol('id');
+const obj = {
+  name: 'Alice',
+  [sym]: 123
+};
+
+Object.defineProperty(obj, 'hidden', {
+  value: 'secret',
+  enumerable: false
+});
+
+console.log(Object.keys(obj)); // ['name']
+console.log(Object.getOwnPropertyNames(obj)); // ['name', 'hidden']
+console.log(Object.getOwnPropertySymbols(obj)); // [Symbol(id)]
+console.log(Reflect.ownKeys(obj)); // ['name', 'hidden', Symbol(id)]
+```
+
+---
+
+如需判断属性是否为对象自身的属性，不包含原型链：
+
+```js
+'toString' in obj;             // true（可能是原型上的）
+obj.hasOwnProperty('toString'); // false（不在自身）
+```
+
+---
+
+### 总结：
+
+| 方法                             | 是否包含不可枚举 | 是否包含 Symbol | 只看自身属性 |
+| ------------------------------ | -------- | ----------- | ------ |
+| `Object.keys`                  | ❌        | ❌           | ✅      |
+| `Object.getOwnPropertyNames`   | ✅        | ❌           | ✅      |
+| `Object.getOwnPropertySymbols` | ✅        | ✅           | ✅      |
+| `Reflect.ownKeys`              | ✅        | ✅           | ✅      |
+
+若你想获得对象“非原型链上的所有属性”，推荐使用：
+✅ `Reflect.ownKeys(obj)`。
+
+若你想判断某个属性是否为对象自身的属性，不包含原型链，推荐使用：
+✅ `obj.hasOwnProperty(key)`。

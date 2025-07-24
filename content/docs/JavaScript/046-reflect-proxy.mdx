@@ -1,0 +1,100 @@
+---
+title: JavaScript 中 Reflect 是什么？和 Proxy 的关系？
+---
+
+在 JavaScript 中，`Reflect` 是一个内置对象，它提供了一组用于操作对象的方法，这些方法与 `Object` 上的一些操作类似，但设计得更一致、更底层。`Reflect` 是 ES6 引入的，通常与 `Proxy` 一起使用，用于简化和标准化对象操作。
+
+---
+
+## 一、什么是 `Reflect`？
+
+`Reflect` 是一个静态对象，提供了以下特性：
+
+* **不构造对象**：不像 `Object` 或 `Function`，你不能用 `new Reflect()`。
+* **统一对象操作接口**：比如 `Reflect.get()`, `Reflect.set()`, `Reflect.has()` 等，封装了常见的对象操作。
+* **返回布尔值而不是抛出错误**：有些操作失败时不会抛异常，而是返回 `false`。
+
+---
+
+## 二、常见的 Reflect 方法
+
+| 方法                                          | 描述                                   |
+| ------------------------------------------- | ------------------------------------ |
+| `Reflect.get(target, key, receiver)`        | 获取对象属性值                              |
+| `Reflect.set(target, key, value, receiver)` | 设置对象属性值                              |
+| `Reflect.has(target, key)`                  | 判断对象是否有某个属性（等同于 `key in target`）     |
+| `Reflect.deleteProperty(target, key)`       | 删除属性（等同于 `delete target[key]`）       |
+| `Reflect.ownKeys(target)`                   | 返回对象的所有属性（包括 symbol）                 |
+| `Reflect.construct(target, args)`           | 类似于 `new target(...args)`            |
+| `Reflect.apply(targetFn, thisArg, args)`    | 调用函数（类似于 `Function.prototype.apply`） |
+
+示例：
+
+```js
+const obj = { x: 1 };
+Reflect.get(obj, 'x'); // 1
+Reflect.set(obj, 'x', 2); // true，obj.x 变为 2
+Reflect.has(obj, 'x'); // true
+```
+
+---
+
+## 三、`Reflect` 和 `Proxy` 的关系
+
+`Proxy` 是另一个 ES6 引入的重要特性，用于创建对象的代理，**可以拦截并自定义基本操作（如读取属性、赋值、函数调用等）**。
+
+### 关系总结：
+
+1. **Proxy 拦截行为，Reflect 执行默认行为**
+
+   * Proxy 的 handler 通常会使用 Reflect 来执行默认行为。
+   * Reflect 提供了 Proxy 所有 handler 方法的默认实现。
+
+2. **配合使用：Proxy 内部使用 Reflect 保证行为一致性**
+   示例：
+
+   ```js
+   const obj = { x: 1 };
+   const proxy = new Proxy(obj, {
+     get(target, prop, receiver) {
+       console.log(`get: ${prop}`);
+       return Reflect.get(target, prop, receiver); // 使用 Reflect 保持默认行为
+     }
+   });
+
+   console.log(proxy.x); // 打印 "get: x" 和 1
+   ```
+
+3. **不使用 Reflect 可能导致 this 或行为不一致**
+
+   ```js
+   const obj = {
+     greet() {
+       return this === proxy ? 'proxy' : 'target';
+     }
+   };
+
+   const proxy = new Proxy(obj, {
+     get(target, key, receiver) {
+       // 如果直接 target[key]，this 会指向 target 而不是 proxy
+       return Reflect.get(target, key, receiver);
+     }
+   });
+
+   console.log(proxy.greet()); // 'proxy'，因为 this 被正确传递
+   ```
+
+---
+
+## 四、总结
+
+| 对象        | 作用                      |
+| --------- | ----------------------- |
+| `Reflect` | 提供标准化、函数化的底层对象操作工具      |
+| `Proxy`   | 拦截并自定义对象的行为（如读取、设置、调用等） |
+
+**两者常配合使用**：在 `Proxy` 的 handler 中调用 `Reflect`，以便模拟原始行为并增强它（比如添加日志、权限检查等）。
+
+---
+
+

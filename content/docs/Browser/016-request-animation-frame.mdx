@@ -1,0 +1,82 @@
+---
+title: requestAnimationFrame 是怎么用的？
+---
+
+`requestAnimationFrame` 是浏览器提供的一个用于 **高性能动画** 渲染的 API，它的作用是告诉浏览器你希望在下一次重绘前执行一个动画函数，并由浏览器来决定调用函数的具体时间，从而实现 **平滑动画** 效果。
+
+---
+
+### ✅ 基本用法
+
+```javascript
+function draw() {
+  // 执行动画逻辑，例如移动一个元素
+  console.log('绘制一帧');
+
+  // 递归调用，形成动画循环
+  requestAnimationFrame(draw);
+}
+
+// 启动动画
+requestAnimationFrame(draw);
+```
+
+---
+
+### 🧠 工作原理
+
+* 浏览器大概以 **每秒 60 次（60Hz）** 的频率进行刷新，即每 16.7ms 会重绘一次。
+* `requestAnimationFrame` 会在 **下一次重绘之前** 调用你传入的回调函数。
+* 如果页面在后台（tab 切到后台），动画会被**暂停**（不浪费资源）。
+
+---
+
+### ✅ 实际应用场景
+
+1. **实现动画循环（代替 setInterval/setTimeout）**
+2. **优化性能：避免掉帧**
+3. **节能：非活跃页面不执行动画**
+
+---
+
+### 🎯 示例：平滑移动一个方块
+
+```html
+<div id="box" style="width:50px;height:50px;background:red;position:absolute;"></div>
+<script>
+let box = document.getElementById('box');
+let pos = 0;
+
+function animate() {
+  pos += 2;
+  box.style.left = pos + 'px';
+
+  if (pos < 300) {
+    requestAnimationFrame(animate); // 持续动画
+  }
+}
+
+requestAnimationFrame(animate); // 启动动画
+</script>
+```
+
+---
+
+### 🔄 取消动画
+
+```javascript
+let id = requestAnimationFrame(animate);
+cancelAnimationFrame(id);
+```
+
+---
+
+### 🚫 和 `setTimeout`/`setInterval` 区别
+
+| 特性   | `requestAnimationFrame` | `setInterval` / `setTimeout` |
+| ---- | ----------------------- | ---------------------------- |
+| 执行频率 | 跟随屏幕刷新（通常60fps）         | 固定时间，不随屏幕更新                  |
+| 节能处理 | 后台暂停                    | 后台仍执行                        |
+| 适合动画 | ✅                       | ❌ 容易掉帧，性能差                   |
+
+
