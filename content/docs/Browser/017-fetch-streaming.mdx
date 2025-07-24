@@ -1,0 +1,87 @@
+---
+title: 前端 http client 中如何得知已接收完所有响应数据？
+---
+
+在前端 HTTP 客户端（比如浏览器中的 `fetch` 或 `XMLHttpRequest`）中，判断是否已经接收完所有响应数据，主要有以下方式：
+
+---
+
+## 1. 使用 `fetch` API
+
+`fetch` 返回一个 `Response` 对象，可以通过它的 `.body` 属性（一个 `ReadableStream`）进行流式读取。
+
+* **简单场景**：直接用 `response.text()`、`response.json()` 等方法时，这些方法返回的 Promise 在解析完所有响应数据后才会 resolve，表示数据已经接收完成。
+
+```js
+fetch(url)
+  .then(response => response.text())
+  .then(text => {
+    console.log("响应全部接收完毕，内容是：", text);
+  });
+```
+
+* **流式读取场景**：如果用 `response.body.getReader()`，则通过读取流的方式逐块处理数据。
+
+```js
+fetch(url).then(response => {
+  const reader = response.body.getReader();
+  function read() {
+    return reader.read().then(({ done, value }) => {
+      if (done) {
+        console.log("响应接收完毕");
+        return;
+      }
+      // 处理 value （Uint8Array）
+      console.log("接收到一块数据", value);
+      return read();  // 递归，继续读取下一块
+    });
+  }
+  return read();
+});
+```
+
+这里，当 `done` 为 `true` 时，表示响应数据已经读取完毕。
+
+---
+
+## 2. 使用 `XMLHttpRequest`
+
+通过监听 `readystatechange` 事件和 `readyState` 属性判断：
+
+* `readyState === 4` 且 `status` 表示成功时，表示响应数据已全部接收完毕。
+
+```js
+const xhr = new XMLHttpRequest();
+xhr.open("GET", url);
+xhr.onreadystatechange = () => {
+  if (xhr.readyState === 4) {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      console.log("响应数据接收完毕，内容是：", xhr.responseText);
+    } else {
+      console.error("请求失败");
+    }
+  }
+};
+xhr.send();
+```
+
+---
+
+## 3. 低层次原理
+
+HTTP 响应数据通常有明确的结束标识：
+
+* **有 `Content-Length` 响应头时**，接收的数据长度达到这个值即结束。
+* **使用分块传输编码（chunked）时**，当接收到一个长度为 0 的 chunk，表示响应结束。
+* **HTTP/2 和 HTTP/3** 也有对应的流结束标识。
+
+浏览器底层会基于这些协议细节封装好，开发者用上述 API 即可获知响应是否完整。
+
+---
+
+总结：
+
+* 对于普通请求，使用 `fetch` 的 Promise 或 `XMLHttpRequest` 的 `readyState === 4` 即可判断响应是否接收完毕。
+* 对于流式读取，监听流的 `done` 标志。
+* 浏览器帮你处理了底层的协议细节，前端只需关心 API 状态即可。
+

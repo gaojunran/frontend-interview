@@ -1,0 +1,194 @@
+---
+title: 怎么编写一个自己的 Vite 插件？
+---
+
+编写一个自己的 Vite 插件（Vite Plugin）其实并不复杂，Vite 插件是基于 **Rollup 插件机制**扩展的，但又加入了 Vite 特有的生命周期钩子。你可以用它来完成以下任务：
+
+* 修改源码（代码转换、注入变量等）
+* 转换文件类型（如 Markdown 转 Vue）
+* 做开发服务中间件（如 mock）
+* 控制构建流程
+
+下面详细讲讲编写一个 Vite 插件的 **完整流程**。
+
+---
+
+## ✅ 1. 基本结构
+
+一个最简单的 Vite 插件其实就是一个带有 `name` 属性的对象：
+
+```js
+// vite-plugin-example.js
+export default function myPlugin(options) {
+  return {
+    name: 'vite-plugin-example', // 插件名
+    enforce: 'pre', // 可选：'pre' | 'post'，控制插件执行顺序
+    transform(code, id) {
+      // 处理每个模块代码
+      if (id.endsWith('.js')) {
+        // 修改代码逻辑
+        return code.replace(/console\.log\(/g, 'console.info(');
+      }
+    },
+  };
+}
+```
+
+然后在 `vite.config.js` 中使用：
+
+```js
+import myPlugin from './vite-plugin-example.js';
+
+export default {
+  plugins: [myPlugin()],
+};
+```
+
+---
+
+## ✅ 2. 插件生命周期钩子（Vite + Rollup）
+
+Vite 插件本质上是 [Rollup 插件](https://rollupjs.org/plugin-development/) + Vite 扩展。以下是一些常见的钩子：
+
+### 📦 Rollup 共享钩子（开发 + 构建阶段都能用）：
+
+| 钩子                 | 作用             |
+| ------------------ | -------------- |
+| `buildStart()`     | 构建开始时调用        |
+| `resolveId()`      | 自定义模块路径解析      |
+| `load()`           | 自定义文件加载（返回代码）  |
+| `transform()`      | 转换模块内容（如替换、编译） |
+| `generateBundle()` | 构建产物生成后调用      |
+
+### ⚡️ Vite 独有钩子（仅开发模式生效）：
+
+| 钩子                     | 作用                   |
+| ---------------------- | -------------------- |
+| `config()`             | 配置 Vite 本身的行为        |
+| `configureServer()`    | 注册开发服务器中间件（mock 服务等） |
+| `handleHotUpdate()`    | 热更新时处理逻辑（如定制 HMR 行为） |
+| `transformIndexHtml()` | 操作 `index.html`      |
+
+---
+
+## ✅ 3. 实战示例：自动注入环境变量
+
+比如你想写一个插件，自动把 `import.meta.env.MY_VERSION` 替换成 `process.env.npm_package_version`：
+
+```js
+export default function injectVersionPlugin() {
+  return {
+    name: 'vite-plugin-inject-version',
+    transform(code, id) {
+      if (id.endsWith('.js') || id.endsWith('.ts')) {
+        return {
+          code: code.replace(
+            /import\.meta\.env\.MY_VERSION/g,
+            JSON.stringify(process.env.npm_package_version)
+          ),
+          map: null, // 不提供 source map
+        };
+      }
+    }
+  };
+}
+```
+
+---
+
+## ✅ 4. 开发服务器中间件（mock 示例）
+
+如果你想拦截请求，比如返回 mock 数据：
+
+```js
+export default function mockServerPlugin() {
+  return {
+    name: 'vite-plugin-mock-server',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/api/user') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ name: 'Nebula', age: 25 }));
+        } else {
+          next();
+        }
+      });
+    }
+  };
+}
+```
+
+---
+
+## ✅ 5. 支持热更新（HMR）
+
+如果你写的插件处理某些文件（比如 markdown、配置文件等），你可以在热更新时处理：
+
+```js
+export default function myHMRPlugin() {
+  return {
+    name: 'vite-plugin-hmr-demo',
+    handleHotUpdate({ file, server }) {
+      if (file.endsWith('.md')) {
+        console.log(`Markdown file changed: ${file}`);
+        server.ws.send({
+          type: 'full-reload', // 或 custom
+        });
+      }
+    }
+  };
+}
+```
+
+---
+
+## ✅ 6. 插件执行顺序说明
+
+* `enforce: 'pre'`：比默认插件更早执行，常用于 transform（如 JSX -> JS）
+* `enforce: 'post'`：比默认插件更晚执行，常用于处理输出结果
+
+插件顺序很重要，例如：
+
+```js
+plugins: [
+  prePlugin(),  // enforce: 'pre'
+  myPlugin(),   // 默认
+  postPlugin()  // enforce: 'post'
+]
+```
+
+---
+
+## ✅ 7. 发布插件
+
+1. 添加 `package.json`，字段包括：
+
+   * `name`、`main`、`keywords`、`vite-plugin` 等
+2. 可以用 [vite-plugin-xxx](https://vitejs.dev/plugins/) 命名规范
+3. 发布到 npm：
+
+   ```bash
+   npm publish --access public
+   ```
+
+---
+
+## 🧠 小贴士：调试插件的方法
+
+* 在插件中使用 `console.log` 调试不同钩子。
+* 使用 `vite --debug` 运行可以看到插件执行日志。
+* 你也可以配合 `vite-inspect` 插件查看插件执行顺序和 transform。
+
+---
+
+## ✅ 总结
+
+| 功能             | 使用的钩子                    |
+| -------------- | ------------------------ |
+| 替换模块代码         | `transform()`            |
+| 自定义文件支持（如 .md） | `load()` + `resolveId()` |
+| mock 接口        | `configureServer()`      |
+| 注入 index.html  | `transformIndexHtml()`   |
+| 热更新逻辑          | `handleHotUpdate()`      |
+
+---

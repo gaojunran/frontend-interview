@@ -1,0 +1,94 @@
+---
+title: 	core-js 是什么？有什么作用？
+---
+
+好的，详细讲讲 **core-js**。
+
+---
+
+## core-js 是什么？
+
+**core-js** 是一个 JavaScript 标准库的 polyfill（垫片）库，提供了对 ES 标准（包括 ECMAScript 5、6、7 以及之后版本）以及一些提案阶段特性的实现。它的主要作用是让你的代码能在老旧或者不完全支持现代 JavaScript 特性的环境（如旧浏览器或旧版本的 Node.js）中正常运行。
+
+简单来说，core-js 就是给旧环境“补充”缺失的现代 JavaScript API，确保你写的代码不管在哪个环境都能运行。
+
+---
+
+## core-js 的主要作用
+
+1. **兼容旧环境**
+   现代 JavaScript 标准不断发展，但不是所有环境都支持最新的特性。core-js 通过 polyfill，帮开发者在不支持新 API 的环境中模拟这些特性，比如 Promise、Symbol、Array.prototype.includes、Object.assign、Map、Set、Async/Await 等。
+
+2. **实现标准化 API**
+   core-js 的实现遵循 ECMAScript 规范，力求让每个补丁的行为和标准一致，避免因浏览器差异导致的兼容性问题。
+
+3. **支持模块化加载**
+   core-js 提供了细粒度的模块导入方式，你可以按需加载某个具体的 polyfill，减少打包体积。例如只加载 `es.array.includes` 而不必加载整个库。
+
+4. **支持新提案和实验性特性**
+   除了已成标准的 API，core-js 也会包含一些还在提案阶段的特性，让你提前体验未来的语言功能。
+
+---
+
+## core-js 的使用场景
+
+* **前端开发**：让你的代码能兼容 IE11、Android 4.x 等不支持 ES6+ 的浏览器
+* **库/框架开发**：确保你的库在各种环境都能正常工作
+* **Node.js 旧版本支持**：一些旧版本的 Node 可能不支持新特性，通过 core-js 补齐
+* **结合 Babel 使用**：Babel 转码 ES6+ 语法，但有些新 API 不会自动转换，core-js 提供这些 API 的实现
+
+---
+
+## core-js 的工作原理
+
+* 它会检测当前环境是否支持某个 API，如果支持，则不做改动；如果不支持，就动态定义该 API。
+* 通过修改全局对象（比如 `window` 或 `global`）的原型链或者直接添加属性，注入缺失的方法和类。
+
+---
+
+## 例如核心功能和模块
+
+* ES6+ 的基本数据类型及 API：
+
+  * Promise
+  * Symbol
+  * Map、Set、WeakMap、WeakSet
+  * Object.assign、Object.entries、Object.values
+  * Array.prototype.includes、Array.from、Array.prototype.find
+  * String.prototype.padStart、padEnd、trimStart、trimEnd
+
+* 新的全局对象或方法：
+
+  * globalThis
+  * URL、URLSearchParams（部分）
+
+* 新的提案和实验性特性：
+
+  * Observable
+  * String.prototype.matchAll
+
+---
+
+## 与 Babel 的关系
+
+* Babel 负责把新语法（比如箭头函数、class）转换成旧语法。
+* core-js 负责把新 API（比如 `Promise`、`Array.prototype.includes`）补充到旧环境。
+* 结合使用时，通常 Babel 会配合 `@babel/preset-env` 并使用 `core-js` 的 polyfill，按目标环境自动注入所需的 polyfill，避免无脑全量引入。
+
+---
+
+## 总结
+
+| 特点   | 说明                                |
+| ---- | --------------------------------- |
+| 类型   | JavaScript 标准库 polyfill           |
+| 作用   | 补齐旧环境对新 JavaScript API 的支持        |
+| 适用范围 | 浏览器、Node.js 旧版本                   |
+| 兼容性  | ES5、ES6 及更高版本的绝大部分标准和提案           |
+| 常见配合 | Babel @babel/preset-env + core-js |
+| 优点   | 细粒度按需加载、规范实现、支持未来特性               |
+
+---
+
+如果你想，我可以帮你写一个简单的使用示例，或者帮你梳理下如何在项目中配置 core-js 结合 Babel 使用。你觉得呢？
+

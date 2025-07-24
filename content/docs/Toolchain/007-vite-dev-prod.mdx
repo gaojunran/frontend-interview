@@ -1,0 +1,111 @@
+---
+title: 如何在 Vite 中切换开发环境和生产环境？
+---
+
+在 **Vite** 中，切换开发环境和生产环境主要通过环境变量和内置的模式（mode）机制来实现。以下是详细说明和操作方法：
+
+---
+
+## 1. Vite 的环境变量和模式（mode）
+
+* **开发环境**默认是 `development` 模式，也就是执行 `vite` 或 `vite serve` 启动开发服务器时的模式。
+* **生产环境**默认是 `production` 模式，执行 `vite build` 时采用。
+* 你也可以自定义模式，例如 `staging`、`test` 等。
+
+---
+
+## 2. 环境变量文件
+
+Vite 支持在项目根目录放置不同的环境变量文件：
+
+| 文件名                | 作用                               |
+| ------------------ | -------------------------------- |
+| `.env`             | 所有环境都会加载的变量                      |
+| `.env.development` | 开发环境（`vite` 或 `vite serve`）加载    |
+| `.env.production`  | 生产环境（`vite build`）加载             |
+| `.env.staging`     | 自定义模式加载，例如 `vite --mode staging` |
+
+环境变量文件里写法示例：
+
+```env
+VITE_API_URL=https://api.example.com
+VITE_OTHER_KEY=123
+```
+
+注意：环境变量名必须以 `VITE_` 开头，才会被 Vite 识别并注入到代码中。
+
+---
+
+## 3. 访问环境变量
+
+在代码中通过 `import.meta.env` 访问：
+
+```js
+console.log(import.meta.env.VITE_API_URL);
+console.log(import.meta.env.MODE);   // 当前模式
+console.log(import.meta.env.PROD);   // 是否生产环境，布尔值
+console.log(import.meta.env.DEV);    // 是否开发环境，布尔值
+```
+
+---
+
+## 4. 切换环境模式
+
+* 默认：
+
+  * 开发：`vite` 或 `vite serve`，默认模式是 `development`
+  * 生产：`vite build`，默认模式是 `production`
+
+* 手动指定模式：
+
+```bash
+vite --mode staging
+vite build --mode staging
+```
+
+这样，Vite 会加载 `.env.staging` 文件中的环境变量。
+
+---
+
+## 5. Vite 配置中读取模式
+
+在 `vite.config.js` 中可以访问当前模式：
+
+```js
+export default ({ mode }) => {
+  console.log('当前模式:', mode);
+  return {
+    // 配置项
+  };
+};
+```
+
+---
+
+## 6. 举例总结
+
+假设：
+
+* `.env.development`：
+
+  ```
+  VITE_API_URL=http://localhost:3000/api
+  ```
+
+* `.env.production`：
+
+  ```
+  VITE_API_URL=https://api.example.com/api
+  ```
+
+代码中：
+
+```js
+fetch(import.meta.env.VITE_API_URL + '/users')
+  .then(res => res.json())
+  .then(data => console.log(data));
+```
+
+* 开发环境启动 `vite`，会请求 `http://localhost:3000/api/users`
+* 生产环境执行 `vite build` 打包，访问的是 `https://api.example.com/api/users`
+

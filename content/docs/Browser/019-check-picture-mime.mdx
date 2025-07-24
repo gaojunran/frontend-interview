@@ -1,0 +1,142 @@
+---
+title: 	前端如何正确识别图片的 MIME 类型？
+---
+
+前端识别图片的 MIME 类型，在多个场景中都很重要，比如图片上传、类型校验、安全控制等。下面我将**详细讲解**前端如何**正确识别图片的 MIME 类型**，包括原理、常见方法和注意事项。
+
+---
+
+## 💡 为什么要识别图片的 MIME 类型？
+
+* ✅ **限制上传类型**，避免上传非图片文件。
+* ✅ **预览图片前判断格式**。
+* ✅ **增强安全性**，防止伪造扩展名上传。
+* ✅ **做图片压缩、转码时选择对应的编码器**。
+
+---
+
+## 🎯 正确识别图片 MIME 类型的方法
+
+### ✅ 方法一：使用 `File.type`（最常见，但不完全可靠）
+
+当用户通过 `<input type="file">` 或 `drag & drop` 上传文件时，前端可以访问 `File` 对象的 `type` 属性。
+
+```js
+const fileInput = document.querySelector('input[type="file"]');
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  console.log(file.type); // 比如 "image/png"
+});
+```
+
+**优点：**
+
+* 简单易用，兼容性好。
+
+**缺点：**
+
+* 依赖操作系统提供的类型，有被伪造风险（仅靠扩展名和文件头）。
+
+---
+
+### ✅ 方法二：读取文件内容（magic number / 文件头分析）⚠️推荐用于安全校验
+
+通过读取文件的前几个字节（通常是 **文件头 magic number**）来判断类型，这是比较**安全可靠**的方式。
+
+```js
+function getImageMimeType(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = function (e) {
+      const arr = new Uint8Array(e.target.result).subarray(0, 4);
+      let header = '';
+      for (let i = 0; i < arr.length; i++) {
+        header += arr[i].toString(16);
+      }
+
+      // 根据 magic number 判断类型
+      switch (header) {
+        case '89504e47':
+          resolve('image/png');
+          break;
+        case '47494638':
+          resolve('image/gif');
+          break;
+        case 'ffd8ffe0':
+        case 'ffd8ffe1':
+        case 'ffd8ffe2':
+        case 'ffd8ffe3':
+        case 'ffd8ffe8':
+          resolve('image/jpeg');
+          break;
+        case '52494646': // 可能是 WebP，需要进一步判断
+          resolve('image/webp'); // 简化处理
+          break;
+        default:
+          resolve('unknown');
+      }
+    };
+    reader.readAsArrayBuffer(file.slice(0, 4));
+  });
+}
+```
+
+**优点：**
+
+* 更安全，不依赖扩展名或操作系统 MIME。
+* 能识别伪造扩展名的文件。
+
+**缺点：**
+
+* 稍微复杂，需要异步读取文件内容。
+* 无法识别全部格式（SVG 没有固定魔术头）。
+
+---
+
+### ✅ 方法三：使用 `<img>` 标签加载判断（适合预览判断）
+
+如果你想判断一张图片是否能被浏览器识别，可以尝试用 `<img>` 加载，并监听 `onload` 和 `onerror`。
+
+```js
+const url = URL.createObjectURL(file);
+const img = new Image();
+img.onload = () => {
+  console.log('是图片');
+};
+img.onerror = () => {
+  console.log('不是图片');
+};
+img.src = url;
+```
+
+**优点：**
+
+* 能实际测试浏览器是否支持。
+* 可用于预览。
+
+**缺点：**
+
+* 无法精确判断 MIME 类型。
+* 无法防止伪造，只能确认“能否渲染”。
+
+---
+
+## ⚠️ 常见的 MIME 类型及文件头
+
+| 图片类型 | MIME 类型         | 文件头（Magic Number）                |
+| ---- | --------------- | -------------------------------- |
+| PNG  | `image/png`     | `89 50 4E 47`                    |
+| JPEG | `image/jpeg`    | `FF D8 FF E0~EF`                 |
+| GIF  | `image/gif`     | `47 49 46 38`                    |
+| BMP  | `image/bmp`     | `42 4D`                          |
+| WebP | `image/webp`    | `52 49 46 46`（RIFF）              |
+| SVG  | `image/svg+xml` | 无固定 magic number，可识别开头是否为 `<svg` |
+
+---
+
+## ✅ 最佳实践建议
+
+1. **前端用 `File.type` 快速判断**，再结合 **magic number 验证**以增强安全性。
+2. 对于 SVG，可读取前几十个字符并检测是否包含 `<svg`。
+3. 上传图片建议配合后端做二次验证（前端不能完全信任）。
+

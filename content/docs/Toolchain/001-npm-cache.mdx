@@ -1,0 +1,133 @@
+---
+title: 	什么是 npm cache？如何有效管理它？
+---
+
+`npm cache` 是指 **npm（Node Package Manager）使用的本地缓存系统**，用于存储你安装过的包的压缩文件（`.tgz`），以及相关的元数据。
+
+---
+
+## 一、什么是 `npm cache`？
+
+当你运行 `npm install <package>` 时，npm 会执行以下流程：
+
+1. 查找该包是否已缓存在本地（`.npm/_cacache` 目录下）；
+2. 如果有缓存且有效，就**直接从缓存中解压使用**，**不再从网络重新下载**；
+3. 如果没有缓存，就从 **registry（默认 [https://registry.npmjs.org]）下载**，并缓存到本地。
+
+### 缓存内容包括：
+
+* `.tgz` 格式的压缩包
+* `package.json` 和其他元数据
+* 校验哈希值（用于完整性校验）
+
+默认缓存目录位置：
+
+* macOS / Linux: `~/.npm/_cacache`
+* Windows: `C:\Users\<username>\AppData\Roaming\npm-cache\_cacache`
+
+---
+
+## 二、为什么需要 npm cache？
+
+好处包括：
+
+* 🚀 **加速安装**：重复安装相同包时直接使用缓存，加快速度。
+* 🌐 **离线安装**：可以在没有网络时依赖缓存安装。
+* 💾 **节省带宽**：不用重复下载相同内容。
+* ✅ **保证一致性**：缓存包括完整性校验值，可防止包被篡改。
+
+---
+
+## 三、常见的缓存管理命令
+
+| 命令                             | 作用                 |
+| ------------------------------ | ------------------ |
+| `npm cache verify`             | 验证缓存的完整性，有问题会报告并清除 |
+| `npm cache clean --force`      | 强制清除整个缓存目录（默认不允许）  |
+| `npm cache add <pkg>`          | 手动将一个包添加到缓存中（较少用）  |
+| `npm install --prefer-offline` | 优先使用缓存，不联网除非必要     |
+| `npm install --offline`        | 强制离线使用缓存，无法联网时非常有用 |
+
+---
+
+## 四、如何高效管理 npm cache？
+
+### ✅ **定期清理缓存**
+
+缓存过大可能导致硬盘空间压力，尤其是 CI/CD 环境。
+
+```bash
+npm cache clean --force
+```
+
+> ⚠️ `--force` 是必须的参数，否则 `npm` 默认不会清空缓存。
+
+---
+
+### ✅ **在 CI 环境中缓存缓存目录**
+
+如果你在使用 GitHub Actions、GitLab CI、Jenkins 等工具，可以**缓存 `~/.npm` 目录**，避免每次重新下载依赖。
+
+例如 GitHub Actions：
+
+```yaml
+- uses: actions/cache@v3
+  with:
+    path: ~/.npm
+    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+```
+
+---
+
+### ✅ **使用离线安装加速部署**
+
+如果你在服务器或离线机器部署，可以提前缓存依赖包并通过 `--offline` 安装：
+
+```bash
+npm install --offline
+```
+
+---
+
+### ✅ **通过 `.npmrc` 设置缓存路径（可选）**
+
+你可以在配置文件 `.npmrc` 中更改缓存目录：
+
+```ini
+cache=/custom/path/to/npm-cache
+```
+
+---
+
+## 五、缓存出现问题怎么办？
+
+### 常见报错：
+
+* `ETARGET`
+* `Integrity check failed`
+* `ENOENT`（找不到缓存文件）
+
+### 解决方案：
+
+```bash
+npm cache clean --force
+npm install
+```
+
+或者直接：
+
+```bash
+npm cache verify
+```
+
+---
+
+## 总结：npm cache 用得好，效率翻一倍！
+
+| 目的        | 做法                           |
+| --------- | ---------------------------- |
+| 提高安装速度    | 使用缓存                         |
+| 解决缓存问题    | `npm cache clean` / `verify` |
+| 跨机构建/部署优化 | 缓存 `~/.npm`                  |
+| 节省流量      | `--prefer-offline`           |
+

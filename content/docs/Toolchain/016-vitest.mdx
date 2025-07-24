@@ -1,0 +1,145 @@
+---
+title: 如何在前端项目中使用 vitest 进行单元测试？
+---
+
+> 这里有一个详尽的在 Vue 项目中测试的官方文档：https://vuejs.org/guide/scaling-up/testing
+
+在前端项目中使用 [**Vitest**](https://vitest.dev/) 进行单元测试，通常适用于基于 Vite 的项目（如 Vue、React 项目）。Vitest 是一个 Vite 原生支持的测试框架，具有快速、轻量、TypeScript 友好等优点。
+
+以下是完整的使用流程和实践建议：
+
+---
+
+## ✅ 一、安装 Vitest 相关依赖
+
+在 Vite 项目中安装 Vitest、测试库（如 `@testing-library`）：
+
+```bash
+# 基础依赖
+npm install -D vitest
+
+# 如果你使用 Vue
+npm install -D @vue/test-utils vue
+
+# 如果你使用 React
+npm install -D @testing-library/react jsdom
+
+# 通常也需要 jsdom 模拟 DOM 环境
+npm install -D jsdom
+```
+
+---
+
+## ✅ 二、配置 `vitest.config.ts`
+
+这是 Vitest 的配置文件，位于项目根目录，通常与 `vite.config.ts` 合并配置即可：
+
+```ts
+// vitest.config.ts
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    globals: true, // 使用 describe/test/expect 等无需引入
+    environment: 'jsdom', // 用于模拟 DOM 环境（浏览器环境）
+    setupFiles: './test/setup.ts', // 可选：全局设置文件路径
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+    },
+  },
+})
+```
+
+---
+
+## ✅ 三、编写测试文件
+
+测试文件命名一般为：
+
+* `xxx.test.ts` 或 `xxx.spec.ts`
+* 位于 `tests/` 或组件同级的 `__tests__/` 目录
+
+### 📌 示例（Vue 组件）
+
+```ts
+// src/components/Hello.test.ts
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Hello from './Hello.vue'
+
+describe('Hello.vue', () => {
+  it('renders props', () => {
+    const wrapper = mount(Hello, {
+      props: {
+        msg: 'Vitest',
+      },
+    })
+    expect(wrapper.text()).toContain('Vitest')
+  })
+})
+```
+
+### 📌 示例（普通函数）
+
+```ts
+// src/utils/math.ts
+export const add = (a: number, b: number) => a + b
+
+// src/utils/math.test.ts
+import { describe, it, expect } from 'vitest'
+import { add } from './math'
+
+describe('add', () => {
+  it('adds two numbers', () => {
+    expect(add(1, 2)).toBe(3)
+  })
+})
+```
+
+---
+
+## ✅ 四、运行测试
+
+```bash
+npx vitest
+# 或 watch 模式
+npx vitest --watch
+```
+
+你也可以在 `package.json` 添加快捷脚本：
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  }
+}
+```
+
+---
+
+## ✅ 五、集成测试覆盖率（可选）
+
+启用覆盖率需安装 `c8`：
+
+```bash
+npm install -D c8
+```
+
+配置已在上面 `vitest.config.ts` 中提到，运行：
+
+```bash
+npx vitest --coverage
+```
+
+---
+
+## ✅ 六、额外建议
+
+* 使用 `@testing-library/react` / `@testing-library/vue` 提高组件测试的可维护性。
+* 可结合 CI 工具（GitHub Actions、GitLab CI）自动运行测试。
+* 支持 mock、spy、hook 测试等高级功能，可参考官方文档。
+
+
+

@@ -1,0 +1,110 @@
+---
+title: 	Performance API 中哪些指标可以衡量首屏加载时间？
+---
+
+在浏览器的 **Performance API** 中，有多个指标可以用来衡量 **首屏加载时间（First Screen Load Time）**，也就是用户首次看到页面内容、可以开始交互的关键时间点。
+
+以下是一些常用的衡量首屏加载的关键指标，详细说明如下：
+
+---
+
+## 🌟 一、核心指标（推荐重点关注）
+
+### 1. **`First Contentful Paint（FCP）`**
+
+* **含义**：页面首次渲染出任何内容（如文本、图片、SVG 等）的时间点。
+* **说明**：这是用户感知页面开始“加载”的最早信号。
+* **获取方式**：
+
+  ```js
+  new PerformanceObserver((entryList) => {
+    for (const entry of entryList.getEntries()) {
+      console.log('FCP:', entry.startTime);
+    }
+  }).observe({ type: 'paint', buffered: true });
+  ```
+
+---
+
+### 2. **`Largest Contentful Paint（LCP）`**
+
+* **含义**：页面中\*\*最大可见内容元素（如图片、大块文字）\*\*渲染完成的时间点。
+* **说明**：LCP 通常代表**首屏主要内容可见的时间**，非常关键。
+* **获取方式**：
+
+  ```js
+  new PerformanceObserver((entryList) => {
+    for (const entry of entryList.getEntries()) {
+      console.log('LCP:', entry.startTime);
+    }
+  }).observe({ type: 'largest-contentful-paint', buffered: true });
+  ```
+
+---
+
+### 3. **`First Meaningful Paint（FMP）`（已废弃，但仍有参考价值）**
+
+* **含义**：页面首次展示出对用户有意义的内容的时间点。
+* **说明**：因为计算标准复杂、不同环境误差大，Chrome DevTools 中已废弃该指标，推荐使用 LCP 替代。
+* **获取方式**：可通过 Lighthouse 工具推导获得，但不再推荐使用。
+
+---
+
+## 🌟 二、辅助指标（结合判断首屏体验）
+
+### 4. **`DOMContentLoaded`**
+
+* **含义**：DOM 完全加载并解析完成（不包括样式、图片等资源）。
+* **说明**：不直接代表“可见内容”，但可作为参考。
+
+  ```js
+  window.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded:', performance.now());
+  });
+  ```
+
+---
+
+### 5. **`load` 事件时间**
+
+* **含义**：页面所有资源（包括图片、样式表等）加载完成。
+* **说明**：常用于页面“全部加载完成”的标志，但**不适合作为首屏加载时间**，因为延迟较高。
+
+---
+
+### 6. **`Navigation Timing` API**
+
+可用来获取从用户开始导航到页面加载过程中每一步的耗时。
+
+```js
+const timing = performance.getEntriesByType("navigation")[0];
+console.log("页面开始加载到响应开始:", timing.responseStart - timing.startTime);
+console.log("DOM 完全加载:", timing.domContentLoadedEventEnd - timing.startTime);
+```
+
+---
+
+## ✅ 推荐组合
+
+衡量首屏加载体验，推荐关注以下组合：
+
+| 目的         | 使用指标                             |
+| ---------- | -------------------------------- |
+| 用户首次看到页面内容 | **FCP**                          |
+| 用户看到主要内容完成 | **LCP**                          |
+| 页面结构准备完毕   | DOMContentLoaded                 |
+| 全部资源加载完毕   | load                             |
+| 精准性能分析     | Navigation Timing + Paint Timing |
+
+---
+
+## 📌 注意事项
+
+* 首屏时间没有一个“官方唯一”定义，开发中可能根据业务定义不同。
+* 对于**单页应用（SPA）**，上述指标在**首屏加载**后可能无法准确反映“页面切换性能”，需要结合 `Performance.mark` 和 `Performance.measure` 手动埋点。
+* 你也可以通过 `requestAnimationFrame` + DOM 元素状态判断页面“视觉首屏”的完成。
+
+---
+
+如果你在做性能分析、白屏检测或真实用户监测（RUM），`FCP + LCP` 是最推荐的两个核心指标。
+

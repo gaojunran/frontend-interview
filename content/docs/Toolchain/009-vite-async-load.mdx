@@ -1,0 +1,45 @@
+---
+title: 	如何使用 Vite 实现异步加载？
+---
+
+使用 Vite 实现异步加载（代码分割、按需加载）主要靠**动态 `import()`**。这也是现代 ES 模块的标准写法，Vite 会自动识别并帮你拆分代码，按需加载。
+
+---
+
+## 基本用法
+
+```js
+// 例如在某个事件或函数中动态加载模块
+async function loadModule() {
+  const module = await import('./path/to/module.js');
+  module.doSomething();
+}
+```
+
+* `import()` 会返回一个 Promise，异步加载对应模块。
+* Vite 会在构建时把被动态导入的模块单独拆成一个 chunk。
+
+---
+
+## 在 Vue 组件中异步加载子组件示例
+
+```js
+import { defineAsyncComponent } from 'vue'
+
+export default {
+  components: {
+    AsyncComp: defineAsyncComponent(() => import('./AsyncComp.vue'))
+  }
+}
+```
+
+这样子组件就会被拆分，只有在真正渲染时才加载。
+
+---
+
+## 注意事项
+
+* 动态导入路径必须是静态字符串或有明确上下文，避免使用变量拼接，避免导致打包时无法识别。
+* 可以结合路由懒加载实现页面按需加载（如 Vue Router 的路由懒加载）。
+* 在开发环境，异步加载模块仍然是即时的，生产环境打包时才体现出按需加载的效果。
+

@@ -1,0 +1,47 @@
+---
+title: Vite 的 Tree Shaking 机制的原理是什么？
+---
+
+Vite 的 Tree Shaking 机制是一种通过静态分析移除 JavaScript 或 TypeScript 中未使用代码（死代码）的优化技术，旨在减小最终打包文件的体积，提升应用程序的加载速度和性能。
+
+---
+
+### 🔍 原理概述
+
+Tree Shaking 的核心原理依赖于 ES6 模块（ESM）的静态结构特性，例如 `import` 和 `export`，通过静态分析来确定哪些模块和变量没有被使用，通常通过抽象语法树（AST）来实现。
+
+在 Vite 中，Tree Shaking 是建立在其底层构建工具 Rollup 的基础上。Rollup 会在构建过程中构建模块依赖图，并标记未被引用的模块或导出，最终在生成的打包文件中剔除这些未使用的代码。&#x20;
+
+---
+
+### ⚙️ Vite 中的 Tree Shaking 实现
+
+1. **使用 ES 模块语法**：确保代码中使用 `import` 和 `export` 进行模块引入和导出，因为 Tree Shaking 仅支持静态的模块语法。
+
+2. **生产模式构建**：执行 `vite build` 时，Vite 会自动启用 Tree Shaking 功能，并使用 Rollup 进行构建。
+
+3. **配置 `sideEffects`**：在 `package.json` 中配置 `sideEffects`，告诉 Vite 哪些模块具有副作用，哪些模块可以安全地进行 Tree Shaking。
+
+   ```json
+   {
+     "sideEffects": false
+   }
+   ```
+
+   这表示所有模块都不具有副作用，可以进行 Tree Shaking。
+
+4. **优化第三方库**：对于第三方库，应该使用支持 ESM 的版本，如 `lodash-es`，而不是 `lodash`，以便更好地支持 Tree Shaking。&#x20;
+
+---
+
+### ✅ 使用建议
+
+* **避免整体引入**：避免使用 `import lodash from 'lodash'` 这种方式，因为它会将整个库引入，无法触发 Tree Shaking。应该使用按需引入的方式，如 `import { debounce } from 'lodash-es'`。
+
+* **确保代码静态性**：避免使用动态的 `require` 或条件语句来引入模块，因为这会使得构建工具无法静态分析依赖关系，从而无法进行有效的 Tree Shaking。
+
+* **检查第三方库**：对于第三方库，应该选择支持 ESM 的版本，并确保它们的模块结构适合进行 Tree Shaking。
+
+---
+
+总之，Vite 的 Tree Shaking 机制依赖于静态分析和模块依赖图的构建，通过剔除未使用的代码来优化最终的打包产物。开发者应遵循上述建议，以充分发挥 Tree Shaking 的效益，提升应用程序的性能。

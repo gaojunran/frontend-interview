@@ -1,0 +1,149 @@
+---
+title: 	什么是 ESLint？它有什么作用？
+---
+
+ESLint 是一个流行的 **JavaScript/TypeScript 静态代码分析工具**，主要用于发现代码中的问题并强制执行一致的代码风格。
+
+---
+
+## 一、什么是 ESLint？
+
+**ESLint（[官网](https://eslint.org/)）** 是一个用于 **识别和报告 ECMAScript/JavaScript/TypeScript 代码中问题的工具**。它可以分析源代码而无需执行它，主要基于 AST（抽象语法树）进行静态分析。
+
+最初由 **Nicholas C. Zakas** 开发，解决 JavaScript 缺乏强类型和代码一致性问题。
+
+---
+
+## 二、ESLint 的作用
+
+### 1. **发现潜在问题**
+
+* 比如语法错误、未使用的变量、类型不匹配、潜在的 bug。
+
+```js
+let foo = 123;
+console.log(bar); // ESLint 报错：bar 未定义
+```
+
+### 2. **统一团队代码风格**
+
+* 可以自定义风格规范，或使用现成的规范（如 Airbnb、Standard、Prettier）。
+* 例如空格、缩进、分号、单/双引号等。
+
+### 3. **提升代码质量和可维护性**
+
+* 强制开发者遵守最佳实践，减少代码异味（code smell）。
+* 保持代码整洁、有序，便于协作和审查。
+
+### 4. **支持自动修复**
+
+* 对于格式类问题（如缺少分号、缩进不一致），可以使用 `--fix` 自动修复：
+
+```bash
+npx eslint src/ --fix
+```
+
+---
+
+## 三、ESLint 的核心机制
+
+### 工作流程如下：
+
+1. 读取配置文件（如 `.eslintrc.js`, `.eslintrc.json`）
+2. 基于配置分析源代码，生成 AST
+3. 通过插件和规则对 AST 进行遍历与校验
+4. 输出诊断信息或直接修复（`--fix`）
+
+---
+
+## 四、常用配置项
+
+### `.eslintrc.js` 示例：
+
+```js
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true,
+  },
+  extends: [
+    'eslint:recommended',      // ESLint 官方推荐规则
+    'plugin:vue/vue3-recommended', // Vue 3 支持
+    'plugin:@typescript-eslint/recommended' // TS 支持
+  ],
+  parser: 'vue-eslint-parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+  },
+  rules: {
+    'no-unused-vars': 'warn',
+    'semi': ['error', 'always'],
+    'quotes': ['error', 'single'],
+  },
+};
+```
+
+---
+
+## 五、常用插件
+
+| 插件                       | 用途                   |
+| ------------------------ | -------------------- |
+| `@typescript-eslint`     | 支持 TypeScript        |
+| `eslint-plugin-vue`      | 支持 Vue.js            |
+| `eslint-plugin-react`    | 支持 React             |
+| `eslint-plugin-import`   | 检查 import/export 合理性 |
+| `eslint-plugin-prettier` | 与 Prettier 格式化结合     |
+
+---
+
+## 六、和 Prettier 的关系
+
+* **ESLint** 负责 **语义与风格（语法 + 逻辑 + 风格）**
+* **Prettier** 只关注 **格式化（如缩进、引号、换行）**
+* 一般建议：
+
+  * 两者结合使用，使用 Prettier 处理格式，用 ESLint 处理逻辑错误
+  * 使用 `eslint-config-prettier` 来关闭 ESLint 中可能和 Prettier 冲突的规则
+
+---
+
+## 七、使用流程
+
+1. 安装 ESLint：
+
+```bash
+npm install eslint --save-dev
+```
+
+2. 初始化配置：
+
+```bash
+npx eslint --init
+```
+
+3. 检查代码：
+
+```bash
+npx eslint src/
+```
+
+4. 自动修复：
+
+```bash
+npx eslint src/ --fix
+```
+
+---
+
+## 八、总结
+
+| 功能      | 说明            |
+| ------- | ------------- |
+| 静态分析    | 找出语法和潜在错误     |
+| 风格统一    | 规范团队代码格式      |
+| 插件机制    | 可拓展性强，支持各种框架  |
+| 自动修复    | 快速处理格式问题，提高效率 |
+| 与 CI 集成 | 实现持续代码质量保障    |
+

@@ -1,0 +1,131 @@
+---
+title: 	export、export default 和 module.exports 有什么区别？
+---
+
+`export`、`export default` 和 `module.exports` 都是 JavaScript 模块化系统中用于导出模块的语法，但它们属于不同的模块体系：
+
+* `export` 和 `export default` 是 **ES6 模块（ESM）** 的语法。
+* `module.exports` 是 **CommonJS 模块** 的语法，主要用于 Node.js 中。
+
+我们分别来讲讲它们的区别和使用场景：
+
+---
+
+## ✅ 一、CommonJS（`module.exports` / `exports`）
+
+### 用法
+
+```js
+// 导出
+module.exports = {
+  foo: 'bar',
+};
+
+// 导入
+const myModule = require('./myModule.js');
+console.log(myModule.foo); // 'bar'
+```
+
+> 注意：`exports` 是 `module.exports` 的一个引用，不能同时使用两种方式导出多个内容。
+
+### 特点
+
+* **同步加载模块**（适合后端 Node.js 环境）
+* 导出的是一个值（对象、函数、类等）
+* 动态执行（运行时解析）
+
+---
+
+## ✅ 二、ES Module（ESM）语法
+
+### 1. `export`（命名导出）
+
+```js
+// myModule.js
+export const foo = 'bar';
+export function sayHello() { console.log('Hello'); }
+
+// 使用方式：
+import { foo, sayHello } from './myModule.js';
+```
+
+### 2. `export default`（默认导出）
+
+```js
+// myModule.js
+export default function greet() {
+  console.log('Hi');
+}
+
+// 使用方式：
+import greet from './myModule.js';
+```
+
+### ✅ `export` 和 `export default` 的区别
+
+| 特性     | `export`（命名导出）     | `export default`（默认导出） |
+| ------ | ------------------ | ---------------------- |
+| 导出数量   | 可以多个导出             | 每个模块只能有一个默认导出          |
+| 导入方式   | 必须用花括号 `{}`，名字必须一致 | 名字任意，不用花括号             |
+| 是否可重命名 | 导入时可用 `as` 重命名     | 直接起任意名字                |
+| 类型用途   | 导出多个函数/变量/类时常用     | 常用于导出模块的主逻辑、默认类等       |
+
+### 示例对比：
+
+```js
+// file.js
+export const a = 1;
+export const b = 2;
+export default function main() {}
+```
+
+```js
+// main.js
+import main, { a, b } from './file.js';
+// main() 调用默认导出
+// a, b 是命名导出
+```
+
+---
+
+## ✅ 三者之间的对比总结
+
+| 特性     | `module.exports`    | `export`           | `export default`      |
+| ------ | ------------------- | ------------------ | --------------------- |
+| 所属模块系统 | CommonJS            | ES Module          | ES Module             |
+| 导出数量   | 一个（但可以是对象）          | 多个                 | 一个（默认）                |
+| 导入方式   | `require()`         | `import { ... }`   | `import xxx from ...` |
+| 是否可混用  | ❌（不能和 ES Module 混用） | ✅（可混用但要小心）         | ✅                     |
+| 使用场景   | Node.js（默认）         | 前端/Node.js（ESM 模式） | 前端/Node.js（ESM 模式）    |
+| 执行机制   | 运行时动态执行             | 编译时静态分析            | 编译时静态分析               |
+
+---
+
+## ✅ 四、混用问题（坑点）
+
+```js
+// 使用 module.exports
+module.exports = {
+  foo: 1
+};
+
+// 在 ESM 中导入
+import myModule from './myModule.js';
+console.log(myModule.foo); // undefined ❌
+```
+
+因为 ESM 的 `import` 会把 CommonJS 的 `module.exports` 包装成 `{ default: module.exports }`，所以要用：
+
+```js
+import myModule from './myModule.js';
+console.log(myModule.default.foo); // ✅
+```
+
+---
+
+## ✅ 五、结论
+
+* 前端项目推荐用 **ES Module（`export` / `export default`）**。
+* Node.js 旧项目/工具库多用 **CommonJS（`module.exports`）**，但现在也开始支持 ESM（使用 `.mjs` 后缀或配置 `type: "module"`）。
+* 两者可以通过打包工具（如 Webpack、Vite、Babel）互相兼容，但建议不要混用。
+

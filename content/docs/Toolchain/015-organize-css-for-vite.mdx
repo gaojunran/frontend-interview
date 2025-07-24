@@ -1,0 +1,137 @@
+---
+title: 如何组织 CSS 以配合 Vite 构建？
+---
+
+在使用 Vite 构建项目时，组织 CSS 的方式应当考虑模块化、性能优化、可维护性和开发体验。以下是组织 CSS 的推荐做法和技术选型：
+
+---
+
+## 🧩 1. **选择 CSS 组织方式**
+
+### ✅ 推荐使用：
+
+| 方式                             | 简介                      | 是否推荐             |
+| ------------------------------ | ----------------------- | ---------------- |
+| **CSS Modules**                | 基于文件作用域的样式，类名自动生成哈希避免冲突 | ✅ 强烈推荐           |
+| **预处理器（Sass/Less）**            | 支持嵌套、变量、混入、函数等增强语法      | ✅ 推荐             |
+| **Tailwind CSS**               | 原子化 CSS 工具类框架，适合组件化开发   | ✅ 推荐（配合组件）       |
+| **PostCSS**                    | 用于自动加前缀、优化等             | ✅ 通常自动集成于 Vite 中 |
+| 全局样式                           | 用于定义主题、reset、基础变量       | ✅ 推荐有限使用         |
+| CSS-in-JS（如 styled-components） | 与 React 常配合使用           | ❌ Vue 项目不推荐      |
+| 传统全局 CSS                       | 所有组件共享同一作用域             | ❌ 不推荐，容易冲突       |
+
+---
+
+## 🗂️ 2. **项目结构建议**
+
+```plaintext
+src/
+├── assets/
+│   └── styles/
+│       ├── base.scss         # Reset、基础元素样式
+│       ├── variables.scss    # 全局变量（颜色、字体等）
+│       ├── mixins.scss       # Sass 混入
+│       └── global.scss       # 导入以上文件作为全局样式
+├── components/
+│   ├── Button.vue            # 使用 CSS Modules 或 scoped
+│   └── Card.vue
+├── App.vue
+└── main.ts
+```
+
+---
+
+## ⚙️ 3. **Vite 配置方式**
+
+### ✅ 方式一：使用 `vite.config.ts` 中的 `css` 配置
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "@/assets/styles/global.scss";`
+      }
+    },
+    modules: {
+      scopeBehaviour: 'local', // 默认就是 local（模块化）
+      generateScopedName: '[name]__[local]___[hash:base64:5]'
+    }
+  }
+})
+```
+
+---
+
+## 🔧 4. **具体使用方式**
+
+### ✅ 组件中使用 scoped 或 CSS Modules
+
+```vue
+<!-- Button.vue -->
+<template>
+  <button :class="$style.btn">按钮</button>
+</template>
+
+<style module>
+.btn {
+  background-color: blue;
+  color: white;
+}
+</style>
+```
+
+或使用 `scoped`
+
+```vue
+<template>
+  <div class="card">...</div>
+</template>
+
+<style scoped>
+.card {
+  border: 1px solid #eee;
+}
+</style>
+```
+
+如果不在 Vue SFC 中编写 CSS，也可以编写模块 CSS。文件名以 `.module.css` 结尾。Vite 会自动处理。
+
+---
+
+## 🎨 5. **使用 Tailwind CSS（可选）**
+
+```bash
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+```
+
+配置文件中启用：
+
+```js
+// tailwind.config.js
+content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}']
+```
+
+`main.ts` 中引入：
+
+```ts
+import './assets/styles/tailwind.css';
+```
+
+---
+
+## 🚀 6. 性能优化建议
+
+* 开发环境使用 `scoped` / CSS Modules 提升可维护性
+* 生产环境开启 CSS 压缩（Vite 默认已启用 `esbuild` 压缩）
+* 拆分大 CSS 文件，避免阻塞渲染
+* 使用 `lazy load`（代码分块）可搭配 `vite-plugin-style-import` 处理 UI 框架样式按需引入
+
+---
+
+如果你告诉我你项目用的是 Vue、React 还是其他，我还能提供更具体的方案。是否需要我帮你搭一个 Vite + Vue + CSS Modules + Tailwind 的基础模板？
+

@@ -1,0 +1,182 @@
+---
+title: 详细讲讲 pnpm workspace？
+---
+
+当然！下面给你详细讲讲 **pnpm workspace** 的概念、作用、优势以及怎么使用。
+
+---
+
+# 一、什么是 pnpm workspace？
+
+**pnpm workspace** 是 pnpm 包管理器支持的一种多包（monorepo）管理机制。
+它允许你在一个仓库（repo）里管理多个相互依赖的包（package），并且这些包可以共享依赖、统一安装，方便协同开发。
+
+简单来说，pnpm workspace 就是让你在一个项目根目录下管理多个子项目（包），比如：
+
+* 一个包含多个子库的前端组件库
+* 一个包含前端、后端、工具库多个子项目的大型仓库
+
+---
+
+# 二、pnpm workspace 解决了什么问题？
+
+传统项目如果拆分成多个子项目：
+
+* 每个子项目都要单独安装依赖，管理复杂，重复占用磁盘空间
+* 不同子项目间依赖本地包时，通常要发布到 npm 或用相对路径，非常不方便
+* 依赖版本不统一，容易冲突和重复安装
+
+pnpm workspace 解决了这些痛点：
+
+* 支持跨包本地依赖链接（类似 yarn workspace、lerna 的功能）
+* 依赖统一安装，避免重复安装，提高安装速度和节省磁盘空间
+* 支持通过配置自动识别子包位置，执行统一命令
+* 通过符号链接（symlink）方式把本地包关联起来，方便开发调试
+
+---
+
+# 三、pnpm workspace 的优势
+
+1. **安装快且节省空间**
+   pnpm 使用硬链接（hard link）和符号链接避免重复安装依赖，大大节省磁盘空间和网络请求。
+
+2. **跨包依赖自动链接**
+   workspace 内的包相互依赖时，会自动用本地包替代远程包，避免反复发布。
+
+3. **支持统一命令管理**
+   可以在根目录执行 `pnpm install`，统一安装所有子包依赖。也可以运行 `pnpm run` 针对所有子包执行命令。
+
+4. **严格的依赖隔离和版本一致性**
+   通过 `pnpm-lock.yaml` 锁定依赖，避免版本冲突，保证开发环境一致。
+
+5. **兼容性强**
+   支持多种包管理方案，能无缝迁移和集成已有项目。
+
+---
+
+# 四、pnpm workspace 基本使用
+
+### 1. 创建一个 monorepo 结构
+
+假设目录结构如下：
+
+```
+my-monorepo/
+  packages/
+    pkg-a/
+      package.json
+    pkg-b/
+      package.json
+  package.json
+  pnpm-workspace.yaml
+```
+
+### 2. 根目录 package.json
+
+一般只写基础信息和工作空间管理相关配置：
+
+```json
+{
+  "name": "my-monorepo",
+  "private": true,
+  "devDependencies": {
+    // 根项目的 dev 依赖
+  }
+}
+```
+
+注意：根项目一定要设置 `"private": true`，防止误发布。
+
+### 3. 配置 `pnpm-workspace.yaml`
+
+告诉 pnpm 哪些目录是工作空间包：
+
+```yaml
+packages:
+  - "packages/*"
+```
+
+这样 pnpm 就会自动把 `packages` 目录下的所有文件夹识别为子包。
+
+### 4. 子包 package.json
+
+比如 `packages/pkg-a/package.json`：
+
+```json
+{
+  "name": "pkg-a",
+  "version": "1.0.0",
+  "main": "index.js"
+}
+```
+
+`packages/pkg-b/package.json`：
+
+```json
+{
+  "name": "pkg-b",
+  "version": "1.0.0",
+  "dependencies": {
+    "pkg-a": "workspace:*"
+  }
+}
+```
+
+这里 `pkg-b` 依赖了本地的 `pkg-a`，用 `workspace:*` 指定依赖同一 workspace 下的版本。
+
+### 5. 安装依赖
+
+在根目录执行：
+
+```bash
+pnpm install
+```
+
+pnpm 会：
+
+* 统一安装所有包的依赖
+* 自动把 `pkg-b` 中的 `pkg-a` 替换成本地的符号链接
+
+### 6. 运行脚本
+
+在根目录执行：
+
+```bash
+pnpm -r run build
+```
+
+`-r` 是递归执行，会依次在所有包中执行 `build` 脚本。
+
+---
+
+# 五、pnpm workspace 的高级功能
+
+* **过滤命令**
+  通过 `-F` 或 `--filter` 只在特定包执行命令，如：
+
+  ```bash
+  pnpm --filter pkg-a run test
+  ```
+
+* **工作空间依赖版本锁定**
+  用 `workspace:*`，方便管理本地依赖版本。
+
+* **并行执行脚本**
+  `pnpm -r run test --parallel` 可以并行执行多个包的测试。
+
+* **钩子支持**
+  支持生命周期钩子和自定义钩子，方便复杂构建流程。
+
+---
+
+# 六、总结
+
+| 点      | 说明                        |
+| ------ | ------------------------- |
+| 作用     | 管理多包项目，统一依赖安装和版本          |
+| 依赖管理   | 硬链接、符号链接节省空间              |
+| 工作空间识别 | 通过 pnpm-workspace.yaml 配置 |
+| 跨包依赖   | 使用 `workspace:*` 声明       |
+| 统一命令执行 | 使用 `pnpm -r` 递归执行         |
+| 适合场景   | 大型 monorepo、多包协同开发        |
+
