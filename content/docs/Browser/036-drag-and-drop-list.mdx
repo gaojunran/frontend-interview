@@ -1,0 +1,147 @@
+---
+title: 如何使用 JavaScript 实现一个拖拽排序列表，并保持排序后的顺序？
+---
+
+实现一个 **拖拽排序列表** 的 JavaScript 功能，并能在拖拽完成后保持并记录排序结果，通常的思路分为以下几个步骤：
+
+---
+
+## 🧠 一、设计思路概览
+
+1. **准备数据结构**：一个数组表示列表的初始顺序。
+2. **渲染列表**：将数组渲染成可拖动的 HTML 列表项。
+3. **实现拖拽功能**：
+
+   * 使用 HTML5 的原生拖拽 API（`dragstart`, `dragover`, `drop` 等）；
+4. **处理拖拽事件**：交换 DOM 节点，并同步更新数据结构顺序。
+5. **保持排序结果**：可用变量记录当前顺序，或序列化存入 `localStorage`。
+
+---
+
+## 🧩 二、实现方式详解
+
+### 1. HTML 结构
+
+```html
+<ul id="sortable-list">
+  <!-- JavaScript 动态生成 -->
+</ul>
+```
+
+---
+
+### 2. JavaScript 渲染 & 拖拽实现
+
+```js
+const items = ['苹果', '香蕉', '橙子', '西瓜']; // 原始顺序
+const list = document.getElementById('sortable-list');
+
+function renderList() {
+  list.innerHTML = '';
+  items.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.textContent = item;
+    li.setAttribute('draggable', true);
+    li.dataset.index = index;
+    li.classList.add('draggable-item');
+    list.appendChild(li);
+  });
+  addDragEvents(); // 绑定拖拽事件
+}
+```
+
+---
+
+### 3. 拖拽事件绑定
+
+```js
+let draggedIndex = null;
+
+function addDragEvents() {
+  const listItems = document.querySelectorAll('.draggable-item');
+
+  listItems.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedIndex = +e.target.dataset.index;
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault(); // 必须阻止默认才能触发 drop
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetIndex = +e.target.dataset.index;
+
+      if (draggedIndex === targetIndex) return;
+
+      // 交换数组元素顺序
+      [items[draggedIndex], items[targetIndex]] = [items[targetIndex], items[draggedIndex]];
+      renderList(); // 重新渲染
+    });
+  });
+}
+```
+
+---
+
+### 4. 启动渲染
+
+```js
+renderList();
+```
+
+---
+
+### 5. 可选：保存排序结果（如使用 localStorage）
+
+```js
+// 保存
+localStorage.setItem('sortedList', JSON.stringify(items));
+
+// 读取
+const saved = localStorage.getItem('sortedList');
+if (saved) {
+  items.splice(0, items.length, ...JSON.parse(saved));
+  renderList();
+}
+```
+
+---
+
+## 🎨 6. 简单的 CSS（可选美化）
+
+```css
+#sortable-list {
+  list-style: none;
+  padding: 0;
+}
+
+.draggable-item {
+  padding: 10px;
+  margin: 5px 0;
+  background: #eee;
+  border: 1px solid #ccc;
+  cursor: move;
+}
+```
+
+---
+
+## ✅ 整体优点
+
+* **纯 JavaScript 实现**，无需第三方库；
+* **顺序可持久保存**；
+* 易扩展成多列拖拽、拖入删除等功能。
+
+---
+
+## 🧩 Bonus：如果你用的是框架
+
+* Vue 可用 `v-for` 渲染 + `@dragstart` 等事件。
+* React 建议使用第三方库 `react-beautiful-dnd`。
+* Vanilla JS 项目中也可以考虑使用 [SortableJS](https://sortablejs.github.io/Sortable/) 简化操作。
+
+

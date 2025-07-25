@@ -1,0 +1,151 @@
+---
+title: 	如何在页面内一次性渲染 10 万条数据，并保证页面不卡顿？
+---
+
+在页面内一次性**渲染10万条数据**会对浏览器性能造成巨大压力，直接渲染极可能导致页面 **卡顿、崩溃或无响应**。因此，**不是“真的一次性渲染”，而是“感知上一下子显示这么多数据”**，核心是 **优化渲染策略和用户体验**。
+
+下面详细讲讲怎么做：
+
+---
+
+## 一、为什么会卡顿？
+
+浏览器渲染 DOM 有成本：
+
+* 渲染 10 万个 DOM 节点会：
+
+  * 占用大量内存（DOM 本身是 JS 对象）
+  * 执行大量样式计算、布局计算和绘制
+  * 引发频繁的垃圾回收
+  * 阻塞主线程（JS + UI 渲染共用）
+
+---
+
+## 二、解决方案总览
+
+### ✅ 推荐策略组合：
+
+| 技术/策略                 | 作用           | 原理                                             |
+| --------------------- | ------------ | ---------------------------------------------- |
+| 虚拟滚动（Virtual Scroll）  | 只渲染可视区的 DOM  | 可视区域内容才加入 DOM                                  |
+| 懒加载（Lazy Render）      | 用户滚动到哪里再加载哪里 | 延迟渲染，减少初始压力                                    |
+| 分批渲染（Chunk Rendering） | 一次不渲染完，分段渲染  | 使用 requestIdleCallback / requestAnimationFrame |
+| Canvas/WebGL 渲染       | 非 DOM 方式绘制   | 数据转为图形，性能更优                                    |
+| Web Worker            | 主线程外处理数据     | 避免主线程阻塞                                        |
+
+---
+
+## 三、重点方案：**虚拟滚动（Virtual Scrolling）**
+
+### 1. 核心思想：
+
+只渲染「视口可见区域」的那一部分数据，对应的 DOM 元素，并动态复用 DOM 节点。
+
+### 2. 实现步骤：
+
+以 `div` 列表为例：
+
+#### 📦（1）容器设置固定高度和 overflow：
+
+```html
+<div id="scrollContainer" style="height: 500px; overflow-y: auto; position: relative;">
+  <div id="phantom" style="height: 1000000px;"></div> <!-- 虚拟总高度 -->
+  <div id="content" style="position: absolute; top: 0; left: 0; right: 0;"></div>
+</div>
+```
+
+#### 🧮（2）监听 scroll，计算应该显示的数据范围：
+
+```js
+const container = document.getElementById('scrollContainer');
+const content = document.getElementById('content');
+
+const rowHeight = 20;      // 每条数据高度
+const visibleCount = Math.ceil(container.clientHeight / rowHeight); // 可见行数
+const buffer = 5;
+
+const total = 100000;      // 数据总量
+const data = Array.from({ length: total }, (_, i) => `Item ${i}`);
+
+function render(start) {
+  const end = Math.min(start + visibleCount + buffer, total);
+  const visibleData = data.slice(start, end);
+
+  content.style.transform = `translateY(${start * rowHeight}px)`;
+  content.innerHTML = visibleData.map(d => `<div style="height:${rowHeight}px;">${d}</div>`).join('');
+}
+
+container.addEventListener('scroll', () => {
+  const scrollTop = container.scrollTop;
+  const startIndex = Math.floor(scrollTop / rowHeight);
+  render(startIndex);
+});
+
+// 初次渲染
+render(0);
+```
+
+#### ✅ 优点：
+
+* DOM 只保留几十个节点
+* 滚动无延迟、无卡顿
+* 内存占用极低
+
+---
+
+## 四、进阶优化手段
+
+### 1. 分批渲染（Chunk by `requestIdleCallback`）：
+
+如果你真的要渲染全部数据（如生成离线 HTML 报表），可以用分帧方式：
+
+```js
+let i = 0;
+function chunkRender() {
+  requestIdleCallback(deadline => {
+    while (deadline.timeRemaining() > 0 && i < data.length) {
+      const div = document.createElement('div');
+      div.innerText = data[i++];
+      container.appendChild(div);
+    }
+    if (i < data.length) {
+      chunkRender();
+    }
+  });
+}
+chunkRender();
+```
+
+### 2. 使用 Canvas 渲染数据：
+
+* 不创建 DOM，只用 `canvas.drawText` 绘制文字
+* 可处理上百万条数据
+* 适合只展示、不需要 DOM 交互场景（如可视化、日志）
+
+### 3. Web Worker 处理数据：
+
+* 若数据处理耗时大（如排序、搜索），可放到 Worker 中处理，防止主线程卡顿。
+
+---
+
+## 五、开源库推荐（虚拟滚动实现）
+
+| 库名                                                                     | 框架    | 说明           |
+| ---------------------------------------------------------------------- | ----- | ------------ |
+| [react-window](https://github.com/bvaughn/react-window)                | React | 高性能虚拟列表      |
+| [vue-virtual-scroller](https://github.com/Akryum/vue-virtual-scroller) | Vue   | 轻量级虚拟滚动      |
+| [virtual-scroll](https://github.com/GoogleChromeLabs/virtual-scroller) | JS 原生 | Chrome 官方实验库 |
+| [Clusterize.js](https://github.com/NeXTs/Clusterize.js)                | JS 原生 | 轻量支持虚拟滚动的库   |
+
+---
+
+## 六、总结
+
+| 方法              | 适用场景          | 是否推荐    |
+| --------------- | ------------- | ------- |
+| 直接渲染 10 万条 DOM  | 不可控，页面卡顿或崩溃   | ❌ 禁用    |
+| 虚拟滚动            | 列表展示、表格、滚动区域  | ✅ 推荐    |
+| 分批渲染            | 加载慢但非滚动场景     | ✅ 视情况使用 |
+| Canvas/WebGL 渲染 | 不需要 DOM 的绘制场景 | ✅ 高性能   |
+| Web Worker      | 数据处理耗时大时      | ✅ 配合使用  |
+

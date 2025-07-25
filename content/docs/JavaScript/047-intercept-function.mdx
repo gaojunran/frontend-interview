@@ -1,0 +1,197 @@
+---
+title: 如何对每个 JavaScript 函数的执行实现拦截？
+---
+
+在 JavaScript 中，如果你想对每个函数的执行进行“拦截”，通常是为了实现：
+
+* 日志记录（如打印函数调用）
+* 统计函数调用次数、耗时
+* 条件阻止执行
+* 动态修改参数或返回值
+
+下面我们详细讲讲几种**函数执行拦截的方法**，适用于不同的场景。
+
+---
+
+## ✅ 1. 使用高阶函数进行手动包装（最通用）
+
+这是最常见的方法，通过一个“包装器”函数来拦截原函数：
+
+```js
+function intercept(fn, before, after) {
+  return function(...args) {
+    if (before) before(fn.name, args);
+    const result = fn.apply(this, args);
+    if (after) after(fn.name, args, result);
+    return result;
+  };
+}
+
+// 示例函数
+function add(a, b) {
+  return a + b;
+}
+
+// 包装函数
+const wrappedAdd = intercept(
+  add,
+  (name, args) => console.log(`调用 ${name} 参数:`, args),
+  (name, args, result) => console.log(`返回 ${name} 结果:`, result)
+);
+
+// 使用
+wrappedAdd(2, 3);
+```
+
+### ✅ 优点：
+
+* 灵活，可加日志、时间统计、条件终止等
+* 支持所有函数类型（同步、异步、箭头、普通）
+
+---
+
+## ✅ 2. 使用 Proxy 拦截对象方法（适用于对象/类）
+
+如果你想统一拦截一个对象或类中所有方法，可以用 `Proxy`：
+
+```js
+function createInterceptor(obj) {
+  return new Proxy(obj, {
+    get(target, prop, receiver) {
+      const orig = Reflect.get(target, prop, receiver);
+      if (typeof orig === 'function') {
+        return function (...args) {
+          console.log(`调用 ${prop.toString()} 参数:`, args);
+          const result = orig.apply(this, args);
+          console.log(`返回 ${prop.toString()} 结果:`, result);
+          return result;
+        };
+      }
+      return orig;
+    }
+  });
+}
+
+// 示例对象
+const math = {
+  add(a, b) { return a + b; },
+  sub(a, b) { return a - b; }
+};
+
+const interceptedMath = createInterceptor(math);
+interceptedMath.add(1, 2);
+interceptedMath.sub(5, 3);
+```
+
+### ✅ 优点：
+
+* 不需要手动包裹每个函数
+* 可用于 Vue 组件、Service 类等场景
+
+### 如果要拦截单个函数：
+
+```js
+function add(a, b) {
+  return a + b;
+}
+
+const handler = {
+  apply(target, thisArg, argumentsList) {
+    console.log('拦截前', argumentsList);
+    const result = Reflect.apply(target, thisArg, argumentsList);
+    console.log('拦截后', result);
+    return result;
+  }
+};
+
+const proxiedAdd = new Proxy(add, handler);
+proxiedAdd(1, 2);  // 自动进入 apply 拦截逻辑
+
+```
+
+---
+
+## ✅ 3. 全局函数拦截（非标准/实验性，需谨慎）
+
+对于大型项目中希望自动“批量拦截”，可以借助 **AST 编译时处理** 或 **全局 hook**，例如：
+
+### AST 方式（如通过 Babel 插件插入拦截逻辑）：
+
+```js
+function myFunc(a, b) {
+  return a + b;
+}
+
+// 编译时转成：
+function myFunc(a, b) {
+  console.log('调用 myFunc', a, b);
+  const result = a + b;
+  console.log('返回 myFunc', result);
+  return result;
+}
+```
+
+* 使用工具：Babel 插件、自定义 loader（webpack/vite）
+* 优点：完全自动、可批量插入日志
+* 缺点：开发成本高，不适合小项目
+
+---
+
+## ✅ 4. 拦截类方法（装饰器）
+
+在类方法上拦截，可以使用装饰器（Decorator）：
+
+```js
+function Log(target, key, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = function (...args) {
+    console.log(`调用 ${key}`, args);
+    const result = original.apply(this, args);
+    console.log(`返回 ${key}`, result);
+    return result;
+  };
+  return descriptor;
+}
+
+class Calculator {
+  @Log
+  add(a, b) {
+    return a + b;
+  }
+}
+
+const calc = new Calculator();
+calc.add(4, 5);
+```
+
+> ⚠️ 需要 Babel 或 TypeScript 支持装饰器语法
+
+---
+
+## ✅ 5. Monkey Patch（动态替换已有函数）
+
+```js
+const originalLog = console.log;
+
+console.log = function (...args) {
+  originalLog('拦截日志:', ...args);
+};
+
+console.log('Hello');  // 输出：拦截日志: Hello
+```
+
+适合拦截内置方法（如 `fetch`、`console`），但不要滥用。
+
+---
+
+## 小结：选择合适方案
+
+| 拦截方式           | 场景          | 是否推荐  |
+| -------------- | ----------- | ----- |
+| 手动包装函数         | 通用函数        | ✅ 推荐  |
+| Proxy 拦截对象方法   | Service、工具类 | ✅ 推荐  |
+| 装饰器（Decorator） | 类方法、TS 环境   | ✅ 推荐  |
+| Monkey patch   | 临时/内置函数改写   | ⚠️ 谨慎 |
+| Babel AST 插入逻辑 | 项目级日志/埋点需求  | ✅ 高级  |
+
+如果你告诉我你的具体应用场景（比如：拦截 API 请求函数？调试内部业务函数？做性能分析？），我可以进一步给出更有针对性的方案。

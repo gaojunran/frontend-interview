@@ -1,0 +1,211 @@
+---
+title: 	如何在前端防止表单重复提交，并确保用户只能提交一次？
+---
+
+在前端防止**表单重复提交**，是提升用户体验、避免接口重复调用、数据重复写入的重要手段。常见场景包括用户连续点击“提交”按钮、网络延迟时多次提交等。以下是详细的解决方案和技术思路：
+
+---
+
+## ✅ 一、主要目标
+
+* 防止用户多次点击导致重复提交。
+* 确保一次提交过程中无法再次发起请求。
+* 提交完成后允许再次提交（可配置）。
+
+---
+
+## 🧠 二、常用防重复提交方案
+
+### **1. 提交按钮禁用法**
+
+在用户点击提交按钮后立即将按钮禁用，直到提交完成或超时。
+
+#### 示例代码：
+
+```html
+<form id="myForm">
+  <input type="text" required />
+  <button id="submitBtn" type="submit">提交</button>
+</form>
+
+<script>
+  const form = document.getElementById('myForm');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // 禁用按钮
+    submitBtn.disabled = true;
+    submitBtn.textContent = '提交中...';
+
+    try {
+      // 模拟接口请求
+      await fakeRequest();
+      alert('提交成功！');
+    } catch (error) {
+      alert('提交失败，请重试。');
+    } finally {
+      // 恢复按钮状态（视情况而定）
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交';
+    }
+  });
+
+  function fakeRequest() {
+    return new Promise(resolve => setTimeout(resolve, 2000));
+  }
+</script>
+```
+
+#### ✅ 优点：
+
+* 实现简单，用户直观感受到按钮被禁用。
+
+#### ❌ 缺点：
+
+* 如果用户绕过按钮，比如使用键盘回车，仍可能触发表单提交（需处理）。
+
+---
+
+### **2. 防抖（debounce）或节流（throttle）控制提交频率**
+
+* **防抖（Debounce）**：等待用户停下操作一段时间再提交。
+* **节流（Throttle）**：规定时间内只能触发一次提交。
+
+```js
+function debounce(fn, delay) {
+  let timer = null;
+  return function (...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+const handleSubmit = debounce(() => {
+  console.log('提交中...');
+}, 1000);
+```
+
+#### ✅ 适合：
+
+* 快速点击按钮多次但只想触发一次。
+
+#### ❌ 不适合：
+
+* 精准控制一次请求就锁定的业务。
+
+---
+
+### **3. 使用提交状态标志位（isSubmitting）**
+
+```js
+let isSubmitting = false;
+
+async function handleSubmit(e) {
+  e.preventDefault();
+
+  if (isSubmitting) return;
+
+  isSubmitting = true;
+
+  try {
+    await sendRequest();
+    alert('提交成功');
+  } catch (e) {
+    alert('提交失败');
+  } finally {
+    isSubmitting = false;
+  }
+}
+```
+
+#### ✅ 优点：
+
+* 精准控制提交状态
+
+#### ❌ 注意：
+
+* 全局变量易错，建议封装成组件状态变量（如在 React/Vue 中使用 `ref` 或 `useState`）。
+
+---
+
+### **4. 利用前端路由锁定或表单 ID 防重复**
+
+为每次提交生成唯一标识（如 UUID），服务端配合校验是否重复。
+
+```js
+const token = crypto.randomUUID();
+sessionStorage.setItem('form_token', token);
+```
+
+> 搭配后端幂等性处理最佳。
+
+---
+
+### **5. HTML 原生属性防重复**
+
+如果用 `<button type="submit">` 可以设置：
+
+```html
+<form onsubmit="this.querySelector('button').disabled = true">
+```
+
+---
+
+## 🛡️ 三、结合后端更安全（双保险）
+
+前端只是第一道防线。真正防止重复提交，推荐后端实现**幂等性校验**：
+
+* 提交 token（一次性令牌机制）
+* 用户 ID + 表单内容 hash + 时间戳防重复
+* 请求幂等 key（接口维度限制）
+
+---
+
+## 💡 四、在 Vue/React 框架中的实践
+
+### Vue3 示例：
+
+```vue
+<template>
+  <form @submit.prevent="onSubmit">
+    <input v-model="name" />
+    <button :disabled="isSubmitting">提交</button>
+  </form>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+
+const name = ref('');
+const isSubmitting = ref(false);
+
+const onSubmit = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+
+  try {
+    await fakeApi();
+    alert('提交成功');
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const fakeApi = () => new Promise(resolve => setTimeout(resolve, 2000));
+</script>
+```
+
+---
+
+## ✅ 总结
+
+| 方法              | 是否推荐 | 说明             |
+| --------------- | ---- | -------------- |
+| 禁用按钮            | ✅✅✅  | 简单有效，适用于大多数场景  |
+| 提交标志位           | ✅✅✅  | 精准控制提交过程       |
+| 防抖/节流函数         | ✅    | 提交不敏感时使用       |
+| 提交 Token + 后端幂等 | ✅✅✅  | 高并发业务建议使用      |
+| 结合框架状态管理        | ✅✅   | Vue/React 推荐做法 |
+

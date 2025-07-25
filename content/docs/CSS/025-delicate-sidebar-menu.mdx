@@ -1,0 +1,150 @@
+---
+title: 	如何通过 CSS 实现可展开折叠、并且带有过渡效果的侧边栏菜单？
+---
+
+通过 CSS 实现 **可展开折叠并带有过渡效果的侧边栏菜单**，核心在于利用以下几个技术点：
+
+---
+
+### 🌟 一、设计思路总览
+
+1. **结构设计（HTML）**
+
+   * 左侧 `sidebar` 容器
+   * 主内容区 `main`
+   * 折叠按钮
+
+2. **状态控制方式**
+
+   * 利用 `class` 控制侧边栏是展开还是折叠
+   * 或用 `checkbox`/`radio` 或 `:has()` 控制状态（纯 CSS 方案）
+
+3. **动画过渡效果**
+
+   * 使用 `transition` 控制宽度变化、内容滑动、透明度等
+
+4. **可拓展功能点**
+
+   * 菜单项可展开子菜单
+   * 响应式支持（适配移动端）
+
+---
+
+### 🧱 二、HTML 基础结构示例
+
+```html
+<div class="layout">
+  <aside class="sidebar">
+    <button class="toggle-btn">≡</button>
+    <nav class="menu">
+      <a href="#">主页</a>
+      <a href="#">设置</a>
+      <a href="#">帮助</a>
+    </nav>
+  </aside>
+  <main class="content">
+    <h1>主内容区域</h1>
+  </main>
+</div>
+```
+
+---
+
+### 🎨 三、CSS 样式实现思路
+
+#### 1. 侧边栏展开与折叠
+
+```css
+.layout {
+  display: flex;
+}
+
+.sidebar {
+  width: 200px;
+  transition: width 0.3s;
+  background: #333;
+  color: white;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.menu a {
+  display: block;
+  padding: 12px;
+  color: white;
+  text-decoration: none;
+  transition: opacity 0.3s;
+}
+
+.sidebar.collapsed .menu a {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+```
+
+#### 2. 内容区响应变化
+
+```css
+.content {
+  flex: 1;
+  padding: 20px;
+  transition: margin-left 0.3s;
+}
+```
+
+---
+
+### 🧠 四、交互控制逻辑（JS 逻辑或纯 CSS）
+
+#### ✅ JS 控制类名切换
+
+```js
+document.querySelector('.toggle-btn').addEventListener('click', () => {
+  document.querySelector('.sidebar').classList.toggle('collapsed');
+});
+```
+
+#### ✅ 纯 CSS（`checkbox` 方式）
+
+```html
+<input type="checkbox" id="sidebarToggle" hidden>
+<label for="sidebarToggle" class="toggle-btn">≡</label>
+
+<div class="sidebar-wrapper">
+  <aside class="sidebar"></aside>
+</div>
+```
+
+```css
+#sidebarToggle:checked ~ .sidebar-wrapper .sidebar {
+  width: 60px;
+}
+```
+
+> ⚠️ `:has()` 可以实现更优雅的纯 CSS 方式，但目前浏览器兼容性仍有限。
+
+---
+
+### ✨ 五、可扩展点建议
+
+* 子菜单展开动画：`max-height` + `overflow: hidden` + `transition`
+* icon 隐藏或缩放：用 `transform: scale()` 或 `opacity`
+* 响应式：加上媒体查询使侧边栏在小屏幕下变为顶部菜单或抽屉
+
+---
+
+### ✅ 总结一句话：
+
+> 利用 `transition` + `width` 或 `transform` + `class 切换` 控制菜单的展开与折叠，再配合内容区域联动，是实现一个带有动画的侧边栏的基本方法。
+
+

@@ -1,0 +1,205 @@
+---
+title: 如何对前端应用中静态资源加载失败的场景进行降级处理？
+---
+
+前端应用中静态资源（如图片、脚本、样式表等）加载失败是常见问题，可能导致页面显示异常或功能缺失。为了提升用户体验，通常会对这些加载失败的资源做降级处理（fallback、备选方案），保证应用尽可能正常运行。以下是详细的降级处理思路和实现方式：
+
+---
+
+## 1. 识别静态资源加载失败的场景
+
+常见静态资源失败原因：
+
+* 资源服务器不可用或响应慢
+* 网络异常
+* URL 配置错误
+* CDN 节点故障
+* 文件被误删除或路径变更
+
+---
+
+## 2. 降级处理目标
+
+* **保证页面基本可用和结构不乱**
+* **尽量提示用户并尝试补救**
+* **替换成备用资源或简化版本**
+* **避免报错导致脚本阻断**
+
+---
+
+## 3. 各类资源降级策略和实现
+
+### 3.1 图片资源
+
+图片是最常见的静态资源，加载失败后会显示破图标，影响用户体验。
+
+#### 处理方式：
+
+* **使用 `onerror` 事件替换为默认/占位图**
+
+```html
+<img src="user-avatar.jpg" alt="头像" onerror="this.onerror=null; this.src='default-avatar.png';" />
+```
+
+* **Vue/React 等框架中封装图片组件**
+
+```jsx
+function ImgWithFallback({ src, fallback, alt }) {
+  const [error, setError] = React.useState(false);
+  return (
+    <img
+      src={error ? fallback : src}
+      alt={alt}
+      onError={() => setError(true)}
+    />
+  );
+}
+```
+
+* **懒加载占位图**
+
+加载失败时，显示灰色或模糊占位图，不影响页面布局。
+
+---
+
+### 3.2 CSS 和字体资源
+
+CSS 失败可能导致样式错乱，字体加载失败则会显示默认字体。
+
+#### 处理方式：
+
+* **多重备选字体**
+
+```css
+font-family: 'CustomFont', 'Arial', sans-serif;
+```
+
+* **CSS 加载失败**
+
+  * 通过 JS 监听 `<link>` 标签 `onerror` 事件，触发备用样式或提示
+
+```js
+const link = document.createElement('link');
+link.rel = 'stylesheet';
+link.href = 'style.css';
+link.onerror = () => {
+  // 加载失败时应用备用样式或通知用户
+  alert('样式加载失败，界面可能不完整');
+};
+document.head.appendChild(link);
+```
+
+* **Critical CSS 内联**
+
+页面关键样式内联，减少对外部 CSS 的依赖。
+
+---
+
+### 3.3 JavaScript 脚本
+
+JS 资源加载失败可能导致功能缺失或页面崩溃。
+
+#### 处理方式：
+
+* **异步加载并监听 `onerror`**
+
+```js
+const script = document.createElement('script');
+script.src = 'app.js';
+script.async = true;
+script.onerror = () => {
+  console.error('脚本加载失败');
+  // 进行功能降级，比如提示用户或加载备用脚本
+};
+document.body.appendChild(script);
+```
+
+* **合理拆分代码，功能模块化**
+
+核心功能放在主包，非核心功能单独异步加载失败不影响主功能。
+
+* **提供功能降级或提示**
+
+加载失败后，提示用户刷新页面或使用简化版功能。
+
+---
+
+### 3.4 字体加载失败
+
+使用 CSS `font-display` 属性控制字体加载策略
+
+```css
+@font-face {
+  font-family: 'MyFont';
+  src: url('myfont.woff2') format('woff2');
+  font-display: swap; /* 先用系统字体，加载完成后替换 */
+}
+```
+
+---
+
+## 4. 通用方案
+
+### 4.1 资源加载失败监听
+
+* 对 `<img>`, `<script>`, `<link>` 标签都可以监听 `onerror` 事件，统一收集失败信息，便于埋点和监控。
+
+### 4.2 预加载与缓存
+
+* 通过 `preload`、Service Worker 缓存常用资源，减少加载失败风险。
+
+### 4.3 服务端多CDN或多源备份
+
+* 资源使用多CDN域名，DNS或程序自动切换备用资源源。
+
+---
+
+## 5. 具体代码示例
+
+```html
+<img src="main-image.jpg" alt="示例图" 
+     onerror="this.onerror=null;this.src='fallback.jpg';" />
+
+<script>
+  function loadScript(src, fallbackSrc, onLoadCallback) {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = onLoadCallback;
+    script.onerror = () => {
+      console.warn(`脚本 ${src} 加载失败，尝试加载备用脚本`);
+      if (fallbackSrc) {
+        const fallbackScript = document.createElement('script');
+        fallbackScript.src = fallbackSrc;
+        fallbackScript.async = true;
+        fallbackScript.onload = onLoadCallback;
+        fallbackScript.onerror = () => {
+          console.error('备用脚本也加载失败');
+        };
+        document.body.appendChild(fallbackScript);
+      }
+    };
+    document.body.appendChild(script);
+  }
+
+  loadScript('main.js', 'backup.js', () => {
+    console.log('脚本加载完成');
+  });
+</script>
+```
+
+---
+
+## 6. 总结
+
+| 资源类型 | 降级方式              | 关键点           |
+| ---- | ----------------- | ------------- |
+| 图片   | `onerror`替换备用图    | 保证视觉不突兀       |
+| CSS  | 备用字体，监听加载失败提示     | 关键样式内联，减少依赖   |
+| JS   | 异步加载，监听失败，功能降级    | 功能模块拆分，防止崩溃   |
+| 字体   | font-display，备用字体 | 避免字体加载阻塞      |
+| 通用   | 多CDN备份，预加载，失败监控   | 提升整体资源可用性和稳定性 |
+
+---
+
+如果你需要，我可以帮你写一个具体场景的示范代码或者框架下的实现方案（如 React、Vue）哦。你想要吗？

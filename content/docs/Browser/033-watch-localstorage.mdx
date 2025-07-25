@@ -1,0 +1,84 @@
+---
+title: 可以监听 localStorage 中一个键值对的更新吗？
+---
+
+是的，**可以监听 `localStorage` 中某个键值对的更新**，但有几点重要限制需要注意：
+
+---
+
+### ✅ 使用 `window.addEventListener('storage', handler)` 来监听
+
+浏览器提供了 `storage` 事件，可以监听 `localStorage` 的变更。示例如下：
+
+```javascript
+window.addEventListener('storage', (event) => {
+  if (event.key === 'yourKey') {
+    console.log('yourKey has been updated!');
+    console.log('Old value:', event.oldValue);
+    console.log('New value:', event.newValue);
+  }
+});
+```
+
+---
+
+### ⚠️ 限制：
+
+#### 1. **只能监听其他窗口或标签页的变更**
+
+* `storage` 事件 **不会**在当前页面本身触发，而是 **当其他页面（在同一域名下）修改了 `localStorage` 时，当前页面才会收到事件**。
+* 这意味着如果你在当前页面中执行：
+
+  ```js
+  localStorage.setItem('yourKey', 'newValue');
+  ```
+
+  当前页面不会触发 `storage` 事件，但其他打开的标签页会触发。
+
+#### 2. **前提是同源（同协议 + 主机 + 端口）**
+
+---
+
+### ✅ 解决当前页面监听更新的方法
+
+如果你想在**当前页面**中也响应 `localStorage` 的更新，可以使用封装函数手动触发事件：
+
+```js
+function setLocalStorageItem(key, value) {
+  const oldValue = localStorage.getItem(key);
+  localStorage.setItem(key, value);
+
+  // 手动触发 storage-like 事件
+  window.dispatchEvent(new StorageEvent('storage', {
+    key,
+    oldValue,
+    newValue: value,
+    storageArea: localStorage,
+    url: location.href
+  }));
+}
+```
+
+这样，你就能在当前页面也监听到：
+
+```js
+window.addEventListener('storage', (e) => {
+  if (e.key === 'yourKey') {
+    console.log('Updated on same page!');
+  }
+});
+```
+
+---
+
+### ✅ 总结
+
+| 方式             | 是否支持当前页面 | 是否支持其他标签页 | 是否需同源 |
+| -------------- | -------- | --------- | ----- |
+| `storage` 事件   | ❌（默认不支持） | ✅         | ✅     |
+| 自定义封装 + 手动触发事件 | ✅        | ❌（除非同步处理） | ✅     |
+
+---
+
+需要监听当前页面自身修改时，推荐你封装一个带事件触发的 `localStorage` setter。如果需要我可以帮你写一个完整封装工具类。是否需要？
+

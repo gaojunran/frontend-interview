@@ -1,0 +1,212 @@
+---
+title: 	如何在浏览器中执行 100 万个任务，并保证页面不卡顿？
+---
+
+在浏览器中执行 **100 万个任务** 而不让页面卡顿，需要你对 **任务调度、事件循环、分片执行、浏览器空闲时间管理** 有一定掌握。
+
+---
+
+## 🔧 总体思路
+
+### ✅ **不能一次性执行所有任务（会卡死主线程）**
+
+浏览器的主线程负责：
+
+* DOM 渲染
+* 用户交互（如点击、滚动）
+* JavaScript 执行
+
+如果你一口气执行 100 万个任务，比如一个大 for 循环：
+
+```js
+for (let i = 0; i < 1000000; i++) {
+  doHeavyWork(i);
+}
+```
+
+结果就是：
+
+* 页面冻结
+* 无法响应点击或滚动
+* "页面无响应" 弹窗出现
+
+---
+
+## ✅ 优化策略概览
+
+| 方法                               | 原理              | 优点      | 缺点         |
+| -------------------------------- | --------------- | ------- | ---------- |
+| 分片处理（Chunk）                      | 一次执行一小批任务       | 简单好实现   | 不精准控制空闲    |
+| `setTimeout(fn, 0)` 分批执行         | 把执行任务分散到事件循环的后面 | 易用      | 有最小延迟 4ms+ |
+| `requestIdleCallback`            | 利用浏览器空闲时间       | 最优雅     | 支持度需考虑     |
+| `MessageChannel` / `postMessage` | 微任务调度优化         | 更精细控制   | 实现稍复杂      |
+| Web Worker                       | 子线程并行计算         | 真正分离主线程 | 无法操作 DOM   |
+
+---
+
+## ✅ 推荐方法详解
+
+---
+
+### 1. **任务分片（Chunk）执行**
+
+把任务切成一小块一小块执行，每次处理 100 个：
+
+```js
+function runTasks(tasks, chunkSize = 100) {
+  function processChunk(start) {
+    const end = Math.min(start + chunkSize, tasks.length);
+    for (let i = start; i < end; i++) {
+      tasks[i]();
+    }
+
+    if (end < tasks.length) {
+      // 等下一帧再处理下一批
+      requestAnimationFrame(() => processChunk(end));
+    }
+  }
+
+  processChunk(0);
+}
+```
+
+**优点：** 不阻塞渲染
+**缺点：** 不智能调度（不考虑当前空闲时间）
+
+---
+
+### 2. `requestIdleCallback`
+
+适合优雅调度 **低优先级任务**（如预加载、非关键计算）
+
+```js
+function runIdleTasks(tasks) {
+  let i = 0;
+
+  function process(deadline) {
+    while (i < tasks.length && deadline.timeRemaining() > 0) {
+      tasks[i++]();
+    }
+
+    if (i < tasks.length) {
+      requestIdleCallback(process);
+    }
+  }
+
+  requestIdleCallback(process);
+}
+```
+
+**优点：** 浏览器决定“空闲时”才运行，不卡顿
+**缺点：** Safari 不支持（可用 polyfill）
+
+---
+
+### 3. `setTimeout(fn, 0)` 异步批处理
+
+```js
+function runTasksWithTimeout(tasks, chunkSize = 100) {
+  let i = 0;
+
+  function next() {
+    const end = Math.min(i + chunkSize, tasks.length);
+    for (; i < end; i++) {
+      tasks[i]();
+    }
+
+    if (i < tasks.length) {
+      setTimeout(next, 0);
+    }
+  }
+
+  next();
+}
+```
+
+**优点：** 兼容性好
+**缺点：** 每次最小 4ms 延迟（某些浏览器策略）
+
+---
+
+### 4. 使用 `MessageChannel` 调度微任务
+
+比 `setTimeout` 更快、不阻塞主线程：
+
+```js
+function runTasksWithChannel(tasks, chunkSize = 100) {
+  let i = 0;
+  const channel = new MessageChannel();
+
+  channel.port1.onmessage = () => {
+    const end = Math.min(i + chunkSize, tasks.length);
+    for (; i < end; i++) {
+      tasks[i]();
+    }
+
+    if (i < tasks.length) {
+      channel.port2.postMessage(null); // 继续下一批
+    }
+  };
+
+  channel.port2.postMessage(null); // 开始任务
+}
+```
+
+**优点：** 微任务级别调度
+**缺点：** 浏览器兼容性需注意，但现代浏览器都支持
+
+---
+
+### 5. 使用 Web Worker（线程并行）
+
+主线程不卡顿的根本方案：**子线程运行 100 万任务**。
+
+```js
+// main.js
+const worker = new Worker('worker.js');
+worker.postMessage(1000000);
+worker.onmessage = (e) => console.log('任务完成', e.data);
+
+// worker.js
+self.onmessage = function (e) {
+  let total = e.data;
+  for (let i = 0; i < total; i++) {
+    // heavy computation
+  }
+  self.postMessage('done');
+};
+```
+
+**优点：** 主线程完全不卡
+**缺点：** 无法操作 DOM，需数据通信
+
+---
+
+## 🧠 小结：推荐组合方案
+
+| 任务类型        | 推荐调度策略                          |
+| ----------- | ------------------------------- |
+| 渲染相关（需 DOM） | 分片 + `requestAnimationFrame`    |
+| 非关键异步任务     | `requestIdleCallback`           |
+| 大量计算型任务     | Web Worker                      |
+| 普通批处理       | `setTimeout` / `MessageChannel` |
+
+---
+
+## 🚀 示例组合：处理 100 万任务不卡顿
+
+```js
+const tasks = Array.from({ length: 1_000_000 }, (_, i) => () => {
+  // 模拟任务
+  if (i % 100000 === 0) console.log(`Task ${i}`);
+});
+
+// 选择一种调度方法
+runTasksWithChannel(tasks);  // or runIdleTasks(tasks);
+```
+
+---
+
+如果你告诉我任务的具体 **类型、执行时间、是否和 DOM 有关**，我可以帮你推荐最合适的调度方法。
+
+是否需要我给出 Vue/React 实现版本？

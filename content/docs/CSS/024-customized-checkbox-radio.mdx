@@ -1,0 +1,176 @@
+---
+title: 如何通过 CSS 实现美观的自定义复选框和单选按钮？
+---
+
+要通过 CSS 实现美观的自定义复选框（`checkbox`）和单选按钮（`radio`），需要“隐藏”原生的 input 样式，然后用 CSS + HTML 构造你期望的 UI 风格，并保留功能（选中、禁用、聚焦等）。
+
+---
+
+## 🎯 实现思路总结
+
+1. **隐藏原生控件**
+2. **创建自定义外观（用 `span`、`::before` 等）**
+3. **用 `:checked`、`:disabled` 等伪类同步状态**
+4. **增加动画与交互反馈**
+5. **保持可访问性（使用 `label for` 或 `aria-*`）**
+
+---
+
+## ✅ HTML 基础结构
+
+我们通常不直接操作 `<input>`，而是通过关联的 `<label>` 和 CSS 自定义样式来控制它的外观：
+
+```html
+<label class="custom-checkbox">
+  <input type="checkbox" />
+  <span class="checkmark"></span>
+  我同意条款
+</label>
+```
+
+---
+
+## 🎨 CSS 自定义复选框样式（Checkbox）
+
+```css
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.custom-checkbox {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+  position: relative;
+}
+
+.custom-checkbox .checkmark {
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  border: 2px solid #999;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox input:checked + .checkmark {
+  background-color: #007BFF;
+  border-color: #007BFF;
+}
+
+.custom-checkbox input:checked + .checkmark::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+```
+
+> ✅ `::after` 是勾选时的对勾，`input:checked + .checkmark` 控制选中状态
+
+---
+
+## 🔘 自定义单选按钮样式（Radio）
+
+HTML 结构类似：
+
+```html
+<label class="custom-radio">
+  <input type="radio" name="gender" />
+  <span class="radiomark"></span>
+  男
+</label>
+```
+
+```css
+.custom-radio input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.custom-radio {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+  position: relative;
+}
+
+.custom-radio .radiomark {
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  border: 2px solid #999;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.custom-radio input:checked + .radiomark::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 8px;
+  height: 8px;
+  background: #007BFF;
+  border-radius: 50%;
+}
+```
+
+---
+
+## ✨ 增强体验（可选）
+
+* **添加聚焦效果**：提升键盘操作体验
+
+  ```css
+  .custom-checkbox input:focus + .checkmark,
+  .custom-radio input:focus + .radiomark {
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+  }
+  ```
+
+* **禁用状态**：
+
+  ```css
+  .custom-checkbox input:disabled + .checkmark,
+  .custom-radio input:disabled + .radiomark {
+    background-color: #eee;
+    border-color: #ccc;
+    cursor: not-allowed;
+  }
+  ```
+
+---
+
+## 🧩 其他建议
+
+* ✅ 保持 `label` 包裹住 `input` 和自定义样式，可提高可用性和点击范围。
+* ✅ 保持 DOM 简洁，避免过度嵌套。
+* ✅ 可结合 SCSS 使用变量和 mixin 提高复用性。
+
+---
+
+## 🧪 在线演示平台推荐
+
+你可以在下面这些平台测试和调整样式：
+
+* [CodePen](https://codepen.io/)
+* [JSFiddle](https://jsfiddle.net/)
+* [PlayCode](https://playcode.io/)
+
+---
+
+如果你有具体风格（比如 Material、扁平风、Neumorphism）或者使用了框架（Vue、React），也可以告诉我，我可以进一步为你定制方案。

@@ -1,0 +1,163 @@
+---
+title: 如何实现网站一键切换主题的功能？
+---
+
+实现“网站一键切换主题”的功能，主要是通过 **CSS 变量（自定义属性）**、**类名切换**、**持久化保存（如 localStorage）** 等方式来实现不同主题（如“亮色/暗色”）之间的快速切换。下面我从原理、实现方式、代码示例到优化建议，详细讲讲。
+
+---
+
+## 一、实现原理
+
+切换主题的核心是 **切换样式的定义**。有两种常见方式：
+
+### 1. 使用 CSS 变量（推荐 ✅）
+
+通过定义一套主题变量，然后通过类或 `data-theme` 控制变量值。
+
+```css
+/* 定义变量 */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+}
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #f0f0f0;
+}
+
+/* 使用变量 */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+```
+
+### 2. 切换主题类名
+
+通过为 `<html>` 或 `<body>` 添加不同主题类名，切换整套样式。
+
+```css
+body.light {
+  background-color: white;
+  color: black;
+}
+body.dark {
+  background-color: black;
+  color: white;
+}
+```
+
+---
+
+## 二、切换逻辑实现
+
+### HTML 示例
+
+```html
+<button id="themeToggle">切换主题</button>
+```
+
+### JavaScript 示例（基于 CSS 变量 + data-theme）
+
+```js
+const toggleBtn = document.getElementById('themeToggle');
+
+// 获取本地存储主题
+const currentTheme = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-theme', currentTheme);
+
+toggleBtn.addEventListener('click', () => {
+  const theme = document.documentElement.getAttribute('data-theme');
+  const newTheme = theme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+});
+```
+
+---
+
+## 三、持久化设置
+
+使用 `localStorage` 存储用户上一次选择的主题，在页面初始化时读取并设置：
+
+```js
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+}
+```
+
+---
+
+## 四、配合系统偏好（自动适配）
+
+使用 `window.matchMedia` 自动匹配系统主题（可作为默认值）：
+
+```js
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const defaultTheme = prefersDark ? 'dark' : 'light';
+const currentTheme = localStorage.getItem('theme') || defaultTheme;
+document.documentElement.setAttribute('data-theme', currentTheme);
+```
+
+---
+
+## 五、使用 Vue / React / Svelte 等框架的写法（以 Vue 为例）
+
+```vue
+<template>
+  <button @click="toggleTheme">切换主题</button>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const theme = ref(localStorage.getItem('theme') || 'light')
+
+onMounted(() => {
+  document.documentElement.setAttribute('data-theme', theme.value)
+})
+
+function toggleTheme() {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', theme.value)
+  localStorage.setItem('theme', theme.value)
+}
+</script>
+```
+
+---
+
+## 六、优化建议
+
+1. **避免 FOUC（首次闪烁）**：在 `<head>` 中用内联脚本提前设置主题。
+
+   ```html
+   <script>
+     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
+   </script>
+   ```
+
+2. **主题变量模块化管理**：将变量写在多个主题 CSS 文件中，支持按需加载或维护多个主题。
+
+3. **过渡动画**：
+
+   ```css
+   body {
+     transition: background-color 0.3s ease, color 0.3s ease;
+   }
+   ```
+
+4. **可扩展多个主题**：不仅限于亮/暗，还可以支持其他如“蓝色主题”、“复古主题”等，只需扩展更多 `[data-theme="x"]` 样式即可。
+
+---
+
+## 七、实际项目中建议使用的技术栈
+
+| 技术                | 是否推荐 | 理由                 |
+| ----------------- | ---- | ------------------ |
+| CSS 变量            | ✅    | 现代浏览器支持好，灵活        |
+| Tailwind + CSS 变量 | ✅    | `@apply` 配合主题变量更方便 |
+| 纯类名切换             | ❌    | 样式冗余，不够灵活          |
+| SCSS 动态切换         | ⚠️   | 运行时不支持，需要预编译       |
+
