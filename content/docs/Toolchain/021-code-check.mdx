@@ -1,0 +1,140 @@
+---
+title: 	如何进行前端代码质量检测？
+---
+
+前端代码质量检测是保障代码健壮性、可维护性、团队协作效率的重要手段。它涵盖了语法检查、代码风格统一、复杂度分析、单元测试、覆盖率检测等多个方面。以下是详细的讲解：
+
+---
+
+## 一、代码质量检测的维度
+
+| 维度         | 说明            | 常用工具                    |
+| ---------- | ------------- | ----------------------- |
+| **语法检查**   | 检测语法错误、潜在 bug | ESLint, TypeScript      |
+| **代码风格统一** | 保证代码风格一致性     | Prettier, EditorConfig  |
+| **复杂度分析**  | 分析函数复杂度、模块依赖等 | ESLint 插件, SonarQube    |
+| **单元测试**   | 保证函数和组件正确性    | Vitest, Jest, Mocha     |
+| **覆盖率检测**  | 测试代码是否覆盖到各个分支 | c8, Istanbul, nyc       |
+| **无障碍检测**  | 检查是否符合无障碍标准   | axe-core, Lighthouse    |
+| **性能检测**   | 分析页面加载与渲染性能   | Lighthouse, WebPageTest |
+
+---
+
+## 二、常用工具详解
+
+### 1. **ESLint**（JavaScript/TypeScript 语法检查与规范）
+
+* 用于检测潜在的 bug、危险语法、风格问题。
+* 可搭配插件如 `eslint-plugin-vue`、`eslint-plugin-react`。
+* 支持自定义规则与团队共享配置（`.eslintrc.js`）。
+
+**示例配置：**
+
+```js
+module.exports = {
+  parser: 'babel-eslint',
+  env: { browser: true, es6: true },
+  extends: ['eslint:recommended', 'plugin:vue/vue3-recommended'],
+  rules: {
+    'no-unused-vars': 'warn',
+    'no-console': 'off',
+  },
+};
+```
+
+### 2. **Prettier**（代码格式化工具）
+
+* 保证团队代码风格统一（缩进、引号、逗号等）。
+* 与 ESLint 搭配使用时可配置 `eslint-plugin-prettier`。
+* 自动修复功能强，适合配合 Git Hooks 使用。
+
+**配置文件 `.prettierrc`：**
+
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5"
+}
+```
+
+### 3. **TypeScript**（类型检查）
+
+* 静态类型系统，提前发现类型错误。
+* 配合 VSCode / IDE 能力可以大幅提升开发体验。
+* 推荐开启严格模式（`strict: true`）。
+
+---
+
+## 三、单元测试与覆盖率
+
+### 1. **Vitest / Jest**
+
+* 支持组件、函数等多种单元测试。
+* 与 Vite 项目兼容良好（Vitest）。
+* 支持模拟模块、快照测试。
+
+**示例：**
+
+```ts
+import { sum } from './math';
+
+test('adds 1 + 2 to equal 3', () => {
+  expect(sum(1, 2)).toBe(3);
+});
+```
+
+### 2. **覆盖率工具 c8 / nyc**
+
+* c8 是基于 V8 的覆盖率分析工具，适用于现代 Node 项目。
+* 用于判断哪些代码分支尚未被测试触发。
+
+```bash
+npx vitest --coverage
+```
+
+---
+
+## 四、结合 CI/CD 流程自动检测
+
+### 工具链推荐：
+
+* **Husky + lint-staged**：提交前自动检测和格式化代码。
+* **GitHub Actions / GitLab CI / Jenkins**：自动运行 ESLint、测试与覆盖率分析。
+* **SonarQube**：企业级静态分析平台，支持多语言、质量门禁、历史跟踪。
+
+---
+
+## 五、最佳实践总结
+
+1. **统一代码规范**：使用 ESLint + Prettier。
+2. **类型保障**：TypeScript 开启严格模式。
+3. **代码提交钩子**：husky + lint-staged 限制不规范提交。
+4. **持续集成检测**：结合 GitHub Actions 等工具自动执行检查任务。
+5. **测试优先**：编写单元测试、关注测试覆盖率。
+6. **文档约定**：团队统一 README、贡献指南、规范说明文档。
+
+---
+
+## 六、项目实用配置举例
+
+```bash
+npm install --save-dev eslint prettier eslint-plugin-prettier eslint-config-prettier husky lint-staged vitest c8
+```
+
+**package.json**
+
+```json
+{
+  "scripts": {
+    "lint": "eslint src --ext .js,.ts,.vue",
+    "format": "prettier --write .",
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "lint-staged": {
+    "*.{js,ts,vue}": ["eslint --fix", "prettier --write"]
+  }
+}
+```
+

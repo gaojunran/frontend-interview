@@ -1,0 +1,200 @@
+---
+title: 如何使用 Vite 进行前端性能优化？
+---
+
+用 Vite 做前端性能优化，主要可以从以下几个方面入手，详细讲解：
+
+---
+
+## 1. 利用 Vite 的原生特性提升性能
+
+### 1.1 原生 ESM 支持，按需加载
+
+* Vite 基于浏览器原生的 ES Module，开发环境无需打包，启动速度快。
+* 生产环境构建时，支持 ES Module 的代码拆分，按需加载，减小首屏包体积。
+
+### 1.2 快速冷启动和模块热更新（HMR）
+
+* 只编译和更新发生变化的模块，极大提升开发体验和构建效率。
+* 减少不必要的重新编译和页面刷新，提升开发时性能。
+
+---
+
+## 2. 生产环境构建优化
+
+### 2.1 开启代码分割（Code Splitting）
+
+* Vite 默认基于 Rollup 做构建，自动进行代码拆分。
+* 通过配置 `build.rollupOptions.output.manualChunks` 手动控制分包策略，避免单个包过大。
+
+```js
+// vite.config.js 示例
+export default {
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('vue')) return 'vendor_vue';
+            if (id.includes('lodash')) return 'vendor_lodash';
+            return 'vendor';
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### 2.2 使用动态导入（Dynamic Import）
+
+* 按需加载模块，避免一次性加载所有代码。
+* Vite 原生支持动态导入，能自动生成拆分包。
+
+```js
+import('some-module').then(module => {
+  module.doSomething();
+});
+```
+
+### 2.3 开启压缩和混淆
+
+* Vite 默认用 `esbuild` 做压缩，速度快且体积小。
+* 可使用 `terser` 进行更细粒度压缩，支持更多压缩选项。
+
+```js
+// vite.config.js
+export default {
+  build: {
+    minify: 'terser', 
+    terserOptions: {
+      compress: { drop_console: true }, // 去除 console
+      format: { comments: false }       // 去除注释
+    }
+  }
+}
+```
+
+---
+
+## 3. 静态资源优化
+
+### 3.1 资源内联与分离
+
+* 小于阈值的图片或字体自动转为 base64 内联，减少请求数。
+* 大资源独立打包，利用浏览器缓存。
+
+```js
+// vite.config.js
+export default {
+  build: {
+    assetsInlineLimit: 4096, // 小于4KB内联
+  }
+}
+```
+
+### 3.2 使用合适格式图片
+
+* 推荐使用 WebP 等现代格式，体积更小，加载更快。
+* 可以配合 vite-plugin-imagetools 进行图片处理。
+
+---
+
+## 4. 缓存与 CDN
+
+### 4.1 使用缓存策略
+
+* Vite 构建产物文件名带有 hash，浏览器缓存命中率高。
+* 配置合理的 HTTP 缓存策略（Cache-Control）结合文件名缓存。
+
+### 4.2 结合 CDN 加速
+
+* 将打包后的静态资源上传到 CDN。
+* 在 `vite.config.js` 中配置 `base` 字段为 CDN 地址。
+
+```js
+export default {
+  base: 'https://cdn.example.com/assets/',
+}
+```
+
+---
+
+## 5. 第三方依赖优化
+
+### 5.1 预构建（Dependency Pre-Bundling）
+
+* Vite 会预构建 node\_modules 中的依赖，提升冷启动速度。
+* 通过 `optimizeDeps` 配置手动控制预构建内容。
+
+```js
+export default {
+  optimizeDeps: {
+    include: ['lodash-es'],
+    exclude: ['some-big-lib']
+  }
+}
+```
+
+### 5.2 减少不必要的依赖
+
+* 避免引入体积过大的库，优先选择轻量库或按需引入。
+
+---
+
+## 6. CSS 相关优化
+
+### 6.1 CSS 代码拆分
+
+* 默认生产环境中 CSS 会拆分到各个 JS chunk 里。
+* 可用插件或配置将公共 CSS 抽离为单独文件。
+
+### 6.2 使用 PostCSS、CSS Modules
+
+* CSS Modules 提供局部样式隔离，避免全局污染，提高样式加载效率。
+* PostCSS 自动添加浏览器兼容前缀等。
+
+---
+
+## 7. 性能分析和监控
+
+### 7.1 使用 `rollup-plugin-visualizer` 分析打包结果
+
+* 帮助分析哪些模块体积大，便于进一步优化。
+
+```js
+import { visualizer } from 'rollup-plugin-visualizer';
+
+export default {
+  plugins: [visualizer()]
+}
+```
+
+### 7.2 开启 sourcemap 调试
+
+* 方便定位性能瓶颈和调试代码。
+
+---
+
+## 8. 其他建议
+
+* 采用 SSR 或静态生成（如结合 Nuxt、SvelteKit）减轻客户端压力。
+* 使用懒加载、骨架屏、缓存策略提升用户感知速度。
+* 结合 Lighthouse 等工具做综合性能评测。
+
+---
+
+# 总结
+
+| 优化点    | 说明               | 配置/技术点                         |
+| ------ | ---------------- | ------------------------------ |
+| 原生 ESM | 按需加载，减少首屏包体积     | 默认支持                           |
+| 代码分割   | 自动/手动拆分依赖和业务代码   | `manualChunks`                 |
+| 动态导入   | 懒加载模块            | `import()`                     |
+| 压缩混淆   | 减小代码体积           | `minify: 'esbuild'` / `terser` |
+| 资源内联   | 小资源转 base64 减请求数 | `assetsInlineLimit`            |
+| CDN 加速 | 静态资源 CDN 加速      | `base` 配置                      |
+| 依赖预构建  | 预先处理依赖提高启动速度     | `optimizeDeps`                 |
+| CSS 优化 | CSS 拆分、模块化、自动前缀  | CSS Modules、PostCSS            |
+| 打包分析   | 体积分析、性能瓶颈定位      | `rollup-plugin-visualizer`     |
+

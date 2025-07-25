@@ -1,0 +1,151 @@
+---
+title: 	前端开发中如何优化网络请求和资源加载？具体怎么实现？
+---
+
+在前端开发中，优化网络请求是提升页面性能和用户体验的关键措施之一。下面从多个角度详细讲讲优化策略和具体实现方式：
+
+---
+
+## 一、合并与减少请求数量
+
+### 1. **资源合并**
+
+* **CSS/JS 合并**：将多个 CSS 或 JS 文件合并为一个，减少 HTTP 请求数量。
+
+  * 工具支持：Webpack/Vite 可配置 `splitChunks` 或 `rollupOptions` 控制打包策略。
+
+### 2. **雪碧图（Sprite）**
+
+* 将多个小图标合并为一张图，用 CSS `background-position` 定位。
+* 适用于小图标、按钮图等。
+
+### 3. **图标库优化**
+
+* 使用 SVG sprite 或 iconfont 替代多个图片图标，减少图片请求。
+
+---
+
+## 二、请求时机优化
+
+### 1. **懒加载（Lazy Load）**
+
+* 图片或模块在用户滑动到页面对应区域时才加载。
+
+  ```js
+  <img loading="lazy" src="example.jpg" />
+  ```
+
+### 2. **预加载 / 预请求**
+
+* 提前加载将来可能用到的资源，提高加载效率。
+
+  ```html
+  <link rel="preload" href="/important.css" as="style">
+  <link rel="prefetch" href="/next-page.js">
+  ```
+
+### 3. **首屏优先加载**
+
+* 对首屏必要资源优先加载，次要资源延迟加载（如异步加载组件）。
+
+---
+
+## 三、请求合并与防抖
+
+### 1. **合并多个请求**
+
+* 多个接口数据可以在后端聚合成一个接口，减少前端发起多次请求。
+
+### 2. **请求防抖/节流**
+
+* 对输入搜索类接口使用防抖处理：
+
+  ```js
+  const debounce = (fn, delay) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  };
+  ```
+
+### 3. **避免重复请求**
+
+* 利用 `AbortController` 取消前一个未完成的请求：
+
+  ```js
+  const controller = new AbortController();
+  fetch('/api/data', { signal: controller.signal });
+  controller.abort(); // 取消请求
+  ```
+
+---
+
+## 四、缓存策略优化
+
+### 1. **浏览器缓存**
+
+* 配置 HTTP 缓存头（Cache-Control, ETag）减少重复请求。
+* 对静态资源开启强缓存 + 文件名 hash。
+
+### 2. **接口数据缓存**
+
+* 请求数据可以通过：
+
+  * 本地缓存（`localStorage`/`IndexedDB`）
+  * 内存缓存（如 React Query、SWR）
+
+---
+
+## 五、使用 CDN 和加速服务
+
+* 静态资源放到 CDN 上，利用就近节点加速访问。
+* 图片、字体、JS 库等建议使用公共 CDN（如 jsDelivr、unpkg）。
+
+---
+
+## 六、压缩请求体 & 响应体
+
+### 1. **压缩请求数据**
+
+* POST 数据采用 gzip 或 Brotli 压缩传输（由后端支持）。
+
+### 2. **启用响应压缩**
+
+* 服务器配置 gzip/Brotli，对 HTML/CSS/JS 文件压缩传输。
+
+---
+
+## 七、并发控制与请求优先级
+
+### 1. **限制并发请求数**
+
+* 浏览器对单域名的请求并发有限，建议控制同时发出的请求数量。
+
+### 2. **设置请求优先级**
+
+* 优先加载关键资源，次要请求（如统计埋点）延后加载。
+
+---
+
+## 八、合理使用 HTTP/2 或 HTTP/3
+
+* HTTP/2 支持多路复用，可并发处理多个请求，减少连接阻塞问题。
+* 服务端配置支持 HTTP/2，可以显著提升资源加载效率。
+
+---
+
+## 九、使用现代 API 优化体验
+
+* **Fetch + Cache API + Service Worker**：构建离线缓存或离线体验。
+* **Navigator.sendBeacon()**：用于发送轻量的统计数据，不阻塞卸载。
+
+---
+
+## 十、工具和库辅助优化
+
+* **axios + interceptors**：统一设置缓存/取消请求。
+* **React Query / SWR**：支持自动缓存、去重、请求合并、重试等优化。
+* **Lighthouse**：评估并发现网络请求瓶颈。
+

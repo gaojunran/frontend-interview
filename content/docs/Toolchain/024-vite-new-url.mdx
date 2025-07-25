@@ -1,0 +1,134 @@
+---
+title: 	Vite 是如何处理 new URL 资源的？
+---
+
+在 Vite 中，`new URL('./some-asset.png', import.meta.url)` 是一种用于引用静态资源的标准方式，Vite 对其进行了特别的处理，使其在开发和构建时都能正确加载资源。我们来详细讲讲它的工作机制。
+
+---
+
+## 🔧 语法背景
+
+```js
+const imgUrl = new URL('./image.png', import.meta.url).href;
+```
+
+* `import.meta.url`: 当前模块的 URL。
+* `new URL(...).href`: 构造一个资源的完整 URL。
+* 常用于获取资源路径（如图片、音视频、WebAssembly、字体等）。
+
+---
+
+## 🧠 Vite 的处理机制
+
+### 1. **开发模式 (`vite dev`) 下**
+
+在开发时：
+
+* Vite 会 **拦截 `new URL(..., import.meta.url)` 语法**，并解析路径中的静态资源。
+* 然后通过其内置的开发服务器，返回该资源的 **本地 URL（带有 `/@fs/` 或 `/src/` 路径）**。
+* 浏览器会直接从 Vite Dev Server 获取这个资源。
+
+**示例：**
+
+```js
+const img = new Image();
+img.src = new URL('./logo.png', import.meta.url).href;
+document.body.appendChild(img);
+```
+
+Vite 会把它变成：
+
+```js
+img.src = '/src/assets/logo.png';
+```
+
+或者在某些情况下：
+
+```js
+img.src = '/@fs/absolute/path/to/logo.png';
+```
+
+---
+
+### 2. **生产构建 (`vite build`) 时**
+
+在构建阶段：
+
+* Vite 使用 Rollup 插件对 `new URL(..., import.meta.url)` 进行静态分析。
+* 它会将资源文件（如图片、字体、音频等）：
+
+  * **复制到 `dist/assets/`** 目录。
+  * **重命名为带有 hash 的文件名**（用于缓存控制）。
+  * 替换源码中的路径为相应的构建路径（如：`/assets/logo.abc123.png`）。
+
+**示例：**
+
+```js
+new URL('./logo.png', import.meta.url).href
+```
+
+会被构建为：
+
+```js
+"/assets/logo.8e2a1f8f.png"
+```
+
+---
+
+## ✅ 支持的资源类型
+
+适用于所有静态资源文件：
+
+* 图片：`.png`, `.jpg`, `.svg`...
+* 媒体：`.mp4`, `.mp3`
+* 字体：`.woff`, `.ttf`
+* `.wasm`、`.pdf` 等二进制文件
+
+---
+
+## 📦 与 `import` 的比较
+
+| 特性     | `import asset from './logo.png'` | `new URL('./logo.png', import.meta.url)` |
+| ------ | -------------------------------- | ---------------------------------------- |
+| 用途     | 通常用于 `<img src={logo}>`          | 用于需要动态获取 URL 的地方（如 Web Worker）           |
+| 编译结果   | 返回构建后的 URL 字符串                   | 返回 `.href`，效果相同但语义更标准                    |
+| 静态分析   | ✅                                | ✅                                        |
+| HMR 支持 | ✅                                | ✅                                        |
+
+---
+
+## 🚧 注意事项
+
+1. **只能用于相对路径**（不能用变量拼接路径）。
+2. 如果是动态路径（如 `new URL(path, import.meta.url)`），Vite 无法进行静态分析，构建会失败。
+3. 使用时确保资源存在，否则构建时报错。
+
+---
+
+## 🧪 示例项目结构
+
+```
+src/
+ ├── main.js
+ └── assets/
+      └── logo.png
+```
+
+```js
+const logo = new URL('./assets/logo.png', import.meta.url).href;
+console.log(logo); // 开发时：/src/assets/logo.png，构建后：/assets/logo.abcd1234.png
+```
+
+---
+
+## 📘 总结
+
+| 阶段   | 行为说明                                   |
+| ---- | -------------------------------------- |
+| 开发模式 | 通过 Dev Server 映射资源路径，实时访问              |
+| 构建模式 | 静态分析路径，将资源打包进 `/assets` 目录，替换为 hash 路径 |
+| 支持资源 | 图片、媒体、字体、wasm、PDF 等                    |
+| 优势   | 原生标准，动态资源加载场景适配良好                      |
+
+如你想做更底层的处理（如 Vite 插件中处理 `new URL`），也可以借助 [Vite 的插件钩子 `transform()` 或 Rollup AST 分析](https://vitejs.dev/guide/api-plugin.html#transform) 去解析这类语法。
+

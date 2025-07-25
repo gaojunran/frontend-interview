@@ -1,0 +1,105 @@
+---
+title: 	使用 Import 时，Vite 如何处理 node_modules 中的依赖？
+---
+
+当你在 Vite 项目中使用 `import` 语句引入依赖（尤其是来自 `node_modules` 中的第三方包）时，Vite 会进行一系列智能处理，以实现更快的开发启动速度和更高效的构建。
+
+以下是 Vite 处理 `node_modules` 中依赖的过程，分开发模式和构建模式详细讲解：
+
+---
+
+## 一、开发模式下（`vite dev`）
+
+Vite 利用浏览器的原生 ES Module 支持，并通过 **依赖预构建** 和 **按需加载** 提高速度。
+
+### 1. 依赖预构建（依赖预处理）
+
+* **首次运行 `vite dev` 时**，Vite 会扫描你的源码中 `import` 的第三方模块（即来源是 `node_modules` 的包）。
+* Vite 使用 **esbuild** 对这些依赖进行预构建，将它们打包成 **原生 ESM 格式** 文件，缓存到 `node_modules/.vite` 目录中。
+* 原因是大多数 npm 包是 CommonJS 或 UMD 格式，而浏览器不支持这些格式，需要提前转换为 ESM。
+
+```bash
+node_modules/
+└── .vite/
+    └── lodash.js     <-- esbuild 预构建后的 ESM 文件
+```
+
+### 2. 替换路径并重定向
+
+* 你在代码中写了：
+
+  ```js
+  import _ from 'lodash';
+  ```
+
+* Vite 会将这段代码重写为从 `.vite` 缓存中加载，例如：
+
+  ```js
+  import _ from '/@vite-deps/lodash.js';
+  ```
+
+* 浏览器请求 `/@vite-deps/lodash.js`，Vite 开发服务器返回已经转成 ESM 的代码。
+
+### 3. 优点
+
+* 启动极快（因为不需要打包全部依赖，只构建被用到的依赖）。
+* 只转换第三方依赖，自己的源代码保持原样。
+* 缓存有效：`package.json` 和 `vite.config.js` 不变时不会重新预构建。
+
+---
+
+## 二、生产构建模式（`vite build`）
+
+在生产构建阶段，Vite 使用 **Rollup** 作为打包器，会把依赖一起打包进最终产物中。
+
+### 处理流程：
+
+1. **Rollup 分析所有依赖图**（包括 `node_modules` 中的依赖）。
+2. **Tree Shaking**：只保留被用到的代码（如果依赖是 ESM 模块）。
+3. 所有依赖会被打包进最终的 `bundle.js` 文件中，避免浏览器重复请求。
+4. 如果需要分包，可使用 Rollup 的动态导入与 `manualChunks` 拆包策略。
+
+---
+
+## 三、总结一张表
+
+| 阶段   | 处理方式          | 工具      | 特点                |
+| ---- | ------------- | ------- | ----------------- |
+| 开发模式 | 预构建依赖为 ESM 缓存 | esbuild | 快速、按需加载、模块重定向     |
+| 生产模式 | 依赖合并打包        | Rollup  | Tree Shaking、构建优化 |
+
+---
+
+## 四、开发时如何查看依赖预构建状态？
+
+你可以运行：
+
+```bash
+npx vite --force
+```
+
+或者删除 `node_modules/.vite` 强制重新预构建。
+
+Vite 会打印出哪些依赖被预构建了，例如：
+
+```
+Pre-bundling dependencies:
+  vue
+  vue-router
+  axios
+```
+
+---
+
+如果你想手动控制依赖是否被预构建，可以使用 `optimizeDeps` 配置项：
+
+```ts
+// vite.config.ts
+export default {
+  optimizeDeps: {
+    include: ['lodash'],   // 强制预构建
+    exclude: ['moment'],   // 跳过预构建
+  }
+}
+```
+

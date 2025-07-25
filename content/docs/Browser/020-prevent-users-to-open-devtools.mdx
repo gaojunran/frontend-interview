@@ -1,0 +1,98 @@
+---
+title: 前端页面中，如何禁止用户打开浏览器控制台？
+---
+
+在前端页面中**完全禁止用户打开浏览器控制台（DevTools）是不可能的**。因为控制台属于浏览器功能，用户有完全的控制权，任何运行在浏览器上的 JavaScript 代码都无法**从根本上阻止**用户操作浏览器。
+
+不过，有一些“**干扰手段**”可以用来**阻止部分非技术用户调试网页**，包括检测 DevTools 是否打开，或尝试屏蔽某些快捷键。下面是一些常见方式，但你要明白：
+
+> ❗这不是安全手段，无法阻止高级用户或爬虫。所有前端代码对用户都是公开的。
+
+---
+
+## 一、屏蔽常用打开控制台的快捷键（低级干扰）
+
+```js
+document.addEventListener('keydown', function (e) {
+  if (
+    e.key === 'F12' || // F12
+    (e.ctrlKey && e.shiftKey && e.key === 'I') || // Ctrl+Shift+I
+    (e.ctrlKey && e.shiftKey && e.key === 'J') || // Ctrl+Shift+J
+    (e.ctrlKey && e.key === 'U') // Ctrl+U 查看源代码
+  ) {
+    e.preventDefault();
+    alert('操作被禁止');
+  }
+});
+```
+
+---
+
+## 二、检测是否打开了 DevTools（通过性能开销）
+
+```js
+setInterval(function () {
+  const start = performance.now();
+  debugger; // 如果打开控制台，会卡住一小会儿
+  const end = performance.now();
+  if (end - start > 100) {
+    alert('请关闭开发者工具！');
+    window.location.href = 'about:blank';
+  }
+}, 1000);
+```
+
+---
+
+## 三、通过 `console.log` 检测控制台是否被打开（Chrome 专属 hack）
+
+```js
+let isDevtoolsOpen = false;
+const element = new Image();
+Object.defineProperty(element, 'id', {
+  get: function () {
+    isDevtoolsOpen = true;
+    throw new Error('DevTools detected');
+  }
+});
+
+setInterval(() => {
+  isDevtoolsOpen = false;
+  console.log(element);
+  if (isDevtoolsOpen) {
+    alert('请关闭开发者工具！');
+    window.location.href = 'about:blank';
+  }
+}, 1000);
+```
+
+---
+
+## 四、加壳和混淆 JavaScript 代码
+
+如果你只是担心代码被复制或分析，可以：
+
+* 使用 **JavaScript 混淆工具**（如 [javascript-obfuscator](https://github.com/javascript-obfuscator/javascript-obfuscator)）
+* 使用 Vite/Webpack 插件自动处理构建时混淆
+
+```bash
+npm install --save-dev javascript-obfuscator
+```
+
+---
+
+## 五、总结与建议
+
+| 方法                 | 效果    | 说明          |
+| ------------------ | ----- | ----------- |
+| 禁止快捷键              | 弱     | 用户可用右键或菜单绕过 |
+| `debugger` 检测      | 中     | 容易误报，有性能影响  |
+| `console.log` hack | 中     | 浏览器特有行为，不稳定 |
+| JS 混淆              | 中     | 阻碍分析，无法防止破解 |
+| 后端校验/接口保护          | 强（推荐） | 敏感逻辑移至后端才安全 |
+
+---
+
+如果你是在开发一些重要应用（例如考试系统、视频防录制平台等），建议将核心逻辑放在 **服务端**，前端页面只做最小程度展示，**不要依赖“防打开控制台”来保护前端逻辑**。这种做法只是吓唬新手用户，对专业用户没用。
+
+

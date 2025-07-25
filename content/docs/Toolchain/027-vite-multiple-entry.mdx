@@ -1,0 +1,97 @@
+---
+title: 	如何实现 Vite 的分模块打包（多入口）？
+---
+
+实现 Vite 的分模块打包（多入口），也就是多入口配置，可以让你把项目拆成多个入口文件，分别生成独立的打包产物。这样对于多页面应用（MPA）或者需要输出多个独立包的场景很有用。
+
+---
+
+## Vite 多入口配置方法
+
+### 1. 使用 `build.rollupOptions.input` 配置多入口
+
+Vite 底层使用 Rollup 进行打包，Rollup 支持多入口打包。你只需要在 `vite.config.js` 中配置 `build.rollupOptions.input` 即可。
+
+示例：
+
+```js
+import { defineConfig } from 'vite';
+import path from 'path';
+
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),       // 入口1
+        admin: path.resolve(__dirname, 'admin.html'),      // 入口2
+        user: path.resolve(__dirname, 'user.html'),        // 入口3
+      }
+    }
+  }
+});
+```
+
+* 这里 `input` 是一个对象，键是入口名称，值是对应入口 HTML 文件路径。
+* 打包后会生成对应的多个 HTML 和 JS 资源文件。
+
+---
+
+### 2. 多入口 HTML 文件说明
+
+* 每个入口都需要一个对应的 HTML 文件（`index.html`、`admin.html`、`user.html` 等）。
+* 入口 HTML 文件中可以引用不同的 JS 入口脚本（通过 `<script type="module" src="..."></script>`）。
+
+---
+
+### 3. 运行打包
+
+```bash
+vite build
+```
+
+构建后，`dist` 目录下会生成多个入口对应的文件：
+
+```
+dist/
+├── index.html
+├── admin.html
+├── user.html
+├── assets/...
+```
+
+---
+
+### 4. 代码结构示例
+
+```
+project-root/
+├── index.html          # 入口页面1
+├── admin.html          # 入口页面2
+├── user.html           # 入口页面3
+├── src/
+│   ├── main.js         # 入口脚本1
+│   ├── admin.js        # 入口脚本2
+│   └── user.js         # 入口脚本3
+└── vite.config.js
+```
+
+每个 HTML 中的 `<script>` 标签指向对应的入口脚本，比如：
+
+```html
+<!-- index.html -->
+<script type="module" src="/src/main.js"></script>
+
+<!-- admin.html -->
+<script type="module" src="/src/admin.js"></script>
+
+<!-- user.html -->
+<script type="module" src="/src/user.js"></script>
+```
+
+---
+
+### 5. 额外说明
+
+* 如果你的入口是 JS 文件而非 HTML，可以直接把 `input` 设置为 JS 文件路径，但通常多入口项目更常见的做法是多入口 HTML。
+* Vite 也支持使用插件或自定义配置做更复杂的多入口，比如动态生成入口文件。
+

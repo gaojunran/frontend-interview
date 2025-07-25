@@ -1,0 +1,170 @@
+---
+title: 	如何在前端项目中实现多分支部署？
+---
+
+前端项目中的**多分支部署**，一般是指根据不同的 Git 分支（如 `develop`、`staging`、`master`、`feature/*` 等），实现自动化构建和部署到不同的环境（开发环境、测试环境、预发布环境、生产环境）上。这样方便团队协作、环境隔离、版本管理和灰度发布。
+
+下面我给你详细讲讲如何实现多分支部署，包括整体思路、具体技术手段、CI/CD 配置示例等。
+
+---
+
+## 一、多分支部署的核心目标
+
+* **根据不同分支自动触发构建和部署**
+* **不同分支对应不同的部署环境（URL、服务器、配置）**
+* **保证代码版本管理和环境隔离**
+* **实现自动化，减少人工干预和出错**
+
+---
+
+## 二、实现多分支部署的整体流程
+
+1. **版本管理规范**
+   团队在 Git 上规范分支管理，如：
+
+   * `master` / `main`：生产分支，部署正式环境
+   * `develop`：开发集成分支，部署测试环境
+   * `feature/*`：特性分支，可部署预览环境（Preview）
+   * `release/*`：发布分支，部署预发布环境
+
+2. **CI/CD 平台选择**
+   选择合适的 CI/CD 工具，如：
+
+   * GitHub Actions
+   * GitLab CI/CD
+   * Jenkins
+   * Travis CI
+   * CircleCI
+   * Azure Pipelines 等
+
+3. **配置触发规则**
+   在 CI 配置文件中定义哪些分支触发构建和部署任务。
+
+4. **构建环境区分**
+
+   * 配置不同的环境变量（API 地址、打包参数等），通常借助 `.env` 文件或构建参数区分。
+   * 打包时根据环境变量替换对应配置。
+
+5. **自动化部署**
+
+   * 构建完成后自动部署到对应服务器或云服务（如 AWS S3 + CloudFront、Netlify、Vercel、Docker 容器、传统服务器等）。
+   * 部署目录/域名根据分支不同区分，如 `dev.example.com`，`staging.example.com`，`www.example.com`。
+
+6. **通知和回滚**
+
+   * 部署成功或失败通知相关人员。
+   * 出现问题时支持快速回滚。
+
+---
+
+## 三、具体技术点讲解
+
+### 1. 代码分支触发配置示例（GitHub Actions）
+
+```yaml
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - 'feature/*'
+      - 'release/*'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        env:
+          NODE_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
+          # 也可以通过更多逻辑确定环境变量
+        run: npm run build
+
+      - name: Deploy
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+            # 部署到生产服务器
+            ./deploy_prod.sh
+          elif [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+            # 部署到测试环境
+            ./deploy_staging.sh
+          else
+            # 部署到预览环境
+            ./deploy_preview.sh
+          fi
+```
+
+### 2. 不同环境配置
+
+在前端项目中，可以准备多个环境变量文件：
+
+```
+.env.production
+.env.development
+.env.staging
+.env.preview
+```
+
+使用工具（例如 Vite、Webpack）在构建时加载对应的配置：
+
+```bash
+# 生产构建
+vite build --mode production
+
+# 测试环境构建
+vite build --mode staging
+
+# 预览环境构建
+vite build --mode preview
+```
+
+环境变量中配置不同 API 地址、CDN 等。
+
+### 3. 自动化部署脚本示例
+
+假设部署静态资源到不同服务器目录或云存储：
+
+```bash
+# deploy_prod.sh
+aws s3 sync ./dist s3://my-prod-bucket --delete
+aws cloudfront create-invalidation --distribution-id ABCD1234 --paths "/*"
+
+# deploy_staging.sh
+aws s3 sync ./dist s3://my-staging-bucket --delete
+aws cloudfront create-invalidation --distribution-id WXYZ5678 --paths "/*"
+
+# deploy_preview.sh
+# 部署到测试服务器或者生成预览链接
+scp -r ./dist user@preview-server:/var/www/feature-branch
+```
+
+### 4. 多分支预览环境
+
+* 结合云端静态站点托管（Netlify、Vercel、GitLab Pages）通常支持分支预览
+* 提交 `feature/*` 分支，自动生成对应的预览链接，方便测试和评审。
+
+---
+
+## 四、总结步骤
+
+| 步骤             | 说明              |
+| -------------- | --------------- |
+| 1. 规范分支管理      | 定义分支策略，明确环境对应关系 |
+| 2. 配置 CI/CD 工具 | 监听指定分支触发构建和部署   |
+| 3. 多环境配置       | 不同环境变量，构建时加载    |
+| 4. 构建和测试       | 保证不同环境构建正确      |
+| 5. 自动部署        | 自动上传静态文件或发布     |
+| 6. 通知与回滚       | 部署结果反馈，异常快速回滚   |
+

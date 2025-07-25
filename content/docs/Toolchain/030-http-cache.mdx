@@ -1,0 +1,144 @@
+---
+title: 前端项目中如何配置 HTTP 缓存机制？
+---
+
+在前端项目中配置 HTTP 缓存机制，是前端性能优化的重要一环。合理的缓存策略可以大幅减少资源加载时间、降低服务器压力、提升用户体验。
+
+下面从 **缓存类型**、**缓存控制头部**、**实际配置方式（以 Nginx 和前端构建工具为例）**、**缓存更新策略** 几个方面详细讲解：
+
+---
+
+## 一、HTTP 缓存机制类型
+
+### 1. 强缓存（Strong Cache）
+
+* 浏览器在有效期内不会向服务器发送请求，直接从本地缓存中读取资源。
+* 相关响应头：
+
+  * `Expires`: 指定一个过期时间（绝对时间）
+  * `Cache-Control: max-age=秒数`：指定相对时间（优先于 Expires）
+
+### 2. 协商缓存（Negotiated Cache）
+
+* 浏览器每次请求都会询问服务器资源是否有更新，服务器根据条件响应。
+* 如果资源没变，返回 `304 Not Modified`，浏览器使用缓存内容。
+* 相关响应头：
+
+  * `Last-Modified` / `If-Modified-Since`
+  * `ETag` / `If-None-Match`
+
+---
+
+## 二、关键缓存相关响应头解释
+
+| 响应头             | 描述                                                       |
+| --------------- | -------------------------------------------------------- |
+| `Cache-Control` | 控制缓存策略的核心字段，如 `max-age`, `no-cache`, `public`, `private` |
+| `Expires`       | 设置资源过期时间（HTTP/1.0 方式，已被 Cache-Control 替代）                |
+| `ETag`          | 文件内容哈希标识，服务器根据这个判断资源是否变化                                 |
+| `Last-Modified` | 文件最后修改时间                                                 |
+| `Pragma`        | 兼容旧浏览器的缓存控制字段，常配合 `no-cache` 使用                          |
+
+常见的 `Cache-Control` 取值：
+
+```bash
+Cache-Control: no-cache         # 每次都要向服务器验证缓存是否有效
+Cache-Control: no-store         # 不缓存任何内容
+Cache-Control: public           # 可被所有用户缓存（包括 CDN）
+Cache-Control: private          # 只允许用户端缓存
+Cache-Control: max-age=31536000 # 缓存一年，单位秒
+```
+
+---
+
+## 三、实际配置方式
+
+### 1. **Nginx 配置缓存**
+
+假设你部署了静态资源在 Nginx，常用的配置如下：
+
+```nginx
+# 对于静态资源开启强缓存
+location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$ {
+    expires 30d;
+    add_header Cache-Control "public";
+}
+
+# 对于 HTML 文件禁止缓存
+location ~* \.(html)$ {
+    expires -1;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+}
+```
+
+### 2. **Vite / Webpack 构建配置**
+
+构建工具一般会通过文件名加 hash 来实现缓存更新（缓存失效机制）。
+
+#### Webpack 示例（文件名带 hash）：
+
+```js
+output: {
+  filename: '[name].[contenthash].js',
+  chunkFilename: '[name].[contenthash].js'
+}
+```
+
+#### Vite 默认行为：
+
+* Vite 在 `build` 模式下会自动给资源添加 `hash`，比如：
+
+```
+assets/index.abc123.js
+assets/logo.789xyz.png
+```
+
+* 配合服务器配置强缓存即可：文件名变了就重新请求，文件名相同则直接读取缓存。
+
+---
+
+## 四、缓存更新策略（缓存失效机制）
+
+为了避免用户拿到老的缓存文件，需使用**缓存失效机制**：
+
+| 策略               | 描述                     |
+| ---------------- | ---------------------- |
+| 文件名加哈希           | 改变资源内容后文件名发生变化（最常见）    |
+| 文件版本号控制          | 如 `/app.js?v=2.0`      |
+| 清除 CDN 缓存        | 手动或自动清 CDN 缓存          |
+| `service worker` | 使用更复杂的缓存策略（如离线缓存、版本控制） |
+
+---
+
+## 五、开发环境和生产环境的缓存策略区别
+
+| 环境   | 缓存策略                                                    | 目的          |
+| ---- | ------------------------------------------------------- | ----------- |
+| 开发环境 | `Cache-Control: no-cache`                               | 每次加载最新资源    |
+| 生产环境 | `Cache-Control: max-age=31536000, immutable` + 文件加 hash | 提升性能，自动缓存失效 |
+
+---
+
+## 六、Service Worker（高级缓存控制）
+
+使用 `Service Worker` 可以实现更复杂的缓存逻辑：
+
+* 离线缓存
+* 缓存优先 / 网络优先策略
+* 精细控制哪些资源缓存多久
+
+可结合 `Workbox` 等工具自动生成缓存策略。
+
+---
+
+## 七、总结
+
+| 场景       | 缓存策略                                    |
+| -------- | --------------------------------------- |
+| 静态资源     | 强缓存（Cache-Control: max-age + hash 文件名）  |
+| HTML 文件  | 不缓存（Cache-Control: no-cache 或 no-store） |
+| 接口请求     | 通常不缓存，需自行设计 ETag 或 Cache Header         |
+| CDN + 前端 | 配合 hash 和 CDN 缓存有效提升性能                  |
+| 高级控制     | Service Worker 结合 Workbox               |
+
+

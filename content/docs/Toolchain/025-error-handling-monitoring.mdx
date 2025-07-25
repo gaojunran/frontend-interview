@@ -1,0 +1,153 @@
+---
+title: 	什么是前端错误处理和异常监控？有哪些异常监控工具？
+---
+
+前端错误处理和异常监控是前端工程化中非常关键的一部分，直接关系到用户体验、产品稳定性以及问题的排查效率。下面我会从 **定义、类型、处理方式、监控工具** 等角度进行详细讲解。
+
+---
+
+## 一、什么是前端错误处理和异常监控？
+
+### 1. 错误处理（Error Handling）
+
+指的是在前端 JavaScript 代码中，通过代码手段捕获和处理异常，防止页面崩溃或出现严重 BUG，保证应用的健壮性和容错性。
+
+常见方式包括：
+
+* `try...catch`
+* `window.onerror`
+* `window.addEventListener('error', ...)`
+* `window.addEventListener('unhandledrejection', ...)`
+* Vue、React 等框架提供的错误边界机制（如 `errorCaptured`、`componentDidCatch`）
+
+### 2. 异常监控（Error Monitoring）
+
+是指通过特定的 SDK 或手动埋点的方式，将前端出现的异常信息收集起来，并上传到服务器或监控平台，以便开发者及时发现和修复问题。
+
+监控内容包括但不限于：
+
+* JS 异常
+* 静态资源加载失败
+* Promise 未处理异常（unhandledrejection）
+* 网络请求失败（接口错误、超时）
+* 白屏、卡顿、内存泄露、页面崩溃等性能类异常
+
+---
+
+## 二、常见错误类型
+
+| 错误类型       | 描述                                |
+| ---------- | --------------------------------- |
+| JS 运行时错误   | 如 `ReferenceError`, `TypeError` 等 |
+| 资源加载错误     | 图片、CSS、JS 文件加载失败                  |
+| Promise 异常 | `Promise.reject()` 后未被捕获          |
+| 接口请求错误     | HTTP 状态码 4xx/5xx 或超时              |
+| 跨域错误       | 浏览器因安全策略阻止获取错误信息                  |
+| UI 渲染异常    | 组件渲染错误导致页面卡住或崩溃                   |
+| 性能瓶颈       | 如长时间阻塞主线程、白屏等                     |
+| 自定义异常      | 开发者手动抛出的业务异常                      |
+
+---
+
+## 三、前端错误监控的实现方式
+
+### 1. 捕获 JS 错误
+
+```js
+window.onerror = function(message, source, lineno, colno, error) {
+  // 收集并上报错误信息
+  reportError({message, source, lineno, colno, error});
+};
+```
+
+### 2. 捕获资源加载错误
+
+```js
+window.addEventListener('error', (event) => {
+  if (event.target instanceof HTMLImageElement || event.target instanceof HTMLScriptElement) {
+    // 静态资源加载失败
+    reportError({type: 'resource', src: event.target.src});
+  }
+}, true);
+```
+
+### 3. 捕获 Promise 异常
+
+```js
+window.addEventListener('unhandledrejection', (event) => {
+  reportError({type: 'promise', reason: event.reason});
+});
+```
+
+### 4. Vue / React 内建机制
+
+**Vue**
+
+```js
+Vue.config.errorHandler = function (err, vm, info) {
+  reportError({err, info});
+};
+```
+
+**React**
+
+```js
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error, info) {
+    reportError({error, info});
+  }
+  render() { return this.props.children; }
+}
+```
+
+---
+
+## 四、常见前端异常监控工具
+
+| 工具                       | 简介            | 特点                      |
+| ------------------------ | ------------- | ----------------------- |
+| **Sentry**               | 开源的异常监控平台     | 支持前后端，源码定位，支持 Vue/React |
+| **LogRocket**            | 前端行为 + 异常回放平台 | 支持回放用户操作（热图、点击等）        |
+| **Fundebug**             | 国内 SaaS 平台    | 专注前端异常监控，支持微信小程序        |
+| **BugSnag**              | 国际化的全栈监控平台    | 自动聚合错误，支持多平台            |
+| **阿里 ARMS 前端监控**         | 阿里云提供的前端监控    | 可集成日志、性能、异常监控           |
+| **腾讯 TMonitor / Beacon** | 腾讯内部/开放平台     | 多维度采集上报，适合企业级接入         |
+| **字节火山引擎 - ApmPlus**     | 字节跳动开源监控平台    | 支持 Web / 小程序全平台采集       |
+
+---
+
+## 五、接入异常监控的实践建议
+
+1. **统一封装异常上报函数**
+
+   * 方便统一处理日志格式、用户信息、环境等。
+
+2. **结合 Source Map 上传**
+
+   * 可定位到真实源码行号和文件。
+
+3. **自动捕获 + 手动埋点结合**
+
+   * 自动监控覆盖基础问题，手动埋点用于业务层面。
+
+4. **用户上下文信息**
+
+   * 比如 userId、当前页面、操作路径、UA、时间等，有助于还原问题现场。
+
+5. **结合性能监控使用**
+
+   * 如 Lighthouse、Performance API、First Paint、长任务等。
+
+---
+
+## 六、总结
+
+前端错误处理和异常监控的目标是：
+
+* **防崩溃**：通过合理处理避免影响用户体验
+* **快定位**：自动收集现场信息、堆栈、用户行为等，第一时间定位问题
+* **易追踪**：借助平台聚合相似错误、频次分析，优化优先级
+
+在实际项目中，建议结合成熟工具（如 Sentry）和自定义采集逻辑，实现一套完整的前端可观测方案。
+
+如需示例代码或接入指南，也可以继续问我。

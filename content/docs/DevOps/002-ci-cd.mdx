@@ -1,0 +1,144 @@
+---
+title: 	什么是 CI/CD？如何在前端项目中实施 CI/CD？
+---
+
+CI/CD 是现代软件工程中的一种自动化流程，用于提高开发效率、减少人为错误、加快交付速度。它包括两个核心概念：
+
+---
+
+## 一、什么是 CI/CD？
+
+| 缩写 | 全称                                                     | 含义                       |
+| -- | ------------------------------------------------------ | ------------------------ |
+| CI | Continuous Integration（持续集成）                           | 指频繁地将代码合并到主分支，并自动化测试、构建。 |
+| CD | Continuous Delivery（持续交付）或 Continuous Deployment（持续部署） | 前者是自动打包并准备发布；后者是自动部署上线。  |
+
+### CI（持续集成）
+
+* 核心思想：开发人员频繁提交代码，自动执行构建 + 单元测试 + Lint 检查。
+* 目的：尽早发现错误、保持主分支稳定。
+
+### CD（持续交付 / 持续部署）
+
+* **持续交付（Delivery）**：自动将构建产物部署到测试环境或“待发布”状态，但不自动上线。
+* **持续部署（Deployment）**：部署到线上环境，全流程自动，无需人工干预。
+
+---
+
+## 二、前端项目中如何实施 CI/CD？
+
+可以使用工具如 GitHub Actions、GitLab CI、Jenkins、CircleCI、Vercel、Netlify 等来实现。
+
+### 步骤 1：准备项目
+
+确保你的前端项目满足以下条件：
+
+* 使用包管理工具（如 `npm`、`yarn`、`pnpm`）
+* 有清晰的构建命令，如 `npm run build`
+* 配置了 Lint、单元测试（如 ESLint、Vitest、Jest）
+* 构建产物是纯静态资源（HTML/CSS/JS）
+
+---
+
+### 步骤 2：配置 CI 工作流（以 GitHub Actions 为例）
+
+创建 `.github/workflows/ci.yml`：
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v3
+
+      - name: 设置 Node 环境
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: Lint 检查
+        run: npm run lint
+
+      - name: 单元测试
+        run: npm run test
+
+      - name: 构建项目
+        run: npm run build
+
+      - name: 部署（举例：上传到 GitHub Pages）
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
+
+---
+
+### 步骤 3：配置 CD（部署到平台）
+
+**方式 1：部署到 Vercel / Netlify**
+
+* 绑定 Git 仓库
+* 自动识别 `npm run build` 和输出目录（如 `dist/`）
+* 自动部署 + 回滚支持
+* 支持环境变量配置
+
+**方式 2：部署到服务器（SFTP、FTP、SSH）**
+
+可以在 GitHub Actions 或 GitLab CI 中集成 SFTP 上传：
+
+```yaml
+- name: 部署到服务器
+  uses: wlixcc/SFTP-Deploy-Action@v1.2
+  with:
+    server: ${{ secrets.SERVER_IP }}
+    username: ${{ secrets.USERNAME }}
+    password: ${{ secrets.PASSWORD }}
+    local_path: './dist/*'
+    remote_path: '/www/site/'
+```
+
+**方式 3：Docker + Nginx 构建镜像**
+
+```
+FROM nginx:alpine
+COPY dist/ /usr/share/nginx/html
+```
+
+然后通过 CI/CD 平台构建镜像并推送到服务器或容器平台（如 Kubernetes、Docker Swarm）。
+
+---
+
+## 三、前端 CI/CD 的好处
+
+* 自动化构建 + 测试，避免低级错误上线
+* 自动部署，提升效率
+* 快速回滚（尤其是 Vercel、Netlify、Docker 镜像）
+* 团队协作更流畅（合并代码时即进行验证）
+
+---
+
+## 四、常见平台对比
+
+| 平台             | 优势                         | 适合场景                   |
+| -------------- | -------------------------- | ---------------------- |
+| GitHub Actions | 免费、易用、深度集成 GitHub          | GitHub 项目              |
+| GitLab CI      | 与 GitLab 紧密集成，灵活性高         | GitLab 项目              |
+| Vercel         | 前端部署极简，支持自动回滚              | Next.js / Vue / SSG 项目 |
+| Netlify        | 类似 Vercel，适合 JAMstack 静态站点 | 静态网站                   |
+| Jenkins        | 自定义能力最强，但需维护服务器            | 企业级部署、全栈项目             |
+

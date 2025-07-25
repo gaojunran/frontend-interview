@@ -1,0 +1,164 @@
+---
+title: 	有哪些前端网站性能优化的关键点？
+---
+
+前端网站性能优化的目标是 **提升页面加载速度、交互响应时间和整体用户体验**。下面从多个维度详细讲讲前端性能优化的关键点：
+
+---
+
+## 一、资源加载优化
+
+### 1. 减少资源体积
+
+* **压缩 JavaScript、CSS、HTML**：
+
+  * 使用工具如 `Terser`、`cssnano`、`html-minifier`。
+* **使用 Tree Shaking**：
+
+  * 移除未使用的代码，Vite/Webpack 均支持。
+* **图片压缩**：
+
+  * 使用 WebP、AVIF 格式。
+  * 使用工具如 `imagemin`、`tinypng`。
+
+### 2. 资源懒加载（Lazy Load）
+
+* **图片懒加载**：
+
+  ```html
+  <img src="image.jpg" loading="lazy" />
+  ```
+* **模块懒加载**：
+
+  ```js
+  import('./heavy-component.js').then(...)
+  ```
+
+### 3. 使用 CDN
+
+* 将静态资源（JS/CSS/图片）部署到 CDN，缩短用户与资源之间的物理距离。
+
+### 4. 合理使用 HTTP 缓存机制
+
+* `Cache-Control`, `ETag`, `Last-Modified`，静态资源配置长期缓存策略。
+
+---
+
+## 二、网络请求优化
+
+### 1. 减少请求数量
+
+* 合并 CSS 和 JS（打包）。
+* 雪碧图（sprites）或使用图标字体/Icon Font。
+* 使用 HTTP2 或 HTTP3 多路复用请求。
+
+### 2. 请求预加载与预取
+
+* `<link rel="preload">`：提前加载关键资源。
+* `<link rel="prefetch">`：提前加载将来可能用到的资源。
+
+### 3. 接口请求优化
+
+* **合并接口请求**（例如 GraphQL 或 batch 请求）。
+* **使用缓存**（本地缓存、Service Worker 缓存、SWR/stale-while-revalidate 策略）。
+* 减少首屏接口依赖，延后加载非核心数据。
+
+---
+
+## 三、页面渲染优化
+
+### 1. 首屏加载优化（First Paint / First Contentful Paint）
+
+* 服务端渲染（SSR）或静态生成（SSG），如 Nuxt、Next.js、Astro。
+* 使用骨架屏、loading 占位图提升感知性能。
+
+### 2. 减少重排与重绘
+
+* 减少频繁操作 DOM。
+* 批量 DOM 操作可用 `DocumentFragment`。
+* 避免使用 `style.top/left` 等导致回流的属性，改用 `transform/opacity`。
+
+### 3. 异步渲染非关键内容
+
+* 如评论区、推荐列表延迟渲染，避免阻塞主线程。
+
+---
+
+## 四、代码层面优化
+
+### 1. 使用现代构建工具
+
+* 如 Vite、esbuild、SWC 编译更快，输出更小。
+* 支持模块按需加载（dynamic import）。
+
+### 2. 避免重复依赖与打包冗余
+
+* 检查依赖库体积，如 lodash 按需引入 `lodash-es`。
+* 利用插件分析打包体积（如 vite-plugin-visualizer / webpack-bundle-analyzer）。
+
+### 3. 提高 JavaScript 执行性能
+
+* 避免内存泄漏、死循环、阻塞主线程。
+* 尽量使用事件委托、Web Worker 分离耗时任务。
+
+---
+
+## 五、浏览器缓存与存储
+
+### 1. 浏览器缓存策略
+
+* 静态资源使用强缓存（`Cache-Control: max-age`）。
+* HTML 页面使用协商缓存（`ETag`）。
+
+### 2. 使用本地存储缓存数据
+
+* `localStorage` / `IndexedDB` 缓存用户数据、接口返回值。
+* 减少重复请求，提高离线可用性。
+
+---
+
+## 六、性能监控与评估
+
+### 1. 使用 Performance API
+
+* 监控页面加载时间：`performance.timing` / `PerformanceObserver`
+* 获取页面指标：FCP、LCP、TTI、CLS 等。
+
+### 2. 使用分析工具
+
+* **Lighthouse**（Chrome DevTools）
+* **WebPageTest**
+* **Core Web Vitals 报告**
+* **前端监控平台**：如 Sentry、阿里 ARMS、GrowingIO、LogRocket 等。
+
+---
+
+## 七、现代性能优化策略
+
+### 1. SSR / SSG / ISR
+
+* 使用服务端渲染加速首屏加载。
+* 静态生成配合增量更新，如 Next.js 的 ISR（Incremental Static Regeneration）。
+
+### 2. 使用 Service Worker / PWA
+
+* 实现离线加载、缓存控制、后台更新。
+
+### 3. 优化字体加载
+
+* 使用 `font-display: swap` 避免文字闪现。
+* 子集字体裁剪（subset）减少字体体积。
+
+---
+
+## 总结表格
+
+| 维度        | 优化点                                             |
+| --------- | ----------------------------------------------- |
+| 资源加载优化    | 压缩、懒加载、CDN、Tree Shaking、HTTP 缓存                 |
+| 网络请求优化    | 减请求、预加载、缓存、合并接口                                 |
+| 页面渲染优化    | SSR、骨架屏、减少重绘、异步渲染                               |
+| 构建与打包优化   | 分包、模块懒加载、依赖优化、构建工具选择                            |
+| 浏览器缓存与存储  | Cache-Control、ETag、localStorage、IndexedDB       |
+| 性能监控与指标分析 | Performance API、Lighthouse、Core Web Vitals、监控平台 |
+

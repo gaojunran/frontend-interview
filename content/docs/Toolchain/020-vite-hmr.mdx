@@ -1,0 +1,125 @@
+---
+title: 	Vite 的热更新底层是如何实现的？它如何在不刷新浏览器的前提下更新页面？
+---
+
+Vite 的热更新（HMR，Hot Module Replacement）底层实现基于 **原生 ES 模块（ESM）+ WebSocket 通信机制**，本质目标是在 **不刷新浏览器页面的情况下，局部替换变更模块并应用更新**。下面我们来详细讲讲它的原理：
+
+---
+
+## 🔧 热更新的基本流程
+
+1. **客户端 WebSocket 连接服务端**
+
+   * 开发环境下，Vite 会在启动时在 HTML 中注入一段 HMR 客户端代码（位于 `vite/dist/client/client.mjs`）。
+   * 这段代码会通过 WebSocket 和 Vite dev server 建立连接（默认是 `ws://localhost:5173`）。
+
+2. **文件变更后，服务端监听到并分析依赖图**
+
+   * Vite 使用 `chokidar` 监听文件变动。
+   * 文件发生变更后，Vite 会根据模块依赖图（由 `esbuild` 或 `rollup` 生成）判断：**哪些模块需要更新？哪些模块需要失效？**
+
+3. **服务端向客户端推送更新消息**
+
+   * 服务端构造一个更新信息对象，例如：
+
+     ```json
+     {
+       type: "update",
+       updates: [
+         {
+           type: "js-update",
+           path: "/src/components/Foo.vue",
+           acceptedPath: "/src/components/Foo.vue",
+           timestamp: 1620000000000
+         }
+       ]
+     }
+     ```
+   * 并通过 WebSocket 推送给客户端。
+
+4. **客户端接收更新并触发模块热替换**
+
+   * 客户端通过 `import.meta.hot.accept()` 机制注册模块的热更新处理器。
+   * 收到服务端更新后：
+
+     * 会从浏览器缓存中失效原模块。
+     * 重新以 `import()` 动态加载该模块（利用浏览器的 ES Module 动态导入特性）。
+     * 并调用模块内通过 `import.meta.hot.accept()` 注册的处理函数来局部更新视图或数据。
+
+---
+
+## 🧠 模块热替换关键机制详解
+
+### 1. **模块依赖图**
+
+Vite 构建时会维护一个模块图（`ModuleGraph`）来追踪模块间的依赖关系，以便精准找出受影响的模块。
+
+### 2. **缓存清除与模块重载**
+
+* 由于浏览器原生支持 ESM，Vite 可以使用 `<script type="module">` 形式动态导入模块。
+* 变更后，通过 `import(path + '?t=' + timestamp)` 方式绕过浏览器缓存。
+
+### 3. **`import.meta.hot`**
+
+Vite 实现了一个 **HMR API 规范**，例如：
+
+```js
+if (import.meta.hot) {
+  import.meta.hot.accept((newModule) => {
+    // 应用新的模块内容
+  })
+}
+```
+
+这个 API 是运行时注入的，类似于 webpack 的 HMR API（但是基于 ESM 实现）。
+
+---
+
+## 🔁 和刷新浏览器的区别？
+
+* 刷新浏览器会重新加载整个页面，包括 HTML、JS、CSS，状态全部丢失。
+* HMR 只替换变动模块及其影响范围，**状态保持**，如：
+
+  * React/Vue 的组件状态
+  * Vue 的响应式对象
+  * 保持滚动位置、输入框值等
+
+---
+
+## 🎁 特殊模块类型热更新
+
+* **Vue SFC**：通过 `@vitejs/plugin-vue` 插件将 `.vue` 文件拆分成 template/script/style，然后分别处理热更新。
+* **CSS/LESS/SCSS**：样式模块可以直接使用 `<link rel="stylesheet">` 动态替换，速度快且无状态。
+
+---
+
+## 🧪 简单示意图
+
+```
+[修改文件]
+     ↓
+[dev server 检测变更]
+     ↓
+[分析模块依赖图]
+     ↓
+[通过 WebSocket 通知客户端]
+     ↓
+[客户端加载新模块 + 局部更新]
+```
+
+---
+
+## ✅ 总结
+
+Vite 热更新的实现依赖以下关键点：
+
+| 关键机制            | 作用          |
+| --------------- | ----------- |
+| 原生 ESM          | 动态模块替换无需打包  |
+| WebSocket       | 服务端与客户端实时通信 |
+| import.meta.hot | 客户端注册更新回调   |
+| 模块依赖图           | 精准定位受影响模块   |
+| 缓存失效 + 动态加载     | 快速替换模块      |
+
+相比传统的 webpack，Vite 的 HMR 更轻量、响应更快，主要得益于它基于浏览器原生模块系统（ESM）构建开发体验。
+

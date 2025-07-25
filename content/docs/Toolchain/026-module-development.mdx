@@ -1,0 +1,167 @@
+---
+title: 	什么是前端模块化开发？常见的模块化开发规范有哪些？
+---
+
+前端模块化开发是一种**将代码分解为独立、可复用模块**的开发方式，用来解决传统前端开发中**命名冲突、依赖管理混乱、代码维护困难**等问题。它的核心目标是**提高代码组织性、可维护性与可扩展性**。
+
+---
+
+## 🧱 一、什么是前端模块化开发？
+
+### 1. 传统开发的问题
+
+在没有模块化之前，前端 JavaScript 通常是通过 `<script>` 标签顺序加载：
+
+```html
+<script src="jquery.js"></script>
+<script src="main.js"></script>
+```
+
+这样会导致几个问题：
+
+* **全局命名污染**：所有变量、函数都挂在 `window` 上，容易冲突。
+* **依赖难以管理**：必须手动控制加载顺序。
+* **代码复用性差**：一个功能写好之后很难被复用到其他项目中。
+
+### 2. 模块化的优势
+
+* 每个模块内部作用域独立，不会污染全局。
+* 明确的依赖关系（import/export）。
+* 方便维护与测试。
+* 可以配合打包工具优化加载性能（如 Tree Shaking）。
+
+---
+
+## 📦 二、常见的模块化规范
+
+### 1. **IIFE 模块模式（立即执行函数表达式）**
+
+最早期的“模块化”手段：
+
+```js
+var myModule = (function () {
+  var privateVar = 'hello';
+  function sayHello() {
+    console.log(privateVar);
+  }
+  return {
+    sayHello: sayHello
+  };
+})();
+myModule.sayHello(); // hello
+```
+
+特点：
+
+* 使用闭包隔离作用域。
+* 没有模块依赖声明，无法自动加载依赖。
+
+---
+
+### 2. **CommonJS（Node.js 使用）**
+
+每个文件就是一个模块，通过 `require` 和 `module.exports` 实现。
+
+```js
+// a.js
+const foo = 'bar';
+module.exports = { foo };
+
+// b.js
+const { foo } = require('./a');
+console.log(foo); // bar
+```
+
+特点：
+
+* 同步加载（适用于服务器端）
+* Node.js 默认支持
+
+缺点：
+
+* 不适合浏览器端使用（除非配合打包工具如 Webpack）
+
+---
+
+### 3. **AMD（Asynchronous Module Definition）**
+
+异步模块定义，适用于浏览器端，由 RequireJS 推广。
+
+```js
+define(['jquery'], function ($) {
+  return function () {
+    $('body').text('Hello AMD');
+  };
+});
+```
+
+特点：
+
+* 支持异步加载，适合浏览器。
+* 配置复杂，使用场景逐渐减少。
+
+---
+
+### 4. **CMD（Common Module Definition）**
+
+由国内的 [SeaJS](https://github.com/seajs/seajs) 推广，延迟执行依赖。
+
+```js
+define(function (require, exports, module) {
+  var $ = require('jquery');
+  $('body').text('Hello CMD');
+});
+```
+
+特点：
+
+* 依赖就近加载，按需执行。
+* 更适合开发阶段调试。
+
+---
+
+### 5. **ES Modules（ESM） —— 现代标准**
+
+ECMAScript 官方标准（ES6+），使用 `import/export`：
+
+```js
+// a.js
+export const foo = 'bar';
+
+// b.js
+import { foo } from './a.js';
+console.log(foo); // bar
+```
+
+特点：
+
+* 原生支持模块化（现代浏览器和 Node.js 都支持）。
+* 支持静态分析，可进行 Tree Shaking。
+* 推荐使用方式，**现代前端主流选择（搭配 Vite/Webpack）**。
+
+---
+
+## 🛠 三、模块化与构建工具关系
+
+现代构建工具（如 Vite、Webpack、Rollup）通常支持多种模块规范：
+
+* Vite/Rollup：原生支持 ESM。
+* Webpack：支持 CommonJS、ESM、AMD 等。
+
+构建工具会将模块打包成一个或多个文件，实现浏览器兼容和性能优化。
+
+---
+
+## ✅ 总结
+
+| 规范         | 加载方式 | 场景       | 是否推荐使用   |
+| ---------- | ---- | -------- | -------- |
+| IIFE       | 静态加载 | 老旧项目     | ❌        |
+| CommonJS   | 同步加载 | Node.js  | ✅（仅限服务端） |
+| AMD        | 异步加载 | 浏览器（老）   | ❌        |
+| CMD        | 异步加载 | 浏览器（旧）   | ❌        |
+| ES Modules | 静态加载 | 浏览器、Node | ✅✅✅      |
+
+---
+
+如需深入了解模块化与构建工具配合方式，我也可以补充 Vite/Webpack 的模块打包实现过程。是否需要？
