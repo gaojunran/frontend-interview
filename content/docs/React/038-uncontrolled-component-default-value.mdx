@@ -1,0 +1,93 @@
+---
+title: React 中如何为非受控组件设置默认值？
+---
+
+在 React 中，为 **非受控组件（Uncontrolled Component）** 设置默认值，通常是通过 **`defaultValue`** 或 **`defaultChecked`** 这样的属性，而不是通过 `value` 或 `checked`（这些是受控属性）。下面我们详细解释一下。
+
+---
+
+## 🌱 什么是非受控组件？
+
+非受控组件是指：表单元素的值**由 DOM 自己维护**，React 不直接管理它的状态。
+
+使用 `ref` 来访问 DOM 节点，读取或设置它的值。
+
+---
+
+## ✅ 非受控组件设置默认值的方法
+
+### 1. 对于 `<input type="text">` 或 `<textarea>`，使用 `defaultValue`
+
+```jsx
+function MyForm() {
+  return (
+    <form>
+      <input type="text" defaultValue="默认文本" />
+      <textarea defaultValue="默认多行文本" />
+    </form>
+  );
+}
+```
+
+* `defaultValue` 只在组件首次渲染时生效，之后用户输入不会再被 React 干预。
+* 想获取这个值时，通常需要配合 `ref`。
+
+---
+
+### 2. 对于 `<input type="checkbox">` 或 `<input type="radio">`，使用 `defaultChecked`
+
+```jsx
+function MyForm() {
+  return (
+    <form>
+      <input type="checkbox" defaultChecked={true} />
+      <input type="radio" name="option" defaultChecked />
+    </form>
+  );
+}
+```
+
+---
+
+### 3. 使用 `ref` 获取当前值
+
+```jsx
+import { useRef } from "react";
+
+function MyForm() {
+  const inputRef = useRef(null);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    alert(`输入值为: ${inputRef.current.value}`);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" defaultValue="默认值" ref={inputRef} />
+      <button type="submit">提交</button>
+    </form>
+  );
+}
+```
+
+---
+
+## 🚫 与受控组件的区别
+
+| 特性     | 受控组件                  | 非受控组件                |
+| ------ | --------------------- | -------------------- |
+| 值的管理方式 | React 用 `useState` 管理 | DOM 自己管理（配合 `ref`）   |
+| 设置初始值  | `value={state}`       | `defaultValue="xxx"` |
+| 实时响应变化 | `onChange` 中更新 state  | 不需要（除非你想监听）          |
+| 推荐使用场景 | 更精确控制表单交互和验证          | 快速简单的表单输入            |
+
+---
+
+## 🧠 总结重点
+
+* 非受控组件的初始值通过 `defaultValue` / `defaultChecked` 设置。
+* 后续不通过 React 控制 DOM 值，需用 `ref` 来获取。
+* 非受控组件更接近原生 HTML 表单处理方式，适用于简单或第三方集成场景。
+
+需要一个完整的对比示例或者从受控转非受控示例的话，我可以继续补充。要吗？

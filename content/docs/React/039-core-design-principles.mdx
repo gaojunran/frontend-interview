@@ -1,0 +1,100 @@
+---
+title: React 框架的核心思想有哪些？
+---
+
+React 框架（React.js）核心思想主要围绕 **声明式 UI、组件化、单向数据流、虚拟 DOM、不可变数据、纯函数组件与 Hooks、调度机制** 等展开。这些理念共同支撑了 React 的设计哲学与生态。以下是详细梳理：
+
+---
+
+## 1. 声明式（Declarative UI）
+
+你只需告诉 React “我要什么状态”（例如 state、props），不用说如何逐步修改页面。React 会在内部处理 DOM 的变化，保持界面与数据一致性 ([Medium][1])。这种方式降低了应用复杂性，易于理解与维护。
+
+---
+
+## 2. 组件化架构（Component-Based Architecture）
+
+React 把 UI 拆分成 **可复用、封装良好的组件**，每个组件管理自己的状态与表现，然后组合成复杂界面 ([Medium][1], [Medium][2])。这让代码更模块化，也便于测试与维护。
+
+组件组合优先于继承（Composition over Inheritance），组件之间通过 props 和回调函数协作 ([Bits and Pieces][3])。
+
+---
+
+## 3. 单向数据流（Unidirectional Data Flow）
+
+数据沿着父组件 → 子组件方向流动，子组件通过 props 接收数据。子组件不可直接修改 props，只能通过事件回调通知父组件来更改数据 ([Code Like A Girl][4])。这让数据流动变得可预测，也方便调试和追踪状态。
+
+---
+
+## 4. 虚拟 DOM 与 DOM diff 算法（Virtual DOM & Reconciliation）
+
+React 通过 Virtual DOM 在内存中模拟页面结构，组件 state 或 props 改变后会生成新的虚拟 DOM，然后跟旧树进行比较 (diff)，只对真实 DOM 执行最小更新，无需手动操作 DOM，提高性能 ([维基百科][5], [Medium][1])。
+
+---
+
+## 5. 不可变数据和纯函数组件（Immutability & Pure Components）
+
+React 强调组件输出应仅依赖于输入（props + state），组件和 Hooks 必须是 **纯函数**：相同输入返回相同输出、无副作用、不直接修改 props/state ([react.dev][6], [Medium][7])。
+
+这种纯粹性增强了逻辑的可预测性、可调试性，并便于 React 自动优化性能。
+
+---
+
+## 6. Hooks 与函数式编程（Hooks & Functional Patterns）
+
+自 React 16.8 起引入 Hooks：`useState`, `useEffect`, `useContext` 等，允许在 **函数组件中使用状态和生命周期** 功能 ([react.dev][6], [维基百科][5])。
+React 提倡在函数组件中结合 Hooks 使用函数式编程思维，如高阶函数、不可变数据等，鼓励灵活组合逻辑、减少副作用。
+
+同时严格遵循 **Hooks 规则**：只能在顶层调用、只在 React 函数组件或自定义 Hooks 中调用 ([react.dev][6])。
+
+---
+
+## 7. 调度机制（Scheduling）
+
+React 控制组件函数的调用时机（而不是立即调用），从而允许未来版本通过调度策略**批处理更新、优先用户交互、延迟非关键任务**，以避免掉帧、提升性能 ([legacy.reactjs.org][8])。
+
+`setState()` 是异步的，React 拥有灵活调度的能力，以便高效渲染 UI。
+
+---
+
+## 8. 设计原则与理念（Design Principles）
+
+React 官方总结了一些长期原则 ([legacy.reactjs.org][8])：
+
+* **Composition（组合胜于继承）**：强调组件可组合、可扩展。
+* **Common Abstraction**：只把真正有必要的功能纳入 React 核心，其余业务逻辑交给社区或用户自行实现。
+* **Escape Hatches**：对某些情况提供底层、命令式 API（例如 refs），以兼容遗留项目或特定场景。
+* **Stability（稳定性）**：重视向后兼容和平滑升级，提供 codemod 工具帮助迁移。
+* **Interoperability（可互操作性）**：可逐步引入 React 到现有项目，甚至与其他 UI 库协同工作。
+* **Developer Experience & Debugging**：提供 React DevTools、详尽的运行时警告，确保调试友好。
+* **Optimized for Tooling & Beyond the DOM**：API 命名清晰，适配不同渲染目标，如 React Native、服务器端渲染等。
+
+---
+
+### 整体总结
+
+| 核心思想              | 含义                               |
+| ----------------- | -------------------------------- |
+| **声明式 UI**        | 你描述状态，React 来管理 DOM 更新，无需手动操作界面。 |
+| **组件化**           | 可组合的 UI 单元，易于复用、维护、测试。           |
+| **单向数据流**         | 数据自上而下流动，状态变化可追踪，组件协作清晰。         |
+| **虚拟 DOM & diff** | 内部比较变化后只更新必要 DOM 元素，提高渲染效率。      |
+| **不可变 & 纯函数**     | 输入决定输出，减少副作用，增强可预测性与调试能力。        |
+| **Hooks & 函数式编程** | 在函数组件里灵活管理状态与逻辑，避免类组件繁琐性。        |
+| **调度与异步更新**       | React 控制更新时机，优先关键渲染，避免性能瓶颈。      |
+| **设计原则**          | 保持稳定、可扩展、适配多平台并兼顾开发体验与调试能力。      |
+
+---
+
+这些思想结合起来，使得 React 在构建可维护、性能高效、组件可复用的现代 Web 应用方面表现出色。如果你对某部分原理（如 diff 算法细节、如何设计 Hooks 或调度内部机制）想深入了解，也可以继续问我！
+
+你还想知道 React 与 Vue / Angular 在这些方面的差异吗？
+
+[1]: https://medium.com/%40surya.tplm/understanding-reacts-core-philosophy-a-comprehensive-guide-8a0c7f4c7174?utm_source=chatgpt.com "Understanding React's Core Philosophy: A Comprehensive Guide"
+[2]: https://medium.com/%40rishabh_roy/unveiling-the-architecture-of-react-a-deep-dive-into-its-core-principles-and-mechanisms-9f5b738e9d6c?utm_source=chatgpt.com "Unveiling the Architecture of React: A Deep Dive into Its Core ..."
+[3]: https://blog.bitsrc.io/react-philosophy-for-beginners-d926a7672e66?utm_source=chatgpt.com "React Philosophy For Beginners - Bits and Pieces - Bit.dev"
+[4]: https://code.likeagirl.io/the-philosophy-of-react-e2c126c61af3?utm_source=chatgpt.com "The philosophy of React - by Malinna Leach - Code Like A Girl"
+[5]: https://en.wikipedia.org/wiki/React_%28software%29?utm_source=chatgpt.com "React (software)"
+[6]: https://react.dev/reference/rules?utm_source=chatgpt.com "Rules of React"
+[7]: https://medium.com/%40brechtcorbeel/understanding-the-core-principles-of-react-a-comprehensive-introduction-cb56f0435ea1?utm_source=chatgpt.com "Understanding the Core Principles of React: A Comprehensive ..."
+[8]: https://legacy.reactjs.org/docs/design-principles.html?utm_source=chatgpt.com "Design Principles - React"
