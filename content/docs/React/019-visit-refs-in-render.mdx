@@ -1,0 +1,98 @@
+---
+title: 在 React 中，是否可以在 render 方法中访问 refs？为什么？
+---
+
+在 React 中，**可以在 `render` 方法中访问 `refs`，但不推荐这样做**。下面我们详细讲讲：
+
+---
+
+## 一、什么是 `refs`
+
+`ref` 是 React 提供的一种方式，用于**访问 DOM 元素或组件实例**，常用于：
+
+* 操作原生 DOM（如获取宽高、设置焦点等）
+* 与第三方 DOM 库交互（如 jQuery 插件）
+* 保存某个子组件的引用
+
+---
+
+## 二、是否能在 `render` 中访问 `refs`
+
+### ✅ 技术上是“可以”的，但有**限制**
+
+在 `render()` 方法**首次执行期间**，`this.refs` 或 `useRef().current` 可能是 `null`。原因是：
+
+> **`render()` 阶段 refs 尚未挂载。**
+
+React 的组件生命周期如下：
+
+```
+constructor() ➝ render() ➝ DOM 更新 ➝ componentDidMount()
+```
+
+在 `render()` 期间，React 只是**构建虚拟 DOM（vDOM）**，还没有将它**挂载到真实 DOM（Real DOM）**，所以 ref 对应的 DOM 元素还没有被赋值，`ref.current` 仍是 `null`。
+
+---
+
+## 三、举个例子说明
+
+```jsx
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.myRef = React.createRef();
+  }
+
+  render() {
+    console.log(this.myRef.current); // ❌ 很可能是 null
+    return <div ref={this.myRef}>Hello</div>;
+  }
+
+  componentDidMount() {
+    console.log(this.myRef.current); // ✅ 此时是 DOM 元素
+  }
+}
+```
+
+### 输出：
+
+```bash
+null            ← render 时访问
+<div>...</div>  ← componentDidMount 时访问
+```
+
+---
+
+## 四、推荐做法
+
+如果你要操作 `ref`：
+
+* ✅ 正确时机：`componentDidMount`（首次挂载）、`componentDidUpdate`（更新后）、`useEffect`（函数组件）
+* ❌ 不推荐在 `render()` 里直接用 `ref` 的值做逻辑判断或渲染决策
+
+---
+
+## 五、总结
+
+| 是否可以在 `render()` 访问 refs | 说明                                       |
+| ------------------------ | ---------------------------------------- |
+| ❌ **不推荐**                | 虽然语法允许，但此时 ref 还未被赋值（通常是 `null`）         |
+| ✅ **可以访问但没用**            | 即使访问了，也是 `null`，不能做 DOM 操作               |
+| ✅ **推荐访问时机**             | `componentDidMount`、`useEffect` 等生命周期钩子中 |
+
+---
+
+如果你一定要在渲染逻辑中依赖某个 ref 的值，请确保你加上存在性判断：
+
+```jsx
+render() {
+  return (
+    <div>
+      {this.myRef.current && <span>ref 已准备好</span>}
+      <div ref={this.myRef}>内容</div>
+    </div>
+  );
+}
+```
+
+但更推荐：**使用状态判断是否“准备就绪”**，而不是依赖 ref 是否为 null。这样更符合 React 的声明式风格。

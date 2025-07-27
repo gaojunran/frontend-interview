@@ -1,0 +1,182 @@
+---
+title: 在 React 中，如何将参数传递给事件处理函数？
+---
+
+在 React 中，将参数传递给事件处理函数是一个很常见的需求。下面我详细讲讲几种常见的实现方式和它们的原理、优缺点。
+
+---
+
+## 1. 通过箭头函数包裹事件处理函数传参
+
+这是最常见、也最推荐的做法。
+
+### 示例代码：
+
+```jsx
+class MyComponent extends React.Component {
+  handleClick = (id, event) => {
+    console.log('ID:', id);
+    console.log('Event:', event);
+  };
+
+  render() {
+    const itemId = 42;
+    return (
+      <button onClick={(e) => this.handleClick(itemId, e)}>
+        点击我
+      </button>
+    );
+  }
+}
+```
+
+### 解析：
+
+* `onClick` 里写了一个箭头函数 `(e) => this.handleClick(itemId, e)`。
+* 当点击按钮时，箭头函数执行，再调用 `handleClick` 并传入自定义参数 `itemId` 和事件对象 `e`。
+* 事件对象 `e` 是 React 的合成事件（SyntheticEvent），一般都需要传给事件处理函数，方便获取事件信息。
+
+### 优点：
+
+* 代码清晰直观。
+* 可以灵活传多个参数。
+* 不影响事件对象的传递。
+
+### 缺点：
+
+* 每次渲染都会创建一个新的箭头函数，可能略微影响性能，但一般影响很小。
+
+---
+
+## 2. 绑定（bind）方式传参
+
+使用 `bind` 方法来传递参数，也是经典写法。
+
+### 示例代码：
+
+```jsx
+class MyComponent extends React.Component {
+  handleClick(id, event) {
+    console.log('ID:', id);
+    console.log('Event:', event);
+  }
+
+  render() {
+    const itemId = 42;
+    return (
+      <button onClick={this.handleClick.bind(this, itemId)}>
+        点击我
+      </button>
+    );
+  }
+}
+```
+
+### 解析：
+
+* `bind(this, itemId)` 返回一个新的函数，该函数的第一个参数固定为 `itemId`，后续参数为事件对象 `event`。
+* 当按钮点击时，React 会自动将事件对象传入绑定函数作为第二个参数。
+
+### 优点：
+
+* 也可以传递多个参数。
+* 代码较为简洁。
+
+### 缺点：
+
+* 每次渲染都会产生新的绑定函数，性能问题和箭头函数类似。
+* 绑定写法相对不太直观。
+
+---
+
+## 3. 直接在事件处理函数内部访问参数（适用于无参数传递场景）
+
+如果事件处理函数不需要额外参数，或者参数来自其他地方，可以直接写：
+
+```jsx
+<button onClick={this.handleClick}>
+  点击我
+</button>
+```
+
+但这不满足“传递参数”的需求。
+
+---
+
+## 4. 传递参数给函数组件的事件处理函数
+
+函数组件中也是同理，可以用箭头函数：
+
+```jsx
+function MyButton({ id }) {
+  function handleClick(id, event) {
+    console.log(id, event);
+  }
+
+  return (
+    <button onClick={(e) => handleClick(id, e)}>
+      点击我
+    </button>
+  );
+}
+```
+
+---
+
+## 5. 总结传递参数的几种方式
+
+| 方式          | 代码示例                                             | 优点          | 缺点               |
+| ----------- | ------------------------------------------------ | ----------- | ---------------- |
+| 箭头函数        | `onClick={(e) => handleClick(id, e)}`            | 直观灵活，推荐使用   | 每次渲染创建新函数，略影响性能  |
+| bind 绑定     | `onClick={handleClick.bind(this, id)}`           | 可以传参，写法经典   | 每次渲染创建新函数，性能问题同上 |
+| 预先绑定（构造函数中） | `this.handleClick = this.handleClick.bind(this)` | 避免每次渲染创建新函数 | 只能固定绑定参数，传参不灵活   |
+| 无参数直接传递     | `onClick={handleClick}`                          | 简洁          | 不能传额外参数          |
+
+---
+
+## 6. 进阶：避免每次渲染新函数的方案
+
+如果担心性能，可以在构造函数中预先绑定函数或者使用类字段语法：
+
+```jsx
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleClick = this.handleClick.bind(this);
+  }
+
+  handleClick(event) {
+    // 通过某种方式获得参数，比如从 data- 属性读取
+    const id = event.target.getAttribute('data-id');
+    console.log(id);
+  }
+
+  render() {
+    const itemId = 42;
+    return (
+      <button data-id={itemId} onClick={this.handleClick}>
+        点击我
+      </button>
+    );
+  }
+}
+```
+
+这种写法不传递参数，而是通过元素属性间接获取参数，避免了每次渲染产生新函数。
+
+---
+
+## 7. 你可能会关心的点
+
+* **为什么事件对象要放最后传？**
+  React 合成事件是自动传给事件处理函数的，如果你手动传参数，事件对象应放最后才能被正常接收。
+
+* **性能问题真的大吗？**
+  在绝大多数应用中，箭头函数或 bind 带来的微小性能开销可以忽略不计，更推荐代码简洁和维护性。
+
+* **React Hook 函数组件传参一样的写法吗？**
+  是的，用箭头函数或 bind 传参没区别。
+
+---
+
+如果你需要，我也可以帮你写示例代码或给你总结最佳实践！你还有什么具体场景吗？

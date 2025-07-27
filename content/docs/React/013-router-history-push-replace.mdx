@@ -1,0 +1,104 @@
+---
+title: 在 React Router 的 history 模式中，push 和 replace 方法有什么区别？
+---
+
+在 React Router 的 history 模式中，`push` 和 `replace` 方法都用于**编程式导航**，即通过代码实现页面跳转，而不是用户点击链接。但两者在对浏览器历史记录的处理上有重要区别。
+
+---
+
+## ✅ 一句话区别：
+
+* `push(path)`：**添加一条新记录**到浏览器历史栈中（用户可以“返回”到前一页）。
+* `replace(path)`：**替换当前这条记录**，不添加新历史（用户点击“返回”不会回到当前页）。
+
+---
+
+## 📘 举个例子来说明：
+
+假设你当前在 `/home` 页面：
+
+```js
+// 使用 push
+navigate('/profile', { replace: false }); // 或 navigate('/profile') 默认就是 push
+```
+
+浏览器历史记录变为：
+
+```
+/home → /profile
+```
+
+👉 用户点击浏览器“返回”按钮，可以回到 `/home`
+
+---
+
+```js
+// 使用 replace
+navigate('/profile', { replace: true });
+```
+
+浏览器历史记录变为：
+
+```
+/profile
+```
+
+👉 当前的 `/home` 被“替换”掉了，用户无法回退到 `/home`
+
+---
+
+## 📦 用于哪个 API？
+
+在 React Router v6 中，使用 `useNavigate()` Hook：
+
+```js
+import { useNavigate } from 'react-router-dom';
+
+function MyComponent() {
+  const navigate = useNavigate();
+
+  // push
+  navigate('/dashboard'); // 默认行为
+
+  // replace
+  navigate('/login', { replace: true });
+}
+```
+
+---
+
+## 📍 实际应用场景举例：
+
+### ✅ `push` 的常见场景：
+
+* 用户正常点击跳转链接（比如点击“商品详情”）。
+* 想保留前一页，方便用户返回（比如从搜索页跳转到结果页）。
+
+### ✅ `replace` 的常见场景：
+
+* 登录成功后跳转到首页，不想让用户“返回”回登录页：
+
+  ```js
+  navigate('/home', { replace: true });
+  ```
+
+* 重定向（redirect）操作中（如权限校验、404）：
+
+  ```js
+  if (!isAuthenticated) {
+    navigate('/login', { replace: true });
+  }
+  ```
+
+---
+
+## 📌 小结对比表：
+
+| 方法        | 是否添加新历史记录 | 用户是否可以回退 | 常见用途           |
+| --------- | --------- | -------- | -------------- |
+| `push`    | ✅ 是       | ✅ 可以     | 普通页面跳转、点击导航    |
+| `replace` | ❌ 否       | ❌ 不可     | 登录后跳转、重定向、覆盖导航 |
+
+---
+
+如需深入讲解 `history` 模式背后的实现原理（如 HTML5 的 `pushState` 和 `replaceState`），也可以继续问我。

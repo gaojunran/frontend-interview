@@ -1,0 +1,168 @@
+---
+title: React 的 createClass 是怎么实现的？
+---
+
+React 的 `createClass` 是 React 早期提供的一种创建组件的方法（主要用于 React 15 及更早版本），后来在 React 16 之后被废弃。现在我们通常使用 **ES6 class** 或 **函数组件 + Hooks** 的方式来定义组件。
+
+但理解 `createClass` 的原理，有助于你了解 React 的早期设计哲学和组件的构建本质。
+
+---
+
+## 一、什么是 `React.createClass`？
+
+```js
+const MyComponent = React.createClass({
+  getInitialState() {
+    return { count: 0 };
+  },
+
+  handleClick() {
+    this.setState({ count: this.state.count + 1 });
+  },
+
+  render() {
+    return (
+      <div onClick={this.handleClick}>
+        Count: {this.state.count}
+      </div>
+    );
+  }
+});
+```
+
+这是一个典型的 `createClass` 写法，它会返回一个构造好的组件类，可以直接 `<MyComponent />` 使用。
+
+---
+
+## 二、`createClass` 的核心机制
+
+`React.createClass(spec)` 接收一个 **组件规范对象**（spec），其中包含：
+
+* 生命周期方法（`componentDidMount` 等）
+* 实例方法（`render`、`handleClick` 等）
+* 状态初始化（`getInitialState`）
+* 默认属性（`getDefaultProps`）
+
+React 内部会做以下几件事来构建组件：
+
+### 1. **创建构造函数**
+
+内部会自动构造一个组件类（本质是一个函数），封装生命周期和 render 方法。
+
+```js
+function Constructor(props, context) {
+  this.props = props;
+  this.context = context;
+  this.state = this.getInitialState ? this.getInitialState() : null;
+}
+```
+
+### 2. **自动绑定 `this`**
+
+createClass 的一个特点是会 **自动把所有实例方法绑定到组件实例上**，所以你在调用 `this.handleClick` 时，不需要手动绑定。
+
+实现大概类似于：
+
+```js
+for (let key in spec) {
+  if (typeof spec[key] === 'function' && key !== 'render') {
+    instance[key] = spec[key].bind(instance);
+  }
+}
+```
+
+这是它区别于 ES6 class 最大的特性之一。
+
+### 3. **复制生命周期方法与实例方法**
+
+生命周期钩子和自定义方法会被复制到 prototype 或实例中：
+
+```js
+Constructor.prototype.render = spec.render;
+Constructor.prototype.componentDidMount = spec.componentDidMount;
+...
+```
+
+### 4. **处理 `getDefaultProps` 和 `getInitialState`**
+
+* `getDefaultProps` 是静态方法，在类创建时调用一次
+* `getInitialState` 是实例方法，在构造组件实例时调用一次
+
+---
+
+## 三、为什么后来废弃了 `createClass`
+
+1. **性能问题**：每次创建组件时自动绑定方法会创建新的函数，导致性能浪费。
+2. **难以优化**：不能使用 ES6 的原型继承，影响静态分析与优化。
+3. **缺乏灵活性**：难以与现代 JavaScript 生态（如 `class`、`extends`）对接。
+4. **体积增加**：自动处理绑定等功能让代码体积变大。
+
+---
+
+## 四、替代方案：ES6 class
+
+```js
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { count: 0 };
+    this.handleClick = this.handleClick.bind(this); // 需要手动绑定
+  }
+
+  handleClick() {
+    this.setState({ count: this.state.count + 1 });
+  }
+
+  render() {
+    return <div onClick={this.handleClick}>Count: {this.state.count}</div>;
+  }
+}
+```
+
+---
+
+## 五、函数组件 + Hooks（推荐方式）
+
+```js
+import { useState } from 'react';
+
+function MyComponent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div onClick={() => setCount(count + 1)}>
+      Count: {count}
+    </div>
+  );
+}
+```
+
+---
+
+## 六、小结
+
+| 特性     | `createClass`     | `ES6 class`  | 函数组件 + Hooks  |
+| ------ | ----------------- | ------------ | ------------- |
+| 方法自动绑定 | ✅ 是               | ❌ 需要手动       | ✅（无 this）     |
+| 状态支持   | ✅ getInitialState | ✅ this.state | ✅ useState    |
+| 生命周期   | ✅ 支持              | ✅ 支持         | ✅ useEffect 等 |
+| 性能与优化  | ❌ 差               | ✅ 好          | ✅ 好           |
+| 推荐使用   | ❌（已废弃）            | ✅            | ✅✅（首选）        |
+
+---
+
+如果你需要在老代码中兼容 `createClass`，可以使用：
+
+```bash
+npm install create-react-class
+```
+
+```js
+import createReactClass from 'create-react-class';
+
+const MyComponent = createReactClass({
+  ...
+});
+```
+
+但新项目中 **建议完全避免使用** `createClass`。推荐使用函数组件 + Hooks 或 ES6 class。

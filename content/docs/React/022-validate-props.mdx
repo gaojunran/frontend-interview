@@ -1,0 +1,119 @@
+---
+title: 在 React 中，如何检验 props？为什么要验证 props？
+---
+
+在 React 中，“**props 验证**”是为了保证组件使用时传入的属性（props）符合预期类型和结构，从而提升组件的**可维护性、可读性和健壮性**。
+常用的 props 验证方法是通过 `PropTypes` 来实现的。
+
+---
+
+## 🧪 一、如何在 React 中检验 props？
+
+### ✅ 1. 使用 `prop-types` 库
+
+`prop-types` 是 React 官方提供的一个独立库，用来进行 props 类型检查。
+
+#### 安装：
+
+```bash
+npm install prop-types
+```
+
+#### 使用示例：
+
+```jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+
+function UserCard({ name, age, isAdmin }) {
+  return (
+    <div>
+      <h2>{name}</h2>
+      <p>Age: {age}</p>
+      {isAdmin && <p>Admin User</p>}
+    </div>
+  );
+}
+
+// ✅ 设置 props 验证
+UserCard.propTypes = {
+  name: PropTypes.string.isRequired,
+  age: PropTypes.number,
+  isAdmin: PropTypes.bool
+};
+
+// ✅ 设置默认值（可选）
+UserCard.defaultProps = {
+  age: 18,
+  isAdmin: false
+};
+```
+
+---
+
+## 🎯 二、为什么要验证 props？
+
+### 1. **提升组件健壮性**
+
+* 开发时能及时发现类型错误，避免运行时报错。
+* 比如传了字符串到一个期望是数字的 prop，会立刻在开发控制台报错。
+
+### 2. **增强可读性和可维护性**
+
+* 通过 `propTypes` 明确说明每个 prop 的用途和类型。
+* 团队协作中更容易理解组件的使用方式。
+
+### 3. **提供默认值，减少出错**
+
+* 使用 `defaultProps` 可防止 prop 未传时抛出异常或显示错误内容。
+
+### 4. **辅助调试**
+
+* 在开发环境下，`propTypes` 报错会显示在控制台，快速定位问题。
+
+---
+
+## 📌 三、常用的 `PropTypes` 类型
+
+| 类型                           | 示例                |
+| ---------------------------- | ----------------- |
+| `PropTypes.string`           | 字符串类型             |
+| `PropTypes.number`           | 数字类型              |
+| `PropTypes.bool`             | 布尔类型              |
+| `PropTypes.array`            | 数组类型              |
+| `PropTypes.object`           | 对象类型              |
+| `PropTypes.func`             | 函数类型              |
+| `PropTypes.node`             | 可以渲染的内容（字符串、JSX等） |
+| `PropTypes.element`          | React 元素类型        |
+| `PropTypes.any`              | 任意类型              |
+| `PropTypes.oneOf([...])`     | 枚举值（限制为几个固定值）     |
+| `PropTypes.shape({...})`     | 指定对象内部结构          |
+| `PropTypes.arrayOf(...)`     | 指定数组内部类型          |
+| `PropTypes.oneOfType([...])` | 多种类型之一            |
+
+---
+
+## ❗️注意事项
+
+* `propTypes` 在开发环境中有效，在生产环境中不会做校验（性能考虑）。
+* 不要依赖 `propTypes` 做运行时逻辑检查，它仅用于开发提示。
+* 对于大型项目或更强类型需求，可以使用 **TypeScript** 来进行类型验证（替代方案，静态类型更强大）。
+
+---
+
+## 🆚 补充：`PropTypes` vs `TypeScript`
+
+| 比较项    | PropTypes  | TypeScript          |
+| ------ | ---------- | ------------------- |
+| 校验方式   | 运行时（仅开发环境） | 编译时（静态类型检查）         |
+| 写法     | JS 扩展写法    | 需要使用 `.tsx` 文件和类型声明 |
+| 错误提示时机 | 运行时报控制台警告  | 编译时报错或 IDE 报错       |
+| 适用场景   | 轻量项目，JS 项目 | 中大型项目，类型安全要求高的项目    |
+
+---
+
+## ✅ 总结
+
+在 React 中使用 `PropTypes` 检验 props 能有效防止错误传参，提升组件可靠性与可维护性。虽然在现代项目中 TypeScript 越来越流行，但 `PropTypes` 依然是快速进行类型验证的实用方式，尤其适用于纯 JavaScript 项目。
+
+需要我补充 TypeScript 的 props 验证写法也可以告诉我。

@@ -1,0 +1,152 @@
+---
+title: React 项目如何将多个组件嵌入到一个组件中？
+---
+
+在 React 项目中，将多个组件**嵌入到一个组件中**是组件组合（composition）的常见做法。我们可以通过**嵌套子组件**、**使用 props 传递数据**、**render props**、**slot-like children 模式**等方式实现。下面详细讲讲各种常见方式：
+
+---
+
+## ✅ 1. **直接嵌套多个子组件**
+
+这是最基本的做法，通过在父组件的 `render` 或返回的 JSX 中直接引入多个子组件：
+
+```jsx
+function Header() {
+  return <h1>我是头部</h1>;
+}
+
+function Content() {
+  return <p>这里是内容区域</p>;
+}
+
+function Footer() {
+  return <footer>底部信息</footer>;
+}
+
+// 父组件组合子组件
+function Page() {
+  return (
+    <div>
+      <Header />
+      <Content />
+      <Footer />
+    </div>
+  );
+}
+```
+
+### ✅ 优点：
+
+* 简单直观
+* 组件复用性高
+* 清晰的结构化页面
+
+---
+
+## ✅ 2. **通过 props 向子组件传递参数**
+
+子组件可以根据父组件传入的 props 渲染不同内容：
+
+```jsx
+function Welcome(props) {
+  return <h1>欢迎你，{props.name}</h1>;
+}
+
+function App() {
+  return (
+    <div>
+      <Welcome name="Alice" />
+      <Welcome name="Bob" />
+    </div>
+  );
+}
+```
+
+---
+
+## ✅ 3. **使用 `children` 插槽实现内容嵌套（类似 Vue 的 slot）**
+
+`props.children` 是 React 组件的保留字段，用来接收嵌套在标签内部的内容：
+
+```jsx
+function Card({ children }) {
+  return (
+    <div className="card">
+      {children}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Card>
+      <h2>标题</h2>
+      <p>这是卡片的内容</p>
+    </Card>
+  );
+}
+```
+
+这种写法非常灵活，可以嵌入任意子组件。
+
+---
+
+## ✅ 4. **组合多个嵌套层级**
+
+你可以将组件一层层嵌套下去：
+
+```jsx
+function Layout({ header, content, footer }) {
+  return (
+    <div>
+      <div>{header}</div>
+      <div>{content}</div>
+      <div>{footer}</div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Layout
+      header={<Header />}
+      content={<Content />}
+      footer={<Footer />}
+    />
+  );
+}
+```
+
+这是使用 **组件组合 + props 传 JSX 元素** 的高级写法，类似“具名 slot”。
+
+---
+
+## ✅ 5. **使用 render props（函数作为子组件）**
+
+Render Props 是一种灵活的嵌套方式：
+
+```jsx
+function DataProvider({ render }) {
+  const data = { name: 'React' };
+  return render(data);
+}
+
+function App() {
+  return (
+    <DataProvider render={(data) => <div>Hello {data.name}</div>} />
+  );
+}
+```
+
+---
+
+## ✅ 总结
+
+| 技术方式               | 使用场景        | 特点              |
+| ------------------ | ----------- | --------------- |
+| 直接嵌套组件             | 页面结构清晰      | 简洁、清晰           |
+| props 传值           | 不同组件需要个性化渲染 | 可复用、灵活          |
+| children 插槽        | 内容灵活嵌套      | 像 Vue slot、嵌套方便 |
+| JSX props（具名 slot） | 模板结构化组合     | 结构解耦清晰          |
+| render props       | 共享状态、逻辑或数据  | 高阶用法，功能强大       |
+

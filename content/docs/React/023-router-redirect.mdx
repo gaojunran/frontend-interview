@@ -1,0 +1,123 @@
+---
+title: 如何在 React Router 中设置重定向？
+---
+
+在 React Router 中设置重定向（Redirect）可以用于在特定条件下自动导航用户到另一个路由，比如：
+
+* 用户访问旧路径时跳转到新路径；
+* 用户未登录时跳转到登录页；
+* 登录后访问 `/login` 时跳转到首页。
+
+具体操作取决于你使用的是哪个版本的 React Router。以下是主流版本的设置方式。
+
+---
+
+## ✅ React Router v6（最新版）设置重定向
+
+### 使用 `<Navigate />` 组件进行重定向
+
+```jsx
+import { Navigate } from 'react-router-dom';
+
+function MyComponent() {
+  const isLoggedIn = false;
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <div>欢迎访问！</div>;
+}
+```
+
+### 在路由配置中设置默认重定向
+
+```jsx
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      {/* 重定向旧路径 */}
+      <Route path="/home" element={<Navigate to="/" replace />} />
+      {/* 未匹配路径跳转 */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+```
+
+---
+
+## ✅ React Router v5（旧版）设置重定向
+
+### 使用 `<Redirect />` 组件
+
+```jsx
+import { Redirect } from 'react-router-dom';
+
+function MyComponent() {
+  const isLoggedIn = false;
+
+  return (
+    <div>
+      {!isLoggedIn && <Redirect to="/login" />}
+      <h1>欢迎页面</h1>
+    </div>
+  );
+}
+```
+
+### 在 `<Switch>` 中配置重定向
+
+```jsx
+import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
+
+function App() {
+  return (
+    <Router>
+      <Switch>
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/home">
+          <Redirect to="/" />
+        </Route>
+        <Route path="/" exact component={Home} />
+        {/* 所有未匹配路径 */}
+        <Redirect to="/" />
+      </Switch>
+    </Router>
+  );
+}
+```
+
+---
+
+## ⚠️ 注意事项
+
+* **`replace` vs 不写：**
+
+  * `replace` 会替换当前浏览器历史记录，不会保留跳转前的地址。
+* **`<Navigate />` 替代 `<Redirect />`：**
+
+  * 在 React Router v6 中，`<Redirect />` 被弃用了，统一使用 `<Navigate />`。
+* **嵌套路由中设置默认重定向：**
+
+  ```jsx
+  <Route path="/settings" element={<Settings />}>
+    <Route index element={<Navigate to="profile" replace />} />
+    <Route path="profile" element={<Profile />} />
+  </Route>
+  ```
+
+---
+
+## 🔁 总结
+
+| 版本  | 重定向组件                             |
+| --- | --------------------------------- |
+| v6+ | `<Navigate to="/path" replace />` |
+| v5  | `<Redirect to="/path" />`         |
+
+如需我帮你针对某个具体场景设置重定向，可以把代码结构或需求贴出来。

@@ -1,0 +1,115 @@
+---
+title: 如何定时更新一个 React 组件？
+---
+
+在 React 中，如果你希望一个组件**定时更新**（例如每隔几秒刷新数据或更新时间），你可以使用 JavaScript 的 `setInterval` 或 `setTimeout`，结合 React 的 `useEffect` 和 `useState` 实现。下面是详细讲解。
+
+---
+
+## 🔁 一、基本实现思路
+
+1. 在组件中使用 `useState` 来保存需要更新的数据。
+2. 使用 `useEffect` 设置定时器，在指定的时间间隔内更新状态。
+3. 清除定时器避免内存泄漏。
+
+---
+
+## 📦 二、代码示例：每秒更新时间
+
+```jsx
+import React, { useState, useEffect } from 'react';
+
+function Clock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    // 设置定时器：每隔 1 秒更新时间
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    // 清除定时器，组件卸载时执行
+    return () => clearInterval(timer);
+  }, []); // 空依赖数组确保只在组件挂载时设置一次
+
+  return (
+    <div>
+      <h2>当前时间：</h2>
+      <p>{time.toLocaleTimeString()}</p>
+    </div>
+  );
+}
+```
+
+---
+
+## 🔍 三、关键点解析
+
+### 1. `useEffect` 的使用
+
+* `useEffect(() => { ... }, [])`：
+
+  * 第二个参数是空数组，代表只在组件首次挂载时执行一次。
+* `return () => { ... }`：
+
+  * 这个函数在组件卸载时执行，用于**清理副作用**，防止内存泄漏。
+
+### 2. 状态更新触发重新渲染
+
+* `setTime(new Date())` 会更新状态。
+* 状态更新后 React 会重新渲染组件，显示新的时间。
+
+---
+
+## ⏱ 四、其他场景示例
+
+### ✅ 每隔 5 秒拉取一次接口数据
+
+```jsx
+useEffect(() => {
+  const fetchData = async () => {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+    setData(data);
+  };
+
+  fetchData(); // 初始调用一次
+
+  const interval = setInterval(fetchData, 5000);
+
+  return () => clearInterval(interval);
+}, []);
+```
+
+---
+
+## ⚠️ 五、注意事项
+
+1. **清除定时器**很重要，避免内存泄漏。
+2. 如果依赖了某些状态或 props，需要正确填写依赖数组。
+3. 可以使用 `setTimeout` 代替 `setInterval` 实现可控性更强的定时器（适合动态时间间隔）。
+
+---
+
+## 📌 六、进阶优化：使用自定义 Hook 封装
+
+```jsx
+function useInterval(callback, delay) {
+  useEffect(() => {
+    const id = setInterval(callback, delay);
+    return () => clearInterval(id);
+  }, [callback, delay]);
+}
+```
+
+使用方式：
+
+```jsx
+useInterval(() => {
+  setTime(new Date());
+}, 1000);
+```
+
+---
+
+如果你有具体的场景，比如“每 5 秒自动刷新图表”、“倒计时 10 秒后自动跳转”等，我可以给出更有针对性的实现方式。是否需要？

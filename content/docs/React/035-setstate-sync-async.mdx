@@ -1,0 +1,123 @@
+---
+title: React 中 setState 什么时候是同步的，什么时候是异步的？
+---
+
+关于 React 中 `setState` 的同步与异步行为，确实是一个容易让人迷惑的话题，我来帮你详细梳理讲讲：
+
+---
+
+## 1. React 中 setState 默认是异步的
+
+在大多数情况下，`setState` 是异步执行的。也就是说，当你调用 `this.setState()` 后，React 不会立刻更新 `state`，而是会先将状态更新操作放入队列，等当前事件循环（或生命周期方法）执行完毕后，React 批量合并这些状态更新，再统一触发组件的重新渲染。
+
+这样做的主要目的是为了性能优化——批量更新可以减少重复渲染。
+
+```jsx
+this.setState({ count: this.state.count + 1 });
+console.log(this.state.count); // 这里可能还是旧值，因为 setState 是异步的
+```
+
+---
+
+## 2. 异步执行的触发场景
+
+* React 事件处理函数（如 onClick, onChange 等）
+* React 生命周期方法中（componentDidMount、componentDidUpdate、componentWillUnmount 等）
+* React 合成事件内部
+
+这些情况下，`setState` 会被 React 批量处理，变成异步执行。
+
+---
+
+## 3. 什么时候是同步的？
+
+**在 React 的某些特殊场景下，`setState` 是同步执行的。**
+
+最典型的是：
+
+* React 外部的原生事件处理函数（比如直接用 `addEventListener` 绑定的事件）
+* `setTimeout`、`Promise.then` 等异步回调中（不是 React 合成事件内部）
+* React 18+ 严格模式下，某些行为（具体要看 React 版本和开启的模式）
+* React 生命周期的构造函数、`getDerivedStateFromProps` 以及 `render` 中（这些场景下不允许调用 setState，或根本不会触发异步）
+
+示例：
+
+```jsx
+componentDidMount() {
+  setTimeout(() => {
+    this.setState({ count: this.state.count + 1 });
+    console.log(this.state.count); // 这里是同步更新后的值
+  }, 0);
+}
+```
+
+因为 `setTimeout` 是浏览器原生 API，不受 React 批量处理机制影响，`setState` 会同步更新（在 React 17 之前版本表现明显）。
+
+---
+
+## 4. React 18 后的新变化：自动批量更新（Automatic Batching）
+
+React 18 引入了自动批量更新，不仅仅局限在 React 合成事件中，还扩展到了更多异步场景（如 Promise、setTimeout 等）。
+
+举例：
+
+```jsx
+setTimeout(() => {
+  this.setState({ a: 1 });
+  this.setState({ b: 2 });
+  // React 18 会将这两个 setState 自动批量处理，避免多次渲染
+});
+```
+
+这意味着 React 18 之后，setState 更倾向于异步批量处理。若需要同步执行，可以使用 React 的 `flushSync` API。
+
+---
+
+## 5. 如何保证拿到最新 state？
+
+因为 `setState` 可能是异步的，直接用 `this.state` 可能不是最新值，推荐用函数式的 `setState`：
+
+```jsx
+this.setState((prevState) => ({ count: prevState.count + 1 }));
+```
+
+这样就不会受到异步更新的影响，保证正确计算新的状态。
+
+---
+
+## 6. 总结表格
+
+| 场景                        | setState 是否异步？                | 备注                |
+| ------------------------- | ----------------------------- | ----------------- |
+| React 合成事件                | 异步                            | 默认批量更新            |
+| React 生命周期方法              | 异步                            | 除非特殊情况            |
+| 浏览器原生事件处理                 | 同步                            | 不受 React 批量处理影响   |
+| setTimeout / Promise.then | React 17 及之前版本同步，React 18+ 异步 | React 18 支持自动批量更新 |
+| React 18 + flushSync      | 同步                            | 强制同步更新            |
+
+---
+
+## 7. 小技巧：使用 flushSync 强制同步
+
+React 18 提供了 `flushSync`，可以强制同步更新：
+
+```jsx
+import { flushSync } from 'react-dom';
+
+flushSync(() => {
+  this.setState({ count: this.state.count + 1 });
+});
+console.log(this.state.count); // 这里保证是最新值
+```
+
+---
+
+## 8. 额外说明
+
+* **为什么异步？** 因为同步更新会频繁触发渲染，影响性能。
+* **异步更新不代表一定是 Promise 异步**，而是 React 自己实现的批量处理机制。
+* **开发环境和生产环境表现可能有差异**，例如 React 严格模式下会多次调用以检测副作用。
+
+---
+
+如果你想，我可以帮你写几个示例代码，演示这些场景中 `setState` 的同步与异步行为，方便理解！你需要吗？

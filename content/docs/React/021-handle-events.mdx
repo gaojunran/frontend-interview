@@ -1,0 +1,140 @@
+---
+title: 事件在 React 中是如何处理的？
+---
+
+在 React 中，事件处理（Event Handling）是通过封装浏览器的原生事件系统实现的，具有跨浏览器兼容性，并遵循统一的规范。React 使用的是一种被称为“**合成事件（SyntheticEvent）**”的机制，它对原生事件进行了封装，使其在不同浏览器中表现一致。
+
+---
+
+## 🧠 一、React 中事件的基本写法
+
+在 React 中，事件绑定不像传统 HTML 那样使用小写字母，而是采用 **驼峰命名法**，事件处理函数通常是一个函数引用，而不是字符串。
+
+```jsx
+function MyButton() {
+  function handleClick() {
+    alert('按钮被点击了！');
+  }
+
+  return <button onClick={handleClick}>点击我</button>;
+}
+```
+
+### ✅ 与原生 HTML 的区别：
+
+| 对比点    | 原生 HTML      | React                |
+| ------ | ------------ | -------------------- |
+| 事件名    | `onclick`    | `onClick`（驼峰写法）      |
+| 传入处理函数 | 字符串或函数       | 函数引用                 |
+| 事件对象   | 原生 DOM Event | SyntheticEvent（合成事件） |
+
+---
+
+## 🔄 二、合成事件（SyntheticEvent）
+
+React 为了提高性能和跨平台兼容性，引入了 **合成事件系统**，即 `SyntheticEvent`，这是 React 对浏览器原生事件的封装。
+
+### 特点：
+
+1. **统一 API**：在所有浏览器中表现一致。
+2. **事件池复用**：为了提高性能，React 会复用事件对象；你如果需要异步使用事件对象，需要调用 `event.persist()`。
+3. **兼容原生属性**：如 `event.target`、`event.preventDefault()`、`event.stopPropagation()` 都可用。
+
+```jsx
+function handleClick(event) {
+  console.log(event.type); // click
+  event.preventDefault();  // 阻止默认行为
+}
+```
+
+---
+
+## 🔧 三、事件绑定方式
+
+### 1. 直接绑定
+
+```jsx
+<button onClick={this.handleClick}>Click</button>
+```
+
+### 2. 绑定参数（使用箭头函数）
+
+```jsx
+<button onClick={(e) => this.handleClick(e, id)}>Click</button>
+```
+
+### 3. 在构造函数中绑定 `this`（类组件）
+
+```jsx
+constructor(props) {
+  super(props);
+  this.handleClick = this.handleClick.bind(this);
+}
+```
+
+---
+
+## 🌳 四、事件委托机制
+
+React 并不是把事件处理器直接绑定到 DOM 元素上，而是将所有事件统一绑定到根节点（如 `#root`）上，使用事件冒泡机制进行处理。
+
+### 优点：
+
+* 节省内存，提升性能；
+* 便于组件卸载时统一移除事件；
+* 实现跨浏览器兼容性。
+
+---
+
+## 💥 五、常见事件类型
+
+React 支持所有常见的 DOM 事件，主要包括：
+
+### 👉 鼠标事件
+
+* `onClick`
+* `onDoubleClick`
+* `onMouseEnter` / `onMouseLeave`
+* `onMouseDown` / `onMouseUp`
+
+### ⌨️ 键盘事件
+
+* `onKeyDown`
+* `onKeyPress`
+* `onKeyUp`
+
+### 🖊️ 表单事件
+
+* `onChange`
+* `onInput`
+* `onSubmit`
+* `onFocus` / `onBlur`
+
+### 📦 拖拽、剪贴板等
+
+* `onDragStart`, `onDrop`
+* `onCopy`, `onPaste`, `onCut`
+
+---
+
+## ⚠️ 六、注意事项
+
+1. **不要使用 return false 阻止默认行为**，请使用 `event.preventDefault()`。
+2. 如果事件处理函数是类方法，要注意 `this` 的指向。
+3. 对于性能敏感场景，尽量避免在 JSX 中直接创建箭头函数或匿名函数。
+
+---
+
+## ✅ 总结
+
+| 特点     | 说明                      |
+| ------ | ----------------------- |
+| 合成事件   | 提供统一的跨浏览器事件接口           |
+| 驼峰命名法  | 所有事件名称使用 camelCase      |
+| 函数引用绑定 | 事件处理函数应是函数引用，不是字符串      |
+| 事件委托   | 所有事件最终委托到根节点（如 `#root`） |
+| 生命周期集成 | React 会在组件卸载时自动清理绑定的事件  |
+
+---
+
+如果你想了解 **事件捕获 vs 冒泡**、**异步事件池复用**，或者事件系统在 React 18 中的变化，我也可以进一步讲解。是否继续？

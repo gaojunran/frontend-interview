@@ -1,0 +1,102 @@
+---
+title: 在 React 构造函数中调用 super(props) 的目的是什么？
+---
+
+在 React 的类组件中，构造函数中调用 `super(props)` 是非常重要的一步。我们可以从 **JavaScript 语言本身** 和 **React 框架的机制** 两个层面详细解释它的目的。
+
+---
+
+## 一、从 JavaScript 的角度看：`super(props)` 的作用
+
+### 1. 继承语法的基础要求
+
+React 类组件通常是这样写的：
+
+```jsx
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props); // 必须调用
+    // this.state = ...
+  }
+}
+```
+
+这背后的本质是 **类的继承**：
+
+* `MyComponent` 是子类；
+* `React.Component` 是父类；
+* JavaScript 中子类的构造函数里，如果想使用 `this`，**必须先调用 `super()`**。
+
+👉 不调用 `super()`，你会得到一个运行时错误：
+
+> Must call super constructor in derived class before accessing 'this' or returning from derived constructor
+
+---
+
+### 2. 传递 `props` 给父类构造函数
+
+`super(props)` 的作用就是调用父类 `React.Component` 的构造函数，并把组件的 `props` 传递进去。
+
+这样做的结果是：
+
+* 父类可以初始化 `this.props`
+* 子类中你可以安全地访问 `this.props`，哪怕是在 `constructor` 中
+
+如果你只是写 `super()`（没有传 `props`），那么在构造函数中访问 `this.props` 会得到 `undefined`。
+
+---
+
+## 二、从 React 的角度看：构造组件实例的过程
+
+React 内部在创建组件实例时，会调用类的构造函数。
+
+React 的类组件生命周期：
+
+1. 创建组件实例 → `constructor(props)`
+2. 挂载阶段：
+
+   * `getDerivedStateFromProps`
+   * `render`
+   * `componentDidMount`
+
+如果你不传 `props` 给 `super`，那么构造时 `this.props` 就无法正确赋值，可能导致后续的生命周期或逻辑出错。
+
+---
+
+## 三、总结：调用 `super(props)` 的三个关键目的
+
+| 目的                  | 说明                                     |
+| ------------------- | -------------------------------------- |
+| 初始化 `this`          | JS 的继承语法要求，必须先调用 `super()` 才能使用 `this` |
+| 设置 `this.props`     | 将父组件传入的 `props` 正确地初始化到实例中             |
+| 确保生命周期中的 `props` 正确 | 保证组件生命周期函数中访问 `this.props` 是安全的        |
+
+---
+
+## 四、示例对比
+
+❌ **错误写法：省略 `super(props)`**
+
+```js
+constructor(props) {
+  // super(); // ❌ 这样写 this.props 是 undefined
+  this.state = {
+    message: props.message // 这里会报错
+  };
+}
+```
+
+✅ **正确写法：使用 `super(props)`**
+
+```js
+constructor(props) {
+  super(props); // ✅ 正确初始化 this.props
+  this.state = {
+    message: props.message
+  };
+}
+```
+
+---
+
+如果你还有兴趣，我也可以讲讲 **函数组件中 props 是如何传递的**（对比类组件），或者 `super()` 和 `super(props)` 的微妙区别。需要吗？

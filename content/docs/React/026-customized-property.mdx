@@ -1,0 +1,111 @@
+---
+title: 在 React 的 JSX 中，如何使用自定义属性？
+---
+
+在 React 的 JSX 中，自定义属性（custom attributes）是指开发者为组件或 DOM 元素添加的非标准 HTML 属性。这些属性在一些场景中非常有用，比如传递额外信息或为第三方库（如原生 JavaScript 或 CSS 动画库）提供钩子。
+
+## 一、使用自定义属性的基本语法
+
+在 JSX 中，自定义属性的写法和普通属性一样，但必须遵循以下规则：
+
+### ✅ 合法写法：
+
+```jsx
+<div data-id="123" custom-attr="abc">内容</div>
+```
+
+### ⚠️ 注意：
+
+React 会自动将非标准属性传递到原生 DOM 上，但**只有符合 HTML 属性命名规范的才会保留**，否则 React 会**忽略或报错**。
+
+---
+
+## 二、推荐使用 `data-` 前缀的自定义属性
+
+React 遵循 HTML 规范，对 DOM 元素上的自定义属性推荐使用 `data-*` 格式（这是 HTML5 标准）。
+
+### 示例：
+
+```jsx
+<div data-user-id="456" data-role="admin">Hello</div>
+```
+
+这些属性可以在浏览器中通过 JavaScript 访问：
+
+```js
+const el = document.querySelector('div');
+console.log(el.dataset.userId); // "456"
+console.log(el.dataset.role);   // "admin"
+```
+
+---
+
+## 三、自定义属性在组件中的传递与使用
+
+如果你在自定义组件（函数组件或类组件）中使用自定义属性，React 默认不会自动传给 DOM，**除非你显式传递**。
+
+### 示例：错误写法（属性不会被传递到最终的 DOM 元素）
+
+```jsx
+function MyComponent(props) {
+  return <div>{props.children}</div>;
+}
+
+<MyComponent data-test="abc" />
+```
+
+这里 `data-test` 并不会出现在最终的 `<div>` 上。
+
+### 正确写法：使用 `...props` 透传属性
+
+```jsx
+function MyComponent(props) {
+  return <div {...props}>{props.children}</div>;
+}
+
+<MyComponent data-test="abc" />
+```
+
+这样 `data-test` 就会传递到 `<div>` 上。
+
+---
+
+## 四、不推荐的自定义属性写法
+
+如果你写了一个 React 不识别、也不符合 HTML 标准的属性，比如：
+
+```jsx
+<div myAttr="abc" />
+```
+
+React 在开发环境下会警告（特别是在严格模式下），在生产环境下可能会被忽略。
+
+为了避免潜在的问题，请始终使用 `data-` 前缀：
+
+```jsx
+<div data-my-attr="abc" />
+```
+
+---
+
+## 五、常见使用场景
+
+* 测试框架：用 `data-testid` 为测试定位元素。
+* 自定义样式控制：某些 CSS 框架会基于 `data-*` 属性做样式切换。
+* JavaScript 脚本操作：获取元素的额外数据。
+* 动画库：如 GSAP、AOS 等基于 `data-` 属性做动画配置。
+
+---
+
+## 六、总结
+
+| 场景                      | 是否支持              | 建议                       |
+| ----------------------- | ----------------- | ------------------------ |
+| 在 DOM 元素上使用 `data-*` 属性 | ✅ 支持              | ✔ 推荐使用                   |
+| 使用非标准属性（如 `myAttr`）     | ⚠️ 有风险            | ❌ 不推荐                    |
+| 在组件中透传属性到 DOM           | ✅ 使用 `{...props}` | ✔ 推荐透传                   |
+| 在组件中读取自定义属性             | ✅ 通过 `props` 读取   | ✔ 使用 `props['data-xxx']` |
+
+---
+
+如果你有实际的代码场景或想了解在具体项目中如何使用，可以发我代码，我来详细讲解适用方式。

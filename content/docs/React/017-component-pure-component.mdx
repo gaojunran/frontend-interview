@@ -1,0 +1,107 @@
+---
+title: React 中 Component 和 PureComponent 有什么区别？
+---
+
+在 React 中，`Component` 和 `PureComponent` 都是用来创建类组件的基类，它们都继承自 `React.Component`，但有一个**关键区别**：**`PureComponent` 自动实现了 `shouldComponentUpdate()` 方法来优化性能**，而 `Component` 没有。
+
+---
+
+## 一、基本区别
+
+| 特性                      | `Component`               | `PureComponent`                      |
+| ----------------------- | ------------------------- | ------------------------------------ |
+| `shouldComponentUpdate` | 默认总是返回 `true`（组件会重新渲染）    | 自动对 props 和 state 做**浅层比较**，决定是否重新渲染 |
+| 性能优化                    | 需要手动优化                    | 自动避免不必要的渲染                           |
+| 使用场景                    | 状态/props 频繁变化或复杂结构，手动控制渲染 | 状态/props 是**简单结构**且经常重复传入相同值         |
+
+---
+
+## 二、浅层比较是啥意思？
+
+\*\*浅层比较（shallow comparison）\*\*只比较第一层数据是否是同一个引用。
+
+```js
+const obj1 = { name: 'Alice' };
+const obj2 = { name: 'Alice' };
+
+obj1 === obj2 // false，即使内容一样，引用不一样
+```
+
+如果你传给组件的是对象、数组等引用类型，即使内容不变，只要是新创建的，就会被认为不同。
+
+这可能导致 `PureComponent` 不起作用（误判为不同）。
+
+---
+
+## 三、代码对比示例
+
+### 使用 `Component`：
+
+```jsx
+class MyComponent extends React.Component {
+  render() {
+    console.log('render');
+    return <div>{this.props.value}</div>;
+  }
+}
+```
+
+每次父组件重新渲染，即使 `value` 没变，也会重新执行 `render()`。
+
+---
+
+### 使用 `PureComponent`：
+
+```jsx
+class MyPureComponent extends React.PureComponent {
+  render() {
+    console.log('pure render');
+    return <div>{this.props.value}</div>;
+  }
+}
+```
+
+只要 `value` 没变，`render()` 就不会执行。
+
+---
+
+## 四、使用建议
+
+### 适合使用 `PureComponent` 的场景：
+
+* 组件的 `props` 和 `state` 是**值类型**（如字符串、数字、布尔值）。
+* 组件性能很敏感（如大列表、频繁更新）。
+* 使用了不可变数据结构（如 `Immutable.js`、`immer` 等）。
+
+### 不适合的情况：
+
+* 传入的是复杂对象或数组，并且频繁**新建对象**。
+* 自定义更新逻辑更复杂时，建议手动写 `shouldComponentUpdate()`。
+
+---
+
+## 五、函数组件怎么办？
+
+从 React 16.6 开始可以使用 `React.memo()` 为函数组件提供类似 `PureComponent` 的优化：
+
+```js
+const MyFunctional = React.memo(function MyComponent(props) {
+  return <div>{props.value}</div>;
+});
+```
+
+也使用浅比较判断是否跳过重新渲染。
+
+---
+
+## 总结
+
+| 特性   | `Component`                 | `PureComponent` |
+| ---- | --------------------------- | --------------- |
+| 更新判断 | 总是更新                        | 自动浅比较，避免无效更新    |
+| 优化手段 | 手动写 `shouldComponentUpdate` | 内置优化            |
+| 使用风险 | 无                           | 对象引用不变才有效       |
+
+如要使用性能优化，就选 `PureComponent` 或 `React.memo`，否则默认使用 `Component` 即可。是否选择优化，主要取决于你对组件的**数据结构复杂度**和**性能要求**。
+
+需要的话我可以再结合具体场景给你建议。

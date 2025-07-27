@@ -1,0 +1,145 @@
+---
+title: React 的类组件和函数式组件有什么区别？
+---
+
+React 中的 **类组件（Class Component）** 和 **函数式组件（Function Component）** 是两种创建组件的方式，它们在 React 的发展过程中各有侧重点和适用场景。下面我将从多个方面详细讲解两者的区别：
+
+---
+
+### ✅ 1. 基本定义和语法
+
+#### 类组件（Class Component）：
+
+* 是使用 `ES6 class` 语法定义的组件。
+* 必须继承 `React.Component`。
+* 必须实现 `render()` 方法来返回 JSX。
+* 使用 `this.state` 管理状态，`this.setState` 更新状态。
+
+```jsx
+import React from 'react';
+
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { count: 0 };
+  }
+
+  handleClick = () => {
+    this.setState({ count: this.state.count + 1 });
+  };
+
+  render() {
+    return <button onClick={this.handleClick}>{this.state.count}</button>;
+  }
+}
+```
+
+#### 函数组件（Function Component）：
+
+* 是使用函数定义的组件。
+* 早期没有状态和生命周期，React 16.8 引入了 **Hooks** 后变得强大。
+* 使用 `useState`、`useEffect` 等 Hook 管理状态和副作用。
+
+```jsx
+import React, { useState } from 'react';
+
+function MyComponent() {
+  const [count, setCount] = useState(0);
+
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+```
+
+---
+
+### ✅ 2. 状态管理方式
+
+| 特性       | 类组件               | 函数组件         |
+| -------- | ----------------- | ------------ |
+| 状态定义     | `this.state`      | `useState`   |
+| 状态更新     | `this.setState()` | `setCount()` |
+| 访问 props | `this.props`      | 直接作为参数       |
+
+---
+
+### ✅ 3. 生命周期处理
+
+#### 类组件生命周期方法（有明确阶段）：
+
+* `componentDidMount`
+* `componentDidUpdate`
+* `componentWillUnmount`
+* `shouldComponentUpdate` 等
+
+```jsx
+componentDidMount() {
+  // 初始化操作
+}
+```
+
+#### 函数组件用 `useEffect` 代替生命周期：
+
+```jsx
+useEffect(() => {
+  // 相当于 componentDidMount + componentDidUpdate
+
+  return () => {
+    // 相当于 componentWillUnmount
+  };
+}, [依赖]);
+```
+
+---
+
+### ✅ 4. this 指向问题
+
+* **类组件**中事件处理器需要手动绑定 `this`，或者用箭头函数解决。
+* **函数组件**中不使用 `this`，避免了 this 指向混乱的问题。
+
+---
+
+### ✅ 5. 性能和优化
+
+* 早期函数组件无状态，性能略好；现在基本一致。
+* 类组件可以使用 `PureComponent` 和 `shouldComponentUpdate` 进行性能优化。
+* 函数组件可使用 `React.memo()`、`useMemo`、`useCallback` 来优化性能。
+
+---
+
+### ✅ 6. 写法简洁程度
+
+* 函数组件更简洁、语义清晰，代码量少，更适合现代 React 风格。
+* 类组件代码更冗长，但在处理复杂逻辑时结构清晰（现在也可以用自定义 Hook 来管理复杂逻辑）。
+
+---
+
+### ✅ 7. 兼容性与发展方向
+
+| 比较点     | 类组件    | 函数组件    |
+| ------- | ------ | ------- |
+| 是否被弃用   | 否（仍支持） | 是官方推荐方向 |
+| 社区趋势    | 逐步弱化   | 主流和未来   |
+| 支持 Hook | ❌      | ✅       |
+| 未来特性    | 不优先支持  | 优先支持    |
+
+---
+
+### ✅ 总结对比表
+
+| 特性        | 类组件                       | 函数组件                     |
+| --------- | ------------------------- | ------------------------ |
+| 定义方式      | `class extends Component` | `function MyComponent()` |
+| 状态管理      | `this.state`              | `useState` Hook          |
+| 生命周期      | 生命周期方法                    | `useEffect` Hook         |
+| this 绑定问题 | 需要绑定                      | 无 this 问题                |
+| 写法简洁      | 较冗长                       | 简洁清晰                     |
+| Hooks 支持  | ❌                         | ✅                        |
+| 未来趋势      | 被替代趋势                     | 官方推荐方向                   |
+
+---
+
+### ✅ 实际建议
+
+在现代 React 项目中，**推荐优先使用函数组件 + Hooks**，除非你需要维护旧项目中用类组件实现的功能。
+
+如有需要，我可以演示如何将类组件重构成函数组件。是否需要示例？

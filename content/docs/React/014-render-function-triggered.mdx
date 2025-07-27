@@ -1,0 +1,111 @@
+---
+title: React 的 render 函数在什么情况下会被触发？
+---
+
+在 React 中，组件的 `render` 函数是用于**描述 UI 应该长什么样**的函数，它的执行会返回 JSX 元素，React 会根据它的返回值来构建虚拟 DOM，然后通过 diff 算法对比并更新真实 DOM。
+
+---
+
+### 一、render 函数的触发时机
+
+`render()` 会在以下几种情况中被 **自动触发**：
+
+---
+
+#### 1. **组件首次挂载（Mount）时**
+
+当组件第一次被渲染到 DOM 上时（也就是组件从无到有），`render` 函数会执行一次。
+
+```jsx
+class MyComponent extends React.Component {
+  render() {
+    console.log('render called');
+    return <div>Hello</div>;
+  }
+}
+// 第一次加载 <MyComponent /> 时 render 会被调用
+```
+
+---
+
+#### 2. **组件的 state 或 props 改变时**
+
+* 当组件内部调用 `this.setState()`，会更新状态，触发重新 render。
+* 当父组件传入的 `props` 发生变化，也会触发 render。
+
+```jsx
+class Counter extends React.Component {
+  state = { count: 0 };
+
+  increment = () => {
+    this.setState({ count: this.state.count + 1 }); // 会触发 render
+  };
+
+  render() {
+    return <button onClick={this.increment}>{this.state.count}</button>;
+  }
+}
+```
+
+---
+
+#### 3. **调用 `forceUpdate()` 时**
+
+虽然不推荐，但可以通过 `forceUpdate()` 强制触发组件的 render 函数（跳过 `shouldComponentUpdate`）。
+
+```jsx
+this.forceUpdate(); // 会强制调用 render
+```
+
+---
+
+#### 4. **父组件 render 导致子组件 render**
+
+即使子组件的 props 没变，只要父组件 render 了，子组件默认也会 render（除非被 `React.memo`、`PureComponent`、`shouldComponentUpdate` 等优化阻止）。
+
+---
+
+### 二、不会触发 render 的情况
+
+* **不直接修改 state 的情况下 setState 不会生效**
+
+```js
+this.state.count = 2; // 不会触发 render
+```
+
+* **setState 设置相同的值**
+  如果你用 `setState` 设置的值和当前 state 相同，React 会跳过更新（浅比较）。
+
+* **`shouldComponentUpdate` 返回 false**
+  在类组件中，如果你重写 `shouldComponentUpdate` 并返回 false，会阻止 render。
+
+* **PureComponent 发现没有变化**
+  如果组件继承了 `React.PureComponent`，它会自动对 props 和 state 进行浅比较，发现没变就不会 render。
+
+---
+
+### 三、执行顺序相关
+
+在组件生命周期中，`render()` 函数位于中间环节：
+
+1. 初始化阶段：`constructor` → `render` → `componentDidMount`
+2. 更新阶段（如 setState）：`shouldComponentUpdate` → `render` → `componentDidUpdate`
+3. 卸载阶段：`componentWillUnmount`（不触发 render）
+
+---
+
+### 四、总结
+
+| 触发方式                                    | 是否触发 render |
+| --------------------------------------- | ----------- |
+| 初次加载                                    | ✅           |
+| 调用 `setState()`                         | ✅（除非值没变）    |
+| 父组件更新（即使 props 不变）                      | ✅（除非优化拦截）   |
+| 调用 `forceUpdate()`                      | ✅           |
+| 直接修改 state                              | ❌           |
+| `shouldComponentUpdate()` 返回 false      | ❌           |
+| 使用 `React.memo` 或 `PureComponent` 判断无变化 | ❌           |
+
+---
+
+如果你还想深入理解组件更新过程、虚拟 DOM 的 diff 流程，我也可以继续展开。
