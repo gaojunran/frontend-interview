@@ -69,7 +69,18 @@ setTimeout(() => {
 });
 ```
 
-这意味着 React 18 之后，setState 更倾向于异步批量处理。若需要同步执行，可以使用 React 的 `flushSync` API。
+这意味着 React 18 之后，setState 更倾向于异步批量处理。若需要同步执行，可以使用 React 的 `flushSync` API：
+
+```js
+import { flushSync } from 'react-dom';
+
+function handleClick() {
+  flushSync(() => {
+    setCount(c => c + 1);
+  });
+  // 这时 DOM 已经更新了
+}
+```
 
 ---
 

@@ -1,0 +1,77 @@
+---
+title: 什么是 React 的实例？函数式组件是否有实例？
+---
+
+在 React 中，**实例（Instance）**这个概念主要用于**类组件（Class Component）**，而不是**函数式组件（Function Component）**。下面详细解释这两个问题：
+
+---
+
+### 一、什么是 React 的“实例”？
+
+在 React 中，“实例”一般指的是类组件创建出来的那个组件对象，也就是使用 `new` 关键字创建的类的对象。
+
+#### 对于类组件：
+
+```jsx
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { count: 0 };
+  }
+
+  render() {
+    return <div>{this.state.count}</div>;
+  }
+}
+```
+
+当这个组件被渲染时，React 会内部调用：
+
+```js
+const instance = new MyComponent(props);
+```
+
+这个 `instance` 就是 React 的组件实例。它具有：
+
+* 生命周期方法（如 `componentDidMount`, `shouldComponentUpdate` 等）
+* `this.state`, `this.setState`
+* `this.props`
+* 可以通过 `ref` 获取到这个实例对象
+
+---
+
+### 二、函数式组件是否有“实例”？
+
+> 简短回答：**函数组件没有实例**。
+
+#### 示例：
+
+```jsx
+function MyFunctionComponent(props) {
+  const [count, setCount] = useState(0);
+  return <div>{count}</div>;
+}
+```
+
+这个函数每次调用都会返回一个新的 JSX 元素，React 不会用 `new` 去创建它的实例。
+
+* 没有 `this`
+* 没有生命周期方法（以前的那种）
+* **不能通过 ref 获取组件本身（除非用 `forwardRef`）**
+* 状态和副作用通过 **Hook** 实现
+
+---
+
+### 总结对比表：
+
+| 特性              | 类组件（Class Component）           | 函数组件（Function Component）   |
+| --------------- | ------------------------------ | -------------------------- |
+| 是否有实例（`this`）   | ✅ 有实例                          | ❌ 没有实例                     |
+| 生命周期方式          | 使用生命周期方法                       | 使用 `useEffect` 等 Hook      |
+| 是否能用 `ref` 获取实例 | ✅ 默认支持                         | ❌ 默认不支持（但 `forwardRef` 可以） |
+| 状态管理            | `this.state` / `this.setState` | `useState`                 |
+| 写法              | 类语法                            | 函数语法                       |
+
+---
+
+如有需要我可以进一步讲讲函数组件中如何“模拟”实例行为（比如用 `useRef` 存储实例变量）。是否需要？
