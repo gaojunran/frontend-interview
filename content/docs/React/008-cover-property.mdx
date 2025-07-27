@@ -1,0 +1,159 @@
+---
+title: React 的 JSX 中，属性是否可以被覆盖？覆盖的原则是什么？
+---
+
+React 中的 JSX 里，**属性（props）是否可以被覆盖**，答案是“可以”，但具体情况和覆盖的原则比较讲究。下面我详细讲讲这其中的细节和原则。
+
+---
+
+## 一、什么是“属性覆盖”？
+
+“属性覆盖”通常指的是同一个 JSX 元素上，**某个属性被赋值多次**，最终生效的是哪个值。
+
+举个简单例子：
+
+```jsx
+<MyComponent title="Hello" title="World" />
+```
+
+这里 `title` 属性写了两次，最后哪个值生效？
+
+---
+
+## 二、React JSX 属性覆盖的规则
+
+### 1. 同一个 JSX 标签上，同名属性会以**最后出现的属性值为准**
+
+例如：
+
+```jsx
+<div className="first" className="second" />
+```
+
+最终，`className` 是 `"second"`，第一个 `"first"` 会被覆盖。
+
+这是因为 JSX 最终会被 Babel 编译成 `React.createElement` 调用，参数是一个对象：
+
+```js
+React.createElement('div', { className: "first", className: "second" })
+```
+
+JS 对象中后面的同名 key 会覆盖前面的。
+
+---
+
+### 2. JSX 属性展开时，后面的属性会覆盖前面的同名属性
+
+最典型的例子是使用 **属性展开运算符**（spread operator）
+
+```jsx
+const props1 = { title: "Hello", id: "123" };
+const props2 = { title: "World" };
+
+<MyComponent {...props1} {...props2} />
+```
+
+最终 `title` 的值是 `"World"`，因为展开是按顺序的，后面的覆盖前面的。
+
+等价于：
+
+```jsx
+<MyComponent title="Hello" id="123" title="World" />
+```
+
+---
+
+### 3. 直接写在 JSX 标签上的属性和展开的对象属性覆盖规则
+
+```jsx
+const props = { title: "Hello", id: "123" };
+
+<MyComponent {...props} title="World" />
+```
+
+最后的 `title` 是 `"World"`，因为写在 JSX 里的属性优先级更高（写在后面）。
+
+反之：
+
+```jsx
+<MyComponent title="World" {...props} />
+```
+
+最终 `title` 是 `"Hello"`，因为后面的展开的 `props` 覆盖了前面的。
+
+---
+
+### 4. React 组件内部的属性合并覆盖
+
+当你自己写一个 React 组件时，`props` 是只读的。如果你想“覆盖”属性，需要在父组件传入时，或者组件内部自己处理，例如：
+
+```jsx
+function MyComponent(props) {
+  const newTitle = props.title || "默认标题";
+  return <h1>{newTitle}</h1>;
+}
+```
+
+或者：
+
+```jsx
+function MyComponent(props) {
+  const mergedProps = { ...props, title: "强制标题" };
+  // 这里的 title 会覆盖传入的 props.title
+  return <h1>{mergedProps.title}</h1>;
+}
+```
+
+但这属于**业务逻辑覆盖**，而不是 JSX 语法层面的属性覆盖。
+
+---
+
+## 三、总结和原则
+
+| 场景           | 覆盖规则                 | 原因                     |
+| ------------ | -------------------- | ---------------------- |
+| 同一标签上写多次同名属性 | 以最后一个同名属性为准          | JavaScript 对象 key 覆盖机制 |
+| 多个展开对象的属性    | 后展开的对象中同名属性覆盖先展开的属性  | 对象合并时后面覆盖前面            |
+| 展开对象后再写属性    | 以后写的属性为准             | JSX 编译成对象，后面的覆盖前面      |
+| 写属性后再展开对象    | 以后展开对象中属性为准          | 同上                     |
+| 组件内部修改 props | 不能直接修改，只能通过拷贝或业务逻辑覆盖 | React props 不可变原则      |
+
+---
+
+## 四、额外补充：className 和 style 合并问题
+
+对于特殊属性（比如 `className` 和 `style`），直接覆盖可能不够，我们常需要**合并**，而不是覆盖：
+
+```jsx
+<MyComponent className="a" className="b" />
+```
+
+最终只会有 `"b"`，不会合并成 `"a b"`。
+
+所以你需要自己用工具合并：
+
+```jsx
+import classnames from 'classnames';
+
+<MyComponent className={classnames("a", "b")} />
+```
+
+类似 `style` 也需要自己合并：
+
+```jsx
+const style1 = { color: "red" };
+const style2 = { fontSize: "16px" };
+
+<MyComponent style={{ ...style1, ...style2 }} />
+```
+
+---
+
+## 五、结论
+
+* JSX 属性是一个对象的键值对，后出现的同名键会覆盖前面。
+* 使用展开运算符时，展开的顺序决定覆盖顺序，后展开的覆盖先展开的。
+* 写在 JSX 里的属性顺序决定覆盖，后写的优先。
+* 组件内部 props 不可变，若需要覆盖必须通过创建新的对象或业务逻辑实现。
+* 对于某些需要合并的属性（className、style），要主动处理，不能依赖覆盖。
+

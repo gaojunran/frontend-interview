@@ -1,0 +1,139 @@
+---
+title: React Router 中的 Router 组件有几种类型？
+---
+
+在 React Router（尤其是 React Router v6）中，**`<Router>` 组件有多种类型**，用于适配不同的运行环境（如浏览器、服务端、原生应用等）。这些 Router 类型本质上是对路由行为和历史记录的不同实现。以下是主要的几种类型及其用途：
+
+---
+
+## 🧭 1. `<BrowserRouter>`
+
+### ✅ 最常用，适用于现代浏览器的 Web 应用
+
+* **原理**：使用浏览器原生的 [`History API`](https://developer.mozilla.org/zh-CN/docs/Web/API/History)（如 `pushState`、`replaceState`）
+
+* **优点**：
+
+  * URL 是标准格式（如 `/about`），对用户和 SEO 友好
+  * 前进/后退按钮正常工作
+
+* **用法**：
+
+  ```jsx
+  import { BrowserRouter } from "react-router-dom";
+
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+  ```
+
+* **适用场景**：部署在支持服务器重定向的 Web 环境
+
+---
+
+## 🧱 2. `<HashRouter>`
+
+### ✅ 适合不能配置服务器重写规则的环境（如 GitHub Pages）
+
+* **原理**：使用 `URL` 的 hash 部分（`window.location.hash`），如 `/#/about`
+
+* **优点**：
+
+  * 不需要服务器配置，直接支持客户端路由
+
+* **缺点**：
+
+  * URL 含有 `#`，不太美观
+  * SEO 不友好（搜索引擎可能不会解析 hash）
+
+* **用法**：
+
+  ```jsx
+  import { HashRouter } from "react-router-dom";
+
+  <HashRouter>
+    <App />
+  </HashRouter>
+  ```
+
+* **适用场景**：静态托管平台、不支持自定义服务端路由重定向的场合
+
+---
+
+## 🌐 3. `<MemoryRouter>`
+
+### ✅ 内存中的路由，不依赖浏览器 URL，适合测试或非浏览器环境
+
+* **原理**：将路由状态保存在 JavaScript 内存中
+
+* **特点**：
+
+  * 页面刷新不会改变 URL
+  * 不会影响浏览器地址栏
+
+* **用法**：
+
+  ```jsx
+  import { MemoryRouter } from "react-router-dom";
+
+  <MemoryRouter initialEntries={['/home']}>
+    <App />
+  </MemoryRouter>
+  ```
+
+* **适用场景**：
+
+  * 测试用例
+  * React Native 等非 Web 环境
+  * 嵌入式设备或浏览器外部环境
+
+---
+
+## 💾 4. `<StaticRouter>`
+
+### ✅ 用于服务端渲染（Server-Side Rendering）
+
+* **原理**：在服务端根据请求 URL 构建路由上下文，渲染出 HTML，不支持浏览器交互
+
+* **特点**：
+
+  * 不支持交互，只用于初始渲染
+  * 需要配合路由上下文处理重定向、状态等
+
+* **用法**（常用于 Next.js、自建 SSR 架构）：
+
+  ```jsx
+  import { StaticRouter } from "react-router-dom/server";
+
+  <StaticRouter location={req.url}>
+    <App />
+  </StaticRouter>
+  ```
+
+* **适用场景**：
+
+  * 服务端渲染（SSR）中初始 HTML 渲染
+  * SEO 优化
+  * 页面首次加载速度提升
+
+---
+
+## ✅ 总结对比表
+
+| Router 类型       | URL 样式   | 依赖 History API | 是否适合 SSR | 使用场景              |
+| --------------- | -------- | -------------- | -------- | ----------------- |
+| `BrowserRouter` | /about   | ✅ 是            | ❌ 否      | 通常用于现代浏览器         |
+| `HashRouter`    | /#/about | ❌ 否            | ❌ 否      | GitHub Pages、静态站点 |
+| `MemoryRouter`  | 内存地址     | ❌ 否            | ❌ 否      | 测试、非浏览器环境         |
+| `StaticRouter`  | 任意       | ❌ 否            | ✅ 是      | 服务端渲染（SSR）        |
+
+---
+
+如果你使用的是 React Router v6，它还提供了：
+
+* `createBrowserRouter`、`createHashRouter`：用于 Data Router 模式（支持嵌套路由 + Loader/Action）
+* `createMemoryRouter`：测试、React Native 场景
+
+---
+
+如果你想了解具体选择哪一个，或者需要示例代码，我可以继续深入讲解。需要吗？

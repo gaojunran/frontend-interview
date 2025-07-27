@@ -1,0 +1,153 @@
+---
+title: 如何在 React 中创建一个事件？
+---
+
+在 React 中，**事件处理**是通过将事件处理函数作为**props**传递给 JSX 中的 DOM 元素来实现的。React 的事件系统是对原生 DOM 事件的**封装和增强**，具备一致的行为和跨浏览器兼容性。
+
+---
+
+## ✅ 一、React 中创建事件的基本语法
+
+```jsx
+function MyComponent() {
+  function handleClick() {
+    alert('按钮被点击了！');
+  }
+
+  return <button onClick={handleClick}>点击我</button>;
+}
+```
+
+说明：
+
+* `onClick` 是 React 封装的事件属性（注意大小写）。
+* `handleClick` 是事件处理函数，直接作为回调传入。
+* 不需要手动 `addEventListener` 或 `removeEventListener`。
+
+---
+
+## ✅ 二、事件命名和大小写规则
+
+| 原生 DOM 事件   | React 事件    |
+| ----------- | ----------- |
+| onclick     | onClick     |
+| onchange    | onChange    |
+| onmouseover | onMouseOver |
+
+* React 的事件名称是 **驼峰命名法**（camelCase）
+* 不再是小写，如 `onclick`，而是 `onClick`
+
+---
+
+## ✅ 三、绑定参数的几种方式
+
+### 1. 使用箭头函数（推荐）
+
+```jsx
+function MyComponent() {
+  function handleClick(name) {
+    alert(`你好，${name}`);
+  }
+
+  return <button onClick={() => handleClick('小明')}>打招呼</button>;
+}
+```
+
+注意：如果以 `onClick={handleClick('小明')}` 的方式直接传入函数，React 会在每次渲染时触发 `handleClick`，而不是在点击时调用。
+
+### 2. 使用 `bind`
+
+```jsx
+<button onClick={handleClick.bind(null, '小明')}>打招呼</button>
+```
+
+---
+
+## ✅ 四、React 事件对象（合成事件）
+
+React 为了提高性能和兼容性，封装了浏览器原生事件，称为 **SyntheticEvent（合成事件）**。
+
+```jsx
+function MyComponent() {
+  function handleClick(event) {
+    console.log(event);         // SyntheticEvent
+    console.log(event.target);  // 原生事件 target
+  }
+
+  return <button onClick={handleClick}>点击</button>;
+}
+```
+
+### ⚠️ 注意：事件对象是合成的，不能异步使用（会被复用），除非调用 `event.persist()`。
+
+---
+
+## ✅ 五、类组件中创建事件
+
+```jsx
+class MyComponent extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleClick = this.handleClick.bind(this); // 必须绑定 this
+  }
+
+  handleClick() {
+    alert('类组件中的点击事件');
+  }
+
+  render() {
+    return <button onClick={this.handleClick}>点击</button>;
+  }
+}
+```
+
+### 替代方案：使用箭头函数避免手动绑定
+
+```jsx
+handleClick = () => {
+  alert('不用手动绑定 this');
+}
+```
+
+---
+
+## ✅ 六、常见事件类型
+
+| 事件名             | 说明       |
+| --------------- | -------- |
+| `onClick`       | 鼠标点击     |
+| `onChange`      | 表单输入变化   |
+| `onSubmit`      | 表单提交     |
+| `onKeyDown`     | 按键按下     |
+| `onMouseEnter`  | 鼠标进入元素区域 |
+| `onFocus`       | 元素获得焦点   |
+| `onBlur`        | 元素失去焦点   |
+| `onContextMenu` | 鼠标右键菜单触发 |
+
+---
+
+## ✅ 七、事件委托机制（高级）
+
+React 并不是将事件直接绑定在每个 DOM 节点上，而是通过**事件委托**（event delegation），把所有事件统一挂在根节点（如 `document` 或 `root div`）上来提高性能。
+
+---
+
+## ✅ 八、注意事项
+
+* 事件不能直接返回 `false` 来阻止默认行为，需使用 `event.preventDefault()`。
+* 不使用 `addEventListener/removeEventListener`，由 React 自动处理绑定和解绑。
+* 合成事件是跨浏览器统一封装的，可以放心使用。
+
+---
+
+## ✅ 九、总结
+
+| 特性        | 说明            |
+| --------- | ------------- |
+| 类似 DOM 事件 | `onClick` 等属性 |
+| 使用函数作为回调  | 不用字符串或内联      |
+| 支持传参与箭头函数 | 推荐使用箭头函数      |
+| 使用合成事件    | 跨浏览器兼容性好      |
+| 自带事件委托机制  | 提高性能          |
+
+如果你需要我帮你写个事件组件的例子（比如表单提交、拖拽、鼠标悬停等），也可以继续说。

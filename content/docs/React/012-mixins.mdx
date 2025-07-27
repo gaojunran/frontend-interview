@@ -1,0 +1,159 @@
+---
+title: React 中的 mixins 有什么作用？适用于什么场景？
+---
+
+在 React 中，**Mixins**（混入）曾经是早期 React（主要是 React.createClass 时代）中一种**代码复用**的方式，用于在多个组件之间共享逻辑。但在现代 React（使用 ES6 class 或函数组件）中，Mixins 已不推荐使用，官方也在文档中明确提出应避免使用它。
+
+不过，了解它的原理和用途对理解 React 的演化过程非常有帮助。
+
+---
+
+## 一、什么是 Mixins？
+
+Mixins 就是一个对象，**定义了一组可复用的方法或生命周期钩子**，可以被多个组件“混入”使用。
+
+例如：
+
+```js
+const MyMixin = {
+  componentDidMount() {
+    console.log('组件挂载了');
+  },
+  doSomething() {
+    console.log('做了一些事情');
+  }
+};
+
+const MyComponent = React.createClass({
+  mixins: [MyMixin],
+
+  componentDidMount() {
+    this.doSomething(); // MyMixin 中的方法
+  },
+
+  render() {
+    return <div>Hello</div>;
+  }
+});
+```
+
+在 `MyComponent` 中，你就可以直接使用 `MyMixin` 提供的 `doSomething` 和 `componentDidMount` 方法。
+
+---
+
+## 二、Mixins 的作用
+
+主要作用是：**复用逻辑代码**，尤其适用于多个组件之间需要共享相同行为的场景。
+
+常见使用场景包括：
+
+1. **事件监听抽象**
+   比如监听 `scroll`、`resize`，可以封装成一个 Mixin。
+
+2. **表单逻辑复用**
+   例如表单校验、input 的 change 处理等，可以通过 Mixin 统一处理。
+
+3. **订阅与清理**
+   比如订阅某个数据源或事件总线，并在卸载时清理。
+
+4. **计时器逻辑**
+   设置定时器并在组件卸载时自动清除。
+
+---
+
+## 三、为什么 React 不推荐使用 Mixins？
+
+Mixins 在使用中存在一些**严重的问题**：
+
+1. **命名冲突难以追踪**
+   如果多个 Mixin 中定义了相同的方法（如 `componentDidMount`），组件很难知道哪个会覆盖哪个。
+
+2. **隐式依赖**
+   Mixin 注入了许多方法，组件没有显式声明，**耦合性强、可读性差**。
+
+3. **this 上挂载过多方法**
+   容易污染组件实例，造成维护困难。
+
+4. **不利于静态分析**
+   比如在类型检查或代码提示方面，Mixins 很难被类型系统正确识别。
+
+---
+
+## 四、替代方案（现代 React 推荐方式）
+
+现代 React 推荐以下方式来代替 Mixins：
+
+### 1. **高阶组件（HOC）**
+
+函数接收一个组件，返回一个增强后的组件。
+
+```js
+function withLogger(WrappedComponent) {
+  return class extends React.Component {
+    componentDidMount() {
+      console.log('组件挂载');
+    }
+
+    render() {
+      return <WrappedComponent {...this.props} />;
+    }
+  };
+}
+```
+
+### 2. **Render Props**
+
+通过一个函数 prop 传入逻辑。
+
+```js
+class MouseTracker extends React.Component {
+  state = { x: 0, y: 0 };
+
+  handleMouseMove = (e) => {
+    this.setState({ x: e.clientX, y: e.clientY });
+  };
+
+  render() {
+    return (
+      <div onMouseMove={this.handleMouseMove}>
+        {this.props.render(this.state)}
+      </div>
+    );
+  }
+}
+```
+
+### 3. **自定义 Hook**（函数组件中最常见）
+
+这是目前 React 中复用逻辑最推荐的方式。
+
+```js
+function useMousePosition() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    function handleMove(e) {
+      setPosition({ x: e.clientX, y: e.clientY });
+    }
+    window.addEventListener('mousemove', handleMove);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, []);
+
+  return position;
+}
+```
+
+---
+
+## 五、总结
+
+| 项目     | 说明                             |
+| ------ | ------------------------------ |
+| ✅ 优点   | 快速复用逻辑，适合早期版本组件                |
+| ❌ 缺点   | 命名冲突、隐式依赖、可维护性差                |
+| ✅ 应用场景 | 早期 React.createClass，非现代项目     |
+| ✅ 替代方案 | 高阶组件、Render Props、自定义 Hook（推荐） |
+
+---
+
+如无特殊情况，**现代 React 项目不应再使用 Mixins**，应优先选择 **函数式组件 + Hook** 实现逻辑复用。若你接触到 Mixins，多数是出现在旧代码中，理解它有助于进行迁移和重构。

@@ -1,0 +1,95 @@
+---
+title: React 的 render 函数中，是否可以直接写 if else 判断？为什么？
+---
+
+React 的 render 函数中**是可以直接写 `if else` 判断的**，但需要理解它的使用场景和一些注意点。下面详细讲讲：
+
+---
+
+## 1. React render 函数是什么？
+
+`render` 函数是 React 组件的核心方法，负责返回要渲染的 React 元素（JSX）。每次组件状态或属性更新时，`render` 函数都会被调用，React 根据返回的 JSX 更新 UI。
+
+---
+
+## 2. render 中写 `if else` 是可以的
+
+JSX 是 JavaScript 的语法扩展，render 函数本质上是一个普通的 JavaScript 函数，因此在 `render` 中写 `if else` 语句是合法且可行的：
+
+```jsx
+render() {
+  if (this.props.isLoggedIn) {
+    return <Dashboard />;
+  } else {
+    return <Login />;
+  }
+}
+```
+
+上面代码中，依据条件直接返回不同的 JSX 元素。
+
+---
+
+## 3. 为什么允许写 `if else`？
+
+* **JavaScript 自由度**：`render` 是普通函数，JS 语法都支持，包括 `if else`、`for`、`switch` 等。
+* **逻辑清晰**：有些条件分支用 `if else` 写起来清晰明了，方便控制返回不同内容。
+* **React 本身不限制**：React 对返回的内容有要求（必须是 JSX 或 React 元素、null、false等），但不限制你怎么写判断逻辑。
+
+---
+
+## 4. 常见写法及替代方案
+
+除了直接写 `if else`，React 还支持其他条件渲染写法：
+
+* **三元表达式**
+
+```jsx
+render() {
+  return this.props.isLoggedIn ? <Dashboard /> : <Login />;
+}
+```
+
+* **逻辑与运算符**
+
+```jsx
+render() {
+  return (
+    <div>
+      {this.props.showBanner && <Banner />}
+      <Content />
+    </div>
+  );
+}
+```
+
+* **提前返回**
+
+```jsx
+render() {
+  if (!this.props.isLoaded) {
+    return <LoadingSpinner />;
+  }
+  return <Content />;
+}
+```
+
+---
+
+## 5. 注意事项
+
+* **不要在 JSX 内部写带有副作用的代码**，比如赋值、修改状态。`render` 纯粹用来返回 UI。
+* **尽量保持 render 简洁**，复杂逻辑可以抽取成函数或子组件，提高可读性。
+* **避免在 JSX 内写过长的嵌套的 `if else`，可以用三元或提前返回优化。**
+
+---
+
+## 6. 总结
+
+| 方面     | 说明                             |
+| ------ | ------------------------------ |
+| 是否允许   | 允许，`if else` 是 JS 语法，render 允许 |
+| 优点     | 逻辑清晰，易理解不同条件渲染                 |
+| 替代写法   | 三元表达式、逻辑与、提前返回                 |
+| 代码风格建议 | 简洁明了，避免嵌套过深，逻辑复杂时抽函数           |
+

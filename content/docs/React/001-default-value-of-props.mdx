@@ -1,0 +1,127 @@
+---
+title: 如果 React 组件的属性没有传值，它的默认值是什么？
+---
+
+在 React 中，如果组件的 **属性（props）没有传值**，它的默认值通常是：
+
+```
+undefined
+```
+
+除非你手动设置了默认值（比如用 `defaultProps` 或函数参数的默认值语法）。
+
+---
+
+## ✅ 详细解释：
+
+### 一、默认行为：未传的 props 为 `undefined`
+
+```jsx
+function Hello({ name }) {
+  return <div>Hello, {name}</div>;
+}
+
+// 用法：不传 name
+<Hello />
+```
+
+在上面的代码中，`name` 没有传入，所以：
+
+```js
+name === undefined
+```
+
+渲染结果会是：
+
+```html
+Hello, 
+```
+
+---
+
+### 二、设置默认值的两种方式：
+
+#### 1）函数参数默认值语法（推荐）：
+
+```jsx
+function Hello({ name = 'Guest' }) {
+  return <div>Hello, {name}</div>;
+}
+```
+
+> ✅ 如果没有传 `name`，`name` 就会等于 `'Guest'`。
+
+```jsx
+<Hello />             // Hello, Guest
+<Hello name="Tom" />  // Hello, Tom
+```
+
+#### 2）使用 `defaultProps`（不推荐函数组件中再用这个方式，React 17+ 已逐步弃用）
+
+```jsx
+function Hello({ name }) {
+  return <div>Hello, {name}</div>;
+}
+
+Hello.defaultProps = {
+  name: 'Guest'
+};
+```
+
+React 会自动将未传入的属性设置为 defaultProps 中的值。但在函数组件中，**函数参数默认值语法更直观、更现代**。
+
+---
+
+### 三、对象类型的 props
+
+如果你解构时直接取属性字段，而没有给整个对象默认值，就可能报错。
+
+#### 错误示例：
+
+```jsx
+function UserCard({ user: { name } }) {
+  return <div>{name}</div>;
+}
+
+// <UserCard /> 会报错：Cannot destructure 'user' of 'undefined'
+```
+
+#### 正确写法：
+
+```jsx
+function UserCard({ user = {} }) {
+  const { name = 'Unknown' } = user;
+  return <div>{name}</div>;
+}
+```
+
+---
+
+### 四、复杂类型的默认值（如数组、函数、对象）
+
+```jsx
+function List({ items = [] }) {
+  return (
+    <ul>
+      {items.map((item, i) => <li key={i}>{item}</li>)}
+    </ul>
+  );
+}
+```
+
+默认一个空数组，避免 `items.map` 报错。
+
+---
+
+### 五、总结：React props 的默认值行为
+
+| 情况                   | 默认值         |
+| -------------------- | ----------- |
+| 未传入的 props           | `undefined` |
+| 设置函数参数默认值            | 使用你设定的默认值   |
+| 使用 defaultProps（老方式） | 使用你设定的默认值   |
+| 解构嵌套对象属性             | 要确保对象本身有默认值 |
+
+---
+
+如需我帮你写一个具体的例子或处理默认 props 的最佳实践组件，欢迎继续提问！
