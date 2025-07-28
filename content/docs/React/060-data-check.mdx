@@ -1,0 +1,161 @@
+---
+title: React 如何进行数据检查和变化处理？
+---
+
+在 React 中，\*\*数据检查（数据验证）**和**数据变化处理（响应状态变更）\*\*是开发中两个关键机制，它们分别保证了组件接收到合法的数据，并能在数据变化时正确响应 UI 更新。
+
+下面详细讲讲：
+
+---
+
+## 一、React 的数据检查机制
+
+React 主要有以下几种数据检查方式：
+
+### 1. **PropTypes 类型检查**
+
+用于开发阶段检查组件 props 的类型是否符合预期。
+
+```jsx
+import PropTypes from 'prop-types';
+
+function MyComponent({ name, age }) {
+  return <div>{name} - {age}</div>;
+}
+
+MyComponent.propTypes = {
+  name: PropTypes.string.isRequired,
+  age: PropTypes.number
+};
+```
+
+特点：
+
+* 仅在开发环境生效
+* 可检测类型、是否必须、有无默认值
+* 对象/数组可进一步指定形状（shape）
+
+### 2. **TypeScript 静态类型检查**
+
+TypeScript 提供更强大的类型系统和开发体验。
+
+```tsx
+type Props = {
+  name: string;
+  age?: number;
+};
+
+function MyComponent({ name, age }: Props) {
+  return <div>{name} - {age}</div>;
+}
+```
+
+优势：
+
+* 编译阶段即发现问题
+* 支持更复杂的类型系统
+* 更易与现代 IDE 集成，增强开发体验
+
+### 3. **默认值和容错处理**
+
+使用 `defaultProps`（class 组件）或在函数参数中设默认值（函数组件）：
+
+```jsx
+function MyComponent({ name = "Guest" }) {
+  return <div>{name}</div>;
+}
+```
+
+---
+
+## 二、React 的数据变化处理
+
+数据变化主要通过 **state** 和 **props** 驱动，React 自动触发重新渲染。这里分几个层次讲解：
+
+---
+
+### 1. **state 状态更新机制**
+
+* 在函数组件中使用 `useState`：
+
+```jsx
+const [count, setCount] = useState(0);
+
+const increment = () => setCount(prev => prev + 1);
+```
+
+* 调用 `setState`（class 组件）或 `setCount`（函数组件）时，React 会触发 **调和算法（Reconciliation）**，找到需要更新的 DOM 节点并进行高效更新。
+
+---
+
+### 2. **props 驱动数据变化**
+
+父组件传递的新 props 变化后，子组件会自动重新渲染。
+
+```jsx
+function Parent() {
+  const [title, setTitle] = useState("Hello");
+  return <Child title={title} />;
+}
+
+function Child({ title }) {
+  return <h1>{title}</h1>;
+}
+```
+
+---
+
+### 3. **useEffect 响应副作用**
+
+当依赖数据变化时执行副作用逻辑（例如请求数据、订阅等）：
+
+```jsx
+useEffect(() => {
+  fetchData();
+}, [someValue]);
+```
+
+React 会在 `someValue` 发生变化后重新执行 `fetchData()`。
+
+---
+
+### 4. **事件触发状态变更**
+
+用户操作（如点击按钮）触发事件处理函数，从而更新组件状态：
+
+```jsx
+<button onClick={() => setCount(c => c + 1)}>点击</button>
+```
+
+此过程会更新 `count`，React 随后重新渲染组件。
+
+---
+
+## 三、React 如何检测和决定是否重新渲染？
+
+React 会在状态或 props 变化后自动进入一次“**比较 + 更新**”过程：
+
+* 使用\*\*虚拟 DOM（Virtual DOM）\*\*记录 UI 状态
+* 对比前后两次虚拟 DOM（diff 算法）
+* 只更新发生变化的部分（最小更新单元）
+
+可优化点：
+
+* `React.memo()`：避免纯函数组件重复渲染
+* `useMemo()`、`useCallback()`：缓存值和函数引用
+* `shouldComponentUpdate()`（class）
+* `PureComponent`：浅比较 props 和 state
+
+---
+
+## 四、小结
+
+| 功能           | 方法/工具                          | 说明            |
+| ------------ | ------------------------------ | ------------- |
+| 数据类型检查       | PropTypes / TypeScript         | 检查 props 是否合规 |
+| 状态管理         | useState / useReducer          | 控制组件自身状态      |
+| 外部数据变更响应     | props / useEffect              | 组件随数据变化自动更新   |
+| 事件驱动变化       | onClick / setState             | 用户操作引发状态变更    |
+| 性能优化（避免重复渲染） | memo / PureComponent / useMemo | 提升效率          |
+
+如果你有具体的项目场景，我也可以进一步举例说明。

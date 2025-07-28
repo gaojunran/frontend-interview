@@ -1,0 +1,133 @@
+---
+title: React 中 setState 的执行机制和实现原理是什么？
+---
+
+好的！下面我详细讲讲 React 中 `setState` 的执行机制和实现原理，帮助你系统理解它是怎么工作的。
+
+---
+
+## 1. `setState` 是什么？
+
+`setState` 是 React 组件（类组件）用来更新组件状态（`state`）的方法。调用 `setState` 会触发 React 的**状态更新流程**，最终导致组件重新渲染（`render` 函数被重新调用）。
+
+---
+
+## 2. `setState` 的执行机制概览
+
+* `setState` 并不立即修改 `this.state`，而是**将状态更新操作放入一个更新队列**中，等待合适时机批量处理。
+* React 会在事件处理函数、生命周期函数中**批量合并多次 `setState` 调用**，避免多次重复渲染。
+* React 通过**调度机制**（调度任务）控制何时执行状态更新和渲染。
+* React 会调用 `render` 函数，生成新的虚拟 DOM，再和旧的虚拟 DOM 进行**Diff 算法比较**，最终生成最小差异的真实 DOM 更新。
+
+---
+
+## 3. 具体执行流程
+
+### 3.1 调用 `setState`
+
+```js
+this.setState(partialState, callback);
+```
+
+* `partialState` 可以是一个对象，也可以是一个函数（前一个状态的函数形式）。
+* React 会把这次更新封装成一个**更新对象**，放入**更新队列**。
+
+### 3.2 状态合并与队列
+
+* React 内部会维护一个更新队列（Update Queue），把所有同一事件循环内的多次 `setState` 合并。
+* 多个 `setState` 的参数会合并（浅合并），且执行顺序有保障。
+* 如果是函数形式的 `setState`，会按照顺序依次调用，确保状态更新正确。
+
+### 3.3 调度与批处理
+
+* 在 React 的合成事件、生命周期钩子中，`setState` 是**异步批量处理**，即不会同步更新状态和渲染，而是等待事件执行结束后一次性处理，合并更新，减少性能开销。
+* 在原生事件、`setTimeout`、`Promise.then` 里，React 默认会同步执行 `setState`，因为这些环境不属于 React 的批处理范围（React 18 以后可以通过并发特性改善）。
+* React 内部会根据更新优先级，调度执行更新任务。
+
+### 3.4 更新阶段
+
+* React 在合适时机调用组件的 `render` 方法，重新生成虚拟 DOM。
+* 通过 Diff 算法比较新旧虚拟 DOM 差异。
+* 最后对真实 DOM 进行最小化更新。
+
+### 3.5 回调执行
+
+* `setState` 第二个参数 `callback` 是在状态和视图更新完成后执行的函数。
+
+---
+
+## 4. 实现原理简析（基于 React 16+）
+
+### 4.1 更新队列和 Fiber 架构
+
+* React 16 引入了 **Fiber 架构**，将渲染工作拆成小单元，可以中断、恢复。
+* `setState` 会创建一个新的更新对象（Update），加入组件 Fiber 节点的更新队列。
+* React 以优先级调度方式处理 Fiber 更新队列。
+
+### 4.2 批量更新
+
+* React 通过 **batching strategy** 批量处理多个 `setState`，减少重新渲染次数。
+* 批量更新期间，`this.state` 不会立即改变，但每次调用的 `setState` 参数会合并到更新队列。
+* 组件最终只渲染一次。
+
+### 4.3 函数式 `setState`
+
+* 支持 `setState(updaterFunction)` 的形式，可以保证基于最新状态更新，避免异步更新带来的竞态问题。
+* React 会依次调用所有 updater，计算最终状态。
+
+---
+
+## 5. 例子说明批量更新
+
+```jsx
+class Counter extends React.Component {
+  state = { count: 0 };
+
+  increment() {
+    this.setState({ count: this.state.count + 1 });
+    this.setState({ count: this.state.count + 1 });
+    console.log(this.state.count);
+  }
+
+  render() {
+    return <button onClick={() => this.increment()}>{this.state.count}</button>;
+  }
+}
+```
+
+* `console.log` 里打印的 `count` 是更新前的值，因为 `setState` 是异步批处理。
+* 最终渲染的 `count` 只加了 1，不是加了 2，因为两次更新都基于旧的 `this.state.count`。
+* 用函数式 `setState` 可以修复：
+
+```jsx
+this.setState(prev => ({ count: prev.count + 1 }));
+this.setState(prev => ({ count: prev.count + 1 }));
+```
+
+这样 `count` 会加 2。
+
+---
+
+## 6. React 18 和并发模式对 `setState` 的影响
+
+* React 18 引入了并发模式（Concurrent Mode），对更新调度更智能。
+* 批处理不仅限于合成事件，也扩展到原生事件、定时器、Promise 等。
+* 新调度机制允许 React **中断**渲染任务，保证界面响应流畅。
+* `setState` 的异步性质更明显，不能假设同步更新。
+
+---
+
+## 总结
+
+| 特点            | 说明                                    |
+| ------------- | ------------------------------------- |
+| 异步批量更新        | 多次 `setState` 合并一次执行，避免多次渲染           |
+| 状态合并          | 更新是浅合并，不替换整个状态对象                      |
+| 支持函数式更新       | 避免异步导致的竞态条件，基于前状态计算                   |
+| Fiber 架构调度    | 任务拆分，可中断，优先级调度                        |
+| Diff 比较虚拟 DOM | 只更新最小差异，提升性能                          |
+| 回调函数          | `setState(updater, callback)`，更新完成后执行 |
+
+---
+
+如果你想，我可以帮你画一张 `setState` 执行流程图，或者帮你举更具体代码例子讲解，随时告诉我！

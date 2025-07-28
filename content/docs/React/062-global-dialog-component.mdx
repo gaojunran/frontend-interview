@@ -1,0 +1,195 @@
+---
+title: 如何在 React 中实现一个全局的 Dialog 组件？
+---
+
+想在 React 应用中实现一个**全局的 Dialog 组件**，也就是任何地方都能方便地弹出模态框（对话框），且只有一个统一的管理中心，通常的做法是：
+
+---
+
+## 核心思路
+
+1. **集中管理 Dialog 的显示和隐藏状态**
+   利用 React 的状态管理（Context、Redux、Zustand等）来控制 Dialog 是否显示，以及显示内容。
+
+2. **单例 Dialog 组件放在应用根组件中**
+   Dialog 组件只渲染一次，挂载在 App 最外层。
+
+3. **通过接口调用，来控制 Dialog 弹出和关闭**
+   让任何组件调用一个方法，就能让 Dialog 显示，并传递参数（比如标题、内容、按钮等）。
+
+---
+
+## 常见实现方案
+
+### 方案一：使用 React Context 管理 Dialog 状态
+
+---
+
+### 1. 创建 Dialog Context 和 Provider
+
+```jsx
+import React, { createContext, useState, useContext } from 'react';
+
+const DialogContext = createContext(null);
+
+export function DialogProvider({ children }) {
+  const [dialogState, setDialogState] = useState({
+    visible: false,
+    title: '',
+    content: null,
+    onConfirm: null,
+    onCancel: null,
+  });
+
+  const showDialog = ({ title, content, onConfirm, onCancel }) => {
+    setDialogState({
+      visible: true,
+      title,
+      content,
+      onConfirm,
+      onCancel,
+    });
+  };
+
+  const hideDialog = () => {
+    setDialogState((prev) => ({ ...prev, visible: false }));
+  };
+
+  return (
+    <DialogContext.Provider value={{ dialogState, showDialog, hideDialog }}>
+      {children}
+      {dialogState.visible && (
+        <Dialog
+          title={dialogState.title}
+          onConfirm={() => {
+            dialogState.onConfirm && dialogState.onConfirm();
+            hideDialog();
+          }}
+          onCancel={() => {
+            dialogState.onCancel && dialogState.onCancel();
+            hideDialog();
+          }}
+        >
+          {dialogState.content}
+        </Dialog>
+      )}
+    </DialogContext.Provider>
+  );
+}
+```
+
+---
+
+### 2. Dialog 组件示例（可自定义样式）
+
+```jsx
+function Dialog({ title, children, onConfirm, onCancel }) {
+  return (
+    <div className="dialog-overlay" style={overlayStyle}>
+      <div className="dialog-box" style={boxStyle}>
+        <h3>{title}</h3>
+        <div>{children}</div>
+        <div style={{ marginTop: 20, textAlign: 'right' }}>
+          <button onClick={onCancel} style={{ marginRight: 10 }}>取消</button>
+          <button onClick={onConfirm}>确定</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const overlayStyle = {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex', justifyContent: 'center', alignItems: 'center',
+  zIndex: 9999,
+};
+
+const boxStyle = {
+  backgroundColor: '#fff',
+  padding: 20,
+  borderRadius: 6,
+  minWidth: 300,
+};
+```
+
+---
+
+### 3. 在根组件包裹 Provider
+
+```jsx
+import React from 'react';
+import { DialogProvider } from './DialogContext';
+
+function App() {
+  return (
+    <DialogProvider>
+      <YourAppComponents />
+    </DialogProvider>
+  );
+}
+
+export default App;
+```
+
+---
+
+### 4. 在任意子组件中调用弹窗
+
+```jsx
+import React from 'react';
+import { useContext } from 'react';
+import { DialogContext } from './DialogContext';
+
+function SomeComponent() {
+  const { showDialog } = useContext(DialogContext);
+
+  const openDialog = () => {
+    showDialog({
+      title: '确认操作',
+      content: <p>你确定要执行此操作吗？</p>,
+      onConfirm: () => {
+        alert('确认了');
+      },
+      onCancel: () => {
+        alert('取消了');
+      },
+    });
+  };
+
+  return <button onClick={openDialog}>打开 Dialog</button>;
+}
+```
+
+---
+
+## 方案二：基于事件总线/EventEmitter
+
+* 通过事件发布订阅机制控制 Dialog，适合没有用 Context 或 Redux 的项目。
+* 核心是事件监听 Dialog 显示命令。
+
+---
+
+## 方案三：使用状态管理库（Redux、Zustand）
+
+* 将 Dialog 状态放到全局 store，调用 store 的 action 来控制显示。
+* 在 Provider 中监听状态并渲染 Dialog。
+
+---
+
+## 方案四：使用 React Portals
+
+* 将 Dialog 渲染到 DOM 根节点外的独立节点（modal-root）上，避免样式冲突，增强弹窗体验。
+
+---
+
+# 总结
+
+* **全局 Dialog 的关键是状态集中管理**，只渲染一个 Dialog 组件。
+* 通过 Context 或状态库暴露 `showDialog` 接口，实现任何地方调用。
+* Dialog 组件可自由定制样式和行为。
+* 结合 React Portals 可获得更好体验。
+
+---
+
+如果你想，我可以帮你写完整示例代码，或者帮你做更复杂的交互设计（比如多个按钮、多种类型的 Dialog）。你觉得呢？

@@ -1,0 +1,146 @@
+---
+title: 什么是 React 的 useReducer？它有什么作用？
+---
+
+好的，我给你详细讲讲 React 中的 **useReducer**。
+
+---
+
+## 什么是 useReducer？
+
+`useReducer` 是 React Hooks 之一，用来管理组件状态的一个 Hook。它是 `useState` 的替代方案，适用于状态逻辑较复杂或者多个状态相互关联的场景。
+
+它的设计灵感来自于 Redux 里的 reducer 概念 —— **通过派发（dispatch）动作（action）来更新状态**，而不是直接设置状态。
+
+---
+
+## useReducer 的基本结构和用法
+
+```jsx
+const [state, dispatch] = useReducer(reducer, initialState);
+```
+
+* **reducer** 是一个函数，负责根据当前状态和动作返回新的状态。
+* **initialState** 是状态的初始值。
+* **state** 是当前状态。
+* **dispatch** 是触发状态更新的函数，调用时传入一个动作对象。
+
+---
+
+## reducer 函数的定义
+
+```js
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increment':
+      return { count: state.count + 1 };
+    case 'decrement':
+      return { count: state.count - 1 };
+    default:
+      return state;
+  }
+}
+```
+
+* `reducer` 接受两个参数：当前状态 `state` 和动作 `action`。
+* `action` 通常是一个对象，至少包含 `type` 字段，表示动作类型。
+* 根据动作类型，返回一个新的状态对象（**注意：不要直接修改原状态，必须返回新状态**）。
+
+---
+
+## 具体示例
+
+```jsx
+import React, { useReducer } from 'react';
+
+const initialState = { count: 0 };
+
+function reducer(state, action) {
+  switch(action.type) {
+    case 'increment':
+      return { count: state.count + 1 };
+    case 'decrement':
+      return { count: state.count - 1 };
+    default:
+      return state;
+  }
+}
+
+function Counter() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  return (
+    <div>
+      <p>Count: {state.count}</p>
+      <button onClick={() => dispatch({ type: 'increment' })}>+</button>
+      <button onClick={() => dispatch({ type: 'decrement' })}>-</button>
+    </div>
+  );
+}
+```
+
+这里：
+
+* 通过 `dispatch` 发送动作。
+* `reducer` 根据动作类型计算新的状态。
+* 组件使用 `state` 来渲染 UI。
+
+---
+
+## useReducer 的作用和优势
+
+1. **状态逻辑集中**
+   复杂的状态更新逻辑都写在 reducer 函数里，结构清晰，维护方便。
+
+2. **适合复杂状态**
+   当状态涉及多个子值或者更新依赖于之前状态时，useReducer 比 useState 更适合。
+
+3. **避免回调地狱**
+   在一些复杂交互中，状态更新可能依赖前一个状态，useReducer 能避免手动写复杂的状态合并和更新。
+
+4. **更易于测试和复用**
+   reducer 函数纯净（无副作用），更容易编写单元测试。
+
+5. **与中间件或异步逻辑结合方便**
+   适合扩展，比如你可以结合 `useReducer` 写自己的状态管理方案。
+
+---
+
+## useReducer 和 useState 的对比
+
+| 特性     | useState   | useReducer         |
+| ------ | ---------- | ------------------ |
+| 适用场景   | 简单状态       | 复杂状态或多状态关联         |
+| 状态更新方式 | 直接传入新状态或函数 | 通过 reducer 统一更新    |
+| 代码组织   | 分散在组件中     | 逻辑集中在 reducer 函数里  |
+| 代码复杂度  | 低          | 较高                 |
+| 状态可预测性 | 较弱         | 强（由 reducer 纯函数控制） |
+
+---
+
+## useReducer 进阶用法
+
+* **初始化函数**
+  支持第三个参数，惰性初始化：
+
+  ```js
+  const [state, dispatch] = useReducer(reducer, initialArg, init);
+  ```
+
+  其中 `init` 是一个函数，用来基于 `initialArg` 计算初始状态，适合初始化计算成本较高时。
+
+* **支持异步操作**
+  虽然 `useReducer` 本身是同步的，但可以配合 `useEffect` 处理异步，然后 dispatch 动作更新状态。
+
+---
+
+## 总结
+
+* `useReducer` 是 React 中基于 reducer 模式的状态管理 Hook。
+* 适用于状态复杂、多值、逻辑多分支的情况。
+* 通过 `dispatch` 派发动作，reducer 负责根据动作返回新的状态，状态更新逻辑集中且可预测。
+* 相比 `useState`，它让状态管理更清晰、更易维护。
+
+---
+
+如果你想，我还可以帮你写一个复杂点的用例，或者讲讲它和 Redux 的区别。需要吗？

@@ -1,0 +1,153 @@
+---
+title: React 中使用 PropTypes 和 Flow 有什么区别？
+---
+
+在 React 中进行类型检查时，常见的三种方式是：
+
+1. **PropTypes**（运行时类型检查）
+2. **Flow**（静态类型检查）
+3. **TypeScript**（静态类型检查）
+
+它们的作用是类似的 —— **提高代码的可靠性、可维护性和开发效率**，但实现方式和适用场景有很大区别。
+
+---
+
+## 🔹 一、PropTypes
+
+### ✅ 特点：
+
+* **运行时类型检查**
+* React 官方维护的一个库：`prop-types`
+* 只对 **组件的 props** 进行类型检查
+* 不影响构建过程，不需要额外配置
+
+### 🧩 示例：
+
+```jsx
+import PropTypes from 'prop-types';
+
+function MyComponent({ name, age }) {
+  return <div>{name} - {age}</div>;
+}
+
+MyComponent.propTypes = {
+  name: PropTypes.string.isRequired,
+  age: PropTypes.number,
+};
+```
+
+### ✅ 优点：
+
+* 简单易用，无需构建配置
+* 动态语言友好，适合 JS 初学者
+
+### ❌ 缺点：
+
+* **运行时检查**，不是编译时，**不能防止错误提前暴露**
+* 只支持 props 类型，不能检查函数、变量、state 等
+* 写法冗长，无法自动推导类型
+* 没有类型提示/补全（除非配合 JSDoc）
+
+---
+
+## 🔹 二、Flow
+
+### ✅ 特点：
+
+* Facebook 推出的静态类型检查工具
+* 使用 JS 的 superset 语法加类型注解（需构建工具支持）
+* 与 Babel 配合使用
+
+### 🧩 示例：
+
+```jsx
+// @flow
+type Props = {
+  name: string,
+  age?: number,
+};
+
+function MyComponent({ name, age }: Props) {
+  return <div>{name} - {age}</div>;
+}
+```
+
+### ✅ 优点：
+
+* **静态类型检查**，能在编译阶段发现错误
+* 类型覆盖范围广（props、state、函数、变量等）
+* 类型推导能力强，自动补全好
+* 可渐进式引入（按文件使用 `// @flow`）
+
+### ❌ 缺点：
+
+* 社区活跃度较低，生态不如 TypeScript
+* 与其他工具（Babel/Webpack）整合需要手动配置
+* 类型定义（声明文件）不如 TypeScript 齐全
+* 官方已明显减少维护投入，**被广泛认为是“正在退场”**
+
+---
+
+## 🔹 三、TypeScript
+
+### ✅ 特点：
+
+* 微软推出，JavaScript 的超集
+* 增加了类型系统 + 编译检查
+* 编译时检查所有 JS/TS 文件中的类型错误
+
+### 🧩 示例：
+
+```tsx
+type Props = {
+  name: string;
+  age?: number;
+};
+
+function MyComponent({ name, age }: Props) {
+  return <div>{name} - {age}</div>;
+}
+```
+
+### ✅ 优点：
+
+* **静态类型检查**，开发期就能发现错误
+* 全面覆盖：props、state、context、函数、变量等
+* 拥有强大的 **类型推导、类型保护、联合/交叉类型**
+* 社区庞大，生态丰富，IDE 支持极好（VSCode）
+* 与 React 深度集成（例如 React.FC、JSX 支持）
+
+### ❌ 缺点：
+
+* 上手有一定学习成本（泛型、类型运算符等）
+* 编译/构建复杂度略高
+* 对于原生 JavaScript 项目，迁移成本较大
+
+---
+
+## 🧠 总结对比
+
+| 特性     | PropTypes | Flow                | TypeScript          |
+| ------ | --------- | ------------------- | ------------------- |
+| 类型检查方式 | 运行时       | 编译时（静态）             | 编译时（静态）             |
+| 检查范围   | 仅 props   | 全面（props/state/函数等） | 全面（props/state/函数等） |
+| 类型提示   | ❌         | ✅                   | ✅                   |
+| 社区支持   | 中         | 弱                   | 强                   |
+| 学习成本   | 低         | 中                   | 中-高                 |
+| 官方维护状态 | 活跃        | 几乎停滞                | 非常活跃                |
+| 构建工具需求 | 无         | 有（需 Babel Flow 插件）  | 有（需 tsconfig.json）  |
+
+---
+
+## 🔚 总结推荐
+
+| 使用场景             | 推荐方案                        | 理由                      |
+| ---------------- | --------------------------- | ----------------------- |
+| 现有项目是 JavaScript | PropTypes 或渐进式引入 TypeScript | 低成本类型保护                 |
+| 想要最强的类型能力和社区支持   | TypeScript                  | 行业趋势、生态广、VSCode 支持最好    |
+| 想要最少配置，快速使用类型检查  | PropTypes                   | 无需构建支持，轻量使用 props 校验    |
+| 项目中已使用 Flow      | 继续使用或迁移到 TypeScript         | Flow 几乎不再更新，建议长远看迁移到 TS |
+
+如果你是在搭建新的 React 项目，**首选 TypeScript** 是目前主流团队和社区的一致做法。PropTypes 和 Flow 更适合特殊场景或过渡期使用。
+
+如需我帮你从 PropTypes 或 Flow 迁移到 TypeScript，也可以告诉我～

@@ -1,0 +1,103 @@
+---
+title: 什么是 loadable 组件？它解决了什么问题？
+---
+
+`loadable` 组件通常指的是由 `@loadable/component` 提供的 React 组件懒加载工具。它的核心功能是实现 **代码分割（code-splitting）和懒加载（lazy loading）**，解决大型 React 应用中 **首屏加载慢、打包体积大** 的问题。
+
+---
+
+## 一、什么是 `loadable` 组件？
+
+`loadable` 组件是一个高阶组件，用来 **动态加载其他 React 组件**。常见于使用 `webpack` 打包的应用中。其基本使用方式如下：
+
+```js
+import loadable from '@loadable/component'
+
+const MyComponent = loadable(() => import('./MyComponent'))
+```
+
+这段代码的意思是：只有当 `MyComponent` 实际需要被渲染时，才会触发网络请求去加载对应的模块。
+
+---
+
+## 二、它解决了什么问题？
+
+### ✅ 1. **减少首屏加载体积**
+
+* 默认情况下，webpack 会把整个应用打包成一个大的 JS 文件。
+* 使用 `loadable` 可以把应用拆分成多个小模块，按需加载。
+* 这样用户只加载当前页面需要的代码，**加快首屏加载速度**。
+
+### ✅ 2. **提升用户体验**
+
+* 使用时可以配合 `loading` 组件，展示加载状态，避免用户看到空白页面。
+
+```js
+const MyComponent = loadable(() => import('./MyComponent'), {
+  fallback: <div>Loading...</div>,
+})
+```
+
+### ✅ 3. **SEO 友好（支持 SSR）**
+
+与 `React.lazy` 相比，`@loadable/component` 最大的优势在于它 **支持服务端渲染（SSR）**，适合用于 SEO 场景。
+
+---
+
+## 三、和 `React.lazy` 的区别？
+
+| 特性                 | `React.lazy`          | `@loadable/component` |
+| ------------------ | --------------------- | --------------------- |
+| 是否支持 SSR           | ❌ 不支持                 | ✅ 支持                  |
+| 是否支持自定义 loading 状态 | ✅ 支持（结合 `<Suspense>`） | ✅ 更灵活                 |
+| 性能优化（如预加载）         | ❌ 无法控制                | ✅ 支持 `.preload()`     |
+| Bundle 可控性         | 一般                    | 更可控                   |
+
+---
+
+## 四、实际应用场景
+
+* **路由懒加载**
+
+  ```js
+  const About = loadable(() => import('./pages/About'))
+  const Home = loadable(() => import('./pages/Home'))
+  ```
+
+* **大型组件懒加载**
+
+  ```js
+  const Chart = loadable(() => import('./components/Chart'))
+  ```
+
+* **SSR 应用中的代码分割**
+  与 `webpack` 和服务端渲染框架（如 Next.js）结合，实现更好的首屏加载体验和 SEO。
+
+---
+
+## 五、进阶功能
+
+* **预加载模块**
+
+  ```js
+  MyComponent.preload()
+  ```
+
+* **延迟加载（配合 throttle）**
+
+  ```js
+  loadable(() => import('./BigComponent'), {
+    fallback: <Spinner />,
+    delay: 300
+  })
+  ```
+
+* **错误处理（结合 error boundaries）**
+
+---
+
+## 总结一句话：
+
+> `loadable` 组件是 React 中实现 **懒加载 + 代码分割 + SSR 支持** 的一个强大工具，适用于构建性能优化良好的中大型应用。
+
+需要我举个实际的例子吗？

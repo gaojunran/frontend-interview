@@ -1,0 +1,217 @@
+---
+title: 在 React 项目中，如何应用 TypeScript？
+---
+
+在 React 项目中应用 TypeScript 是提升代码可维护性、可读性和开发体验的重要手段。下面我给你详细讲讲 React 和 TypeScript 的结合方式，包括为什么用、怎么用、以及具体示例。
+
+---
+
+## 1. 为什么在 React 项目中用 TypeScript？
+
+* **静态类型检查**：编译时发现潜在错误，避免运行时异常。
+* **更好的编辑器支持**：智能提示、自动补全、重构更安全。
+* **文档作用**：类型就是最好的文档，方便团队协作。
+* **提升代码健壮性**：类型约束减少bug，尤其在大型项目里明显。
+
+---
+
+## 2. 如何在 React 项目中配置 TypeScript
+
+### （1）新建项目
+
+使用官方脚手架 `create-react-app`，带 TypeScript 模板：
+
+```bash
+npx create-react-app my-app --template typescript
+```
+
+这样项目自带 `.tsx` 文件支持和 `tsconfig.json`。
+
+---
+
+### （2）给已有 React 项目加 TypeScript
+
+1. 安装依赖：
+
+```bash
+npm install --save-dev typescript @types/react @types/react-dom
+```
+
+2. 添加 `tsconfig.json`：
+
+```json
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}
+```
+
+3. 把文件改成 `.tsx`（如果含 JSX），或 `.ts`（纯脚本）。
+
+---
+
+## 3. React + TypeScript 基础用法示例
+
+### 组件声明方式
+
+#### 函数组件
+
+```tsx
+import React from 'react';
+
+// 定义 props 类型
+interface GreetingProps {
+  name: string;
+  age?: number;  // 可选属性
+}
+
+const Greeting: React.FC<GreetingProps> = ({ name, age }) => {
+  return (
+    <div>
+      Hello, {name}! {age && `You are ${age} years old.`}
+    </div>
+  );
+};
+
+export default Greeting;
+```
+
+* `React.FC` 是函数组件的类型。
+* `GreetingProps` 描述传入组件的参数结构。
+
+---
+
+#### 类组件
+
+```tsx
+import React, { Component } from 'react';
+
+interface CounterProps {
+  initialCount?: number;
+}
+
+interface CounterState {
+  count: number;
+}
+
+class Counter extends Component<CounterProps, CounterState> {
+  state = {
+    count: this.props.initialCount ?? 0,
+  };
+
+  increment = () => {
+    this.setState({ count: this.state.count + 1 });
+  };
+
+  render() {
+    return (
+      <div>
+        <p>Count: {this.state.count}</p>
+        <button onClick={this.increment}>Increment</button>
+      </div>
+    );
+  }
+}
+
+export default Counter;
+```
+
+---
+
+### 事件处理
+
+```tsx
+const Button: React.FC = () => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    console.log(event.currentTarget);  // 类型安全
+  };
+
+  return <button onClick={handleClick}>Click Me</button>;
+};
+```
+
+---
+
+### 使用 State Hook 并指定类型
+
+```tsx
+import React, { useState } from 'react';
+
+const NumberList: React.FC = () => {
+  const [numbers, setNumbers] = useState<number[]>([]);
+
+  const addNumber = () => {
+    setNumbers([...numbers, numbers.length]);
+  };
+
+  return (
+    <>
+      <button onClick={addNumber}>Add Number</button>
+      <ul>
+        {numbers.map(n => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
+    </>
+  );
+};
+```
+
+---
+
+### 使用 Context
+
+```tsx
+interface AuthContextType {
+  user: string | null;
+  login: (username: string) => void;
+}
+
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
+
+const AuthProvider: React.FC = ({ children }) => {
+  const [user, setUser] = React.useState<string | null>(null);
+  const login = (username: string) => setUser(username);
+
+  return (
+    <AuthContext.Provider value={{ user, login }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+```
+
+---
+
+## 4. 常见技巧与注意点
+
+* **类型推断**：合理利用 TypeScript 的类型推断，避免过多显式注解，保持代码简洁。
+* **接口继承**：用接口继承来复用类型，减少冗余。
+* **使用 `as` 类型断言**时要谨慎，尽量避免滥用。
+* **默认 props**：在函数组件里，建议用默认参数代替 `defaultProps`。
+* **第三方库类型**：很多库有 `@types/xxx`，安装后即可使用。
+* **Strict 模式**：开启严格模式（`strict: true`）能捕获更多潜在问题。
+
+---
+
+## 5. 总结
+
+* 使用 TypeScript 可以让 React 组件的 props、state、事件处理都显式声明类型。
+* 通过类型系统提高代码健壮性、易维护性，降低 bug 风险。
+* 配置相对简单，且对已有项目支持良好。
+* 代码示例中常见的组件声明、hook 类型标注、事件处理都非常实用。
+

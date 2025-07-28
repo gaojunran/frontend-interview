@@ -1,0 +1,154 @@
+---
+title: React 新版本 18 解决了哪些问题？新增了哪些功能？
+---
+
+React 18 是 React 自 React 16 以来最重大的更新之一，于 2022 年正式发布。它引入了“并发特性（Concurrent Features）”作为核心改进，同时解决了一些性能瓶颈，增强了对异步渲染的控制，并提供了多项新功能。以下是详细说明：
+
+---
+
+## 🧩 一、React 18 解决的问题
+
+### 1. **同步渲染导致的卡顿问题**
+
+React 17 及更早版本中的更新是同步的，大型更新任务会阻塞浏览器的主线程，导致用户交互卡顿或掉帧。
+
+🔧 **React 18 的解决方案：**
+引入 **并发渲染（Concurrent Rendering）**，允许打断、恢复和优先级调度任务，使得用户交互更流畅。
+
+---
+
+### 2. **初始渲染和数据获取的困难**
+
+在 React 17 中，服务端渲染（SSR）和客户端渲染之间的数据协调较复杂，初始加载过程不易管理。
+
+🔧 **React 18 的解决方案：**
+引入 **`<Suspense>` 支持 SSR** 和 **`use()` hook（实验性）**，让异步数据获取和渲染同步进行。
+
+---
+
+### 3. **UI 刷新与状态更新难以同步调度**
+
+旧版本中状态更新是立即触发的，没有统一的调度机制，可能导致性能问题。
+
+🔧 **React 18 的解决方案：**
+提供 **自动批处理（Automatic Batching）**，将多个状态更新合并为一次渲染，减少不必要的 DOM 更新。
+
+---
+
+## 🚀 二、React 18 的新增功能与变更
+
+### 1. **并发渲染引擎（Concurrent Renderer）**
+
+虽然是内部机制，但它为一系列新特性提供基础，比如：
+
+* 非阻塞渲染
+* 渲染任务优先级控制
+* 可打断和恢复渲染过程
+
+> ⚠️ 注意：并发渲染不是默认启用的，需要通过 `createRoot` API 来使用。
+
+```js
+import { createRoot } from 'react-dom/client';
+
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
+```
+
+---
+
+### 2. **自动批处理（Automatic Batching）**
+
+以往只有在 React 的事件处理函数中，状态更新才会自动批处理。React 18 扩展了批处理的范围。
+
+```js
+// React 17：每次 setState 都会触发一次渲染
+setTimeout(() => {
+  setCount(c => c + 1);
+  setFlag(f => !f);
+}, 1000);
+
+// React 18：这两个更新将被批处理成一次渲染
+```
+
+---
+
+### 3. **`startTransition` API（标记低优先级更新）**
+
+用于把非紧急的 UI 更新标记为“过渡”，避免阻塞高优先级任务（如输入响应）。
+
+```js
+import { startTransition } from 'react';
+
+startTransition(() => {
+  setSearchQuery(inputValue); // 延迟、优先级低的更新
+});
+```
+
+---
+
+### 4. **`useId` Hook（生成唯一 ID）**
+
+解决 SSR 和客户端 hydration 时 ID 不一致问题。
+
+```js
+const id = useId();
+return <input id={id} />;
+```
+
+---
+
+### 5. **改进的 `Suspense` 支持（SSR 可用）**
+
+`Suspense` 最初用于懒加载组件，现在也支持异步数据加载，甚至服务端渲染。
+
+```jsx
+<Suspense fallback={<Loading />}>
+  <SomeAsyncComponent />
+</Suspense>
+```
+
+---
+
+### 6. **Transition API（过渡状态管理）**
+
+配合 `useTransition` 来优化 UI 响应性。
+
+```js
+const [isPending, startTransition] = useTransition();
+
+startTransition(() => {
+  setSearchValue(newValue);
+});
+```
+
+---
+
+### 7. **支持 streaming SSR（React 18 的 `renderToPipeableStream`）**
+
+React 18 支持**按需发送 HTML 流**，服务端可以在组件准备好时立刻推送，提高首屏加载性能。
+
+---
+
+## 🛠️ 三、相关工具的更新
+
+* **React DOM 的 `createRoot()` 替代 `ReactDOM.render()`**
+* **React Testing Library、React DevTools 也做了适配升级**
+* **Next.js、Remix、React Native 等框架已支持 React 18 的并发特性**
+
+---
+
+## ✅ 总结
+
+| 新特性 / 改进          | 作用或意义                |
+| ----------------- | -------------------- |
+| 并发渲染              | 更流畅的 UI 体验，支持打断和恢复渲染 |
+| 自动批处理             | 提升性能，减少重复渲染          |
+| `startTransition` | 标记低优先级任务，优化交互响应      |
+| `useId`           | 生成稳定一致的 ID（支持 SSR）   |
+| 更强的 `Suspense`    | 支持数据加载、SSR streaming |
+| `useTransition`   | 提供过渡状态控制             |
+| Streaming SSR     | 提升首屏渲染性能，适配现代 Web 需求 |
+
+---
+
+如果你需要结合 Next.js、Redux、React Query 等生态工具来看 React 18 的应用场景，也可以告诉我，我可以为你进一步补充。

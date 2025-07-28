@@ -1,0 +1,122 @@
+---
+title: 你在项目中是如何划分 React 组件的？
+---
+
+这个问题很经典，也很关键！合理划分 React 组件，能让项目更易维护、复用和扩展。下面我帮你详细讲讲我在实际项目中是如何划分 React 组件的思路和方法：
+
+---
+
+## 一、按关注点划分（关注点分离）
+
+* **容器组件（Container / Smart Component）**
+  负责业务逻辑、数据获取和状态管理。
+  比如通过 API 拉数据，管理状态，处理事件。
+  容器组件不直接渲染样式，而是把数据和行为“传给”展示组件。
+
+* **展示组件（Presentational / Dumb Component）**
+  只负责如何展示 UI，接收 props，基本不关心业务逻辑。
+  通常是函数组件，纯粹渲染，方便复用和测试。
+
+> 这种分法来源于 Dan Abramov 的经典文章，优点是职责清晰，组件职责分明。
+
+---
+
+## 二、按功能模块划分（业务模块化）
+
+* 根据项目业务逻辑拆分，比如用户模块、订单模块、商品模块等。
+* 每个业务模块下再细分组件，保持模块内部的内聚性和模块之间的低耦合。
+* 方便团队分工和代码维护。
+
+---
+
+## 三、按组件粒度划分（组件大小）
+
+* **页面级组件（Page）**
+  负责页面整体布局，调用多个子组件。通常和路由对应。
+* **区域组件（Section / Block）**
+  页面内部的区块，比如列表区、过滤区、详情区。
+* **通用组件（UI Components）**
+  复用性高的小组件，比如按钮、输入框、弹窗、表格行。
+  这些组件一般只关注 UI 和交互，通用且无业务耦合。
+
+---
+
+## 四、复用与状态管理原则
+
+* **无状态组件优先**
+  组件尽量无状态，通过 props 传递数据，方便复用和测试。
+* **状态集中管理**
+  复杂状态放到容器组件或全局状态管理库（Redux、Zustand、Recoil等）里。
+* **避免层级传递（props drilling）**
+  通过 Context 或状态管理库减少深层传递。
+
+---
+
+## 五、命名规范与目录结构
+
+* 组件名一般用大写开头，清晰表达职责。
+* 组件文件夹内保持样式、测试文件同级，方便维护。
+* 按业务模块、组件类型分目录，比如：
+
+  ```
+  /components
+    /ui
+      Button.jsx
+      Input.jsx
+    /user
+      UserProfile.jsx
+      UserSettings.jsx
+    /order
+      OrderList.jsx
+      OrderDetail.jsx
+  /pages
+    HomePage.jsx
+    UserPage.jsx
+  ```
+
+---
+
+## 六、举个简单示例说明划分
+
+```jsx
+// 容器组件 UserPage.jsx
+import React, { useEffect, useState } from 'react';
+import UserProfile from '../components/user/UserProfile';
+
+export default function UserPage() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/user')
+      .then(res => res.json())
+      .then(data => setUser(data));
+  }, []);
+
+  if (!user) return <div>Loading...</div>;
+
+  return <UserProfile user={user} />;
+}
+
+// 展示组件 UserProfile.jsx
+export default function UserProfile({ user }) {
+  return (
+    <div>
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+```
+
+---
+
+## 七、补充建议
+
+* **组件职责单一**：一个组件只做一件事，做到极致。
+* **拆分过细**：过细会增加复杂度和维护成本，要平衡。
+* **复用优先**：先用简单的复用组件，再扩展复杂业务组件。
+* **写测试**：组件粒度划分合理后，测试会更方便。
+
+---
+
+如果你想，我还能帮你结合你具体项目，给出更个性化的组件划分建议和示例。你项目是什么类型的？业务复杂吗？我可以帮你细化。

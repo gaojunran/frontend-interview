@@ -1,0 +1,147 @@
+---
+title: 请描述点击按钮触发到状态更改的数据流向。
+---
+
+在 React 18 及以上版本中，点击按钮触发状态更改的**数据流动过程（data flow）**，包括了\*\*事件绑定、状态更新调度、批处理、调和（reconciliation）、DOM 更新（commit）\*\*等关键步骤。
+
+下面我们详细分析这个过程的 **完整生命周期与数据流向**：
+
+---
+
+## 🧭 场景设定示例
+
+```jsx
+import { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = () => {
+    setCount(prev => prev + 1);
+  };
+
+  return <button onClick={handleClick}>Count: {count}</button>;
+}
+```
+
+---
+
+## 🧩 整体流程分解
+
+### 1. **事件绑定阶段**
+
+* 在组件首次渲染时：
+
+  * `onClick={handleClick}` 被绑定到真实 DOM 的点击事件上。
+  * React 使用的是**事件代理机制**：所有事件统一绑定在根元素上（如 `document`），通过事件冒泡捕获目标。
+
+---
+
+### 2. **点击触发阶段**
+
+* 用户点击按钮 → 浏览器触发原生 click 事件。
+* React 拦截这个事件并包装为**合成事件（SyntheticEvent）**。
+* 由合成事件系统调度 `handleClick` 函数执行。
+
+---
+
+### 3. **状态更新调度阶段**
+
+* `setCount(prev => prev + 1)` 被调用。
+* React 创建一个**更新对象（update object）**，包含：
+
+  * 更新函数（如 `prev + 1`）
+  * 组件 Fiber 节点的引用
+* React 将这个更新加入到**更新队列**中（Fiber 的 `updateQueue`）。
+
+---
+
+### 4. **批处理调度机制（React 18 特性）**
+
+* React 18 引入了**自动批处理机制**：
+
+  * 同一个事件中多个 `setState` 会合并为一次渲染，避免重复渲染。
+  * 例如：
+
+    ```js
+    setA(1);
+    setB(2);
+    ```
+
+    不会导致两次 render，而是合并为一次。
+
+> 在 React 18 中，**任何“由 React 管理的事件系统”触发的更新**都默认是批处理的。
+
+---
+
+### 5. **调和（Reconciliation）阶段**
+
+* React 启动 **Fiber 构建流程**，进入 "render 阶段"。
+* 这一步骤是纯计算：
+
+  * 比较新的状态下的虚拟 DOM 树（VDOM）和旧的 VDOM。
+  * 生成最小化的**更新操作（diff）**。
+  * 构建一个新的 Fiber 树。
+
+---
+
+### 6. **提交（Commit）阶段**
+
+* 进入 "commit 阶段"：
+
+  * 将变更（如 DOM 属性变化、文本更新、插入节点等）应用到真实 DOM。
+  * 执行 `useEffect` 等副作用钩子。
+* 所有这些操作都由 React 内部协调，最终更新浏览器页面。
+
+---
+
+### 7. **重新渲染并更新 UI**
+
+* 页面上的按钮文本变为新值 `Count: 1`。
+* 用户看到状态已经更新。
+
+---
+
+## ⚙️ 总结图解
+
+```txt
+用户点击按钮
+      ↓
+React 合成事件触发（SyntheticEvent）
+      ↓
+调用 setState（setCount）
+      ↓
+React 创建更新任务（update）
+      ↓
+批处理调度更新（自动合并）
+      ↓
+构建新 Fiber 树（调和：diff 算法）
+      ↓
+提交变更（commit 阶段：更新 DOM）
+      ↓
+UI 更新完毕（触发副作用、浏览器重绘）
+```
+
+---
+
+## 🧠 React 18 中的增强
+
+| 特性                | 说明                          |
+| ----------------- | --------------------------- |
+| 自动批处理             | 多个 `setState` 合并执行，提升性能。    |
+| 并发模式（可选）          | 使用 `createRoot` 可启用更细粒度的调度。 |
+| `startTransition` | 标记为“非紧急更新”，让 React 保留响应性。   |
+
+---
+
+## ✅ 总结
+
+React 18 中，**点击按钮 → 状态更新 → UI 变更**的整个过程是一个受控、分阶段的数据流动，遵循以下原则：
+
+* 所有状态更新都是异步调度（Fiber 架构）。
+* 所有更新都被统一批处理。
+* React 内部维护旧、新 Fiber 树用于最小化 DOM 更新。
+* 分为 render（计算阶段）和 commit（实际变更阶段）。
+
+这个机制使得 React 在保持响应性的同时，能保证性能与一致性。
+

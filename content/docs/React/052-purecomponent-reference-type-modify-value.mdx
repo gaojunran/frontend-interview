@@ -1,0 +1,238 @@
+---
+title: 如何解决在 React 的 pureComponent 下引用类型修改值时页面不渲染的问题？
+---
+
+在 React 中使用 `PureComponent` 时，确实会遇到**引用类型（如对象、数组）被修改但页面不重新渲染**的问题。下面详细讲讲这个现象的**原理、常见场景和解决方案**。
+
+---
+
+## 一、问题背景：`PureComponent` 的浅比较机制
+
+### 1. `PureComponent` 是什么？
+
+`React.PureComponent` 是 `React.Component` 的一个子类，它会在 `props` 和 `state` 没有发生“浅比较变化”时**跳过重新渲染**。
+
+```js
+class MyComponent extends React.PureComponent {
+  // ...
+}
+```
+
+### 2. 浅比较的影响
+
+浅比较只比较第一层的引用：
+
+```js
+prevProps.obj === nextProps.obj // 比较的是引用地址
+```
+
+如果你只是**修改了对象的属性**，引用地址没有变，`PureComponent` 就不会触发更新：
+
+```js
+this.props.obj.name = 'newName'; // 引用未变
+```
+
+这会导致组件**不重新渲染**，因为 `PureComponent` 判断 props 没变。
+
+---
+
+## 二、示例说明
+
+```js
+class Child extends React.PureComponent {
+  render() {
+    console.log('Child render');
+    return <div>{this.props.data.value}</div>;
+  }
+}
+
+class Parent extends React.Component {
+  state = {
+    data: { value: 0 }
+  };
+
+  update = () => {
+    this.state.data.value += 1;
+    this.setState({ data: this.state.data }); // 引用未变
+  };
+
+  render() {
+    return (
+      <>
+        <Child data={this.state.data} />
+        <button onClick={this.update}>Update</button>
+      </>
+    );
+  }
+}
+```
+
+点击按钮后，`data.value` 变了，但 `Child` 不会重新渲染，因为 `data` 的引用没变。
+
+---
+
+## 三、解决方案
+
+### ✅ 解决思路：**改变引用地址**
+
+`PureComponent` 需要“新对象”来识别变化，因此我们要避免**直接修改原始引用类型**。
+
+### 1. 使用不可变更新（immutable update）
+
+```js
+update = () => {
+  const newData = { ...this.state.data, value: this.state.data.value + 1 };
+  this.setState({ data: newData });
+};
+```
+
+这样 `data` 的引用变了，`PureComponent` 会重新渲染。
+
+---
+
+### 2. 使用 `immer` 等库实现不可变数据更新
+
+`immer` 可以让你“用可变的方式写不可变的逻辑”：
+
+```js
+import produce from "immer";
+
+update = () => {
+  const newData = produce(this.state.data, draft => {
+    draft.value += 1;
+  });
+  this.setState({ data: newData });
+};
+```
+
+---
+
+### 3. 避免在 props 中传递可变引用并修改它
+
+尽量不要让子组件依赖父组件传入的可变引用并在内部修改它，否则难以追踪渲染逻辑。
+
+---
+
+## 四、扩展建议
+
+### ✅ 使用 `useMemo`、`memo`（函数组件）
+
+函数组件中也有类似问题，解决思路也一样：
+
+```js
+const Child = React.memo(({ data }) => {
+  console.log('Child render');
+  return <div>{data.value}</div>;
+});
+```
+
+确保 `data` 是新引用，才能触发更新。
+
+---
+
+## 五、总结
+
+| 方法                    | 原因       | 是否推荐  |
+| --------------------- | -------- | ----- |
+| 直接修改引用类型属性            | 不触发浅比较变更 | ❌ 不推荐 |
+| 重新创建新引用（如 `{...obj}`） | 浅比较发现变化  | ✅ 推荐  |
+| 使用 `immer` 或不可变数据结构   | 简洁且安全    | ✅ 推荐  |
+| 传递值而非引用，避免子组件依赖可变引用   | 避免副作用    | ✅ 推荐  |
+
+---
+
+在 React 中，**函数式组件默认行为**相较于 `PureComponent` 有一些差异，尤其是在**重新渲染的时机**上。
+
+下面我们详细讲讲：
+
+---
+
+## 🧠 一、函数式组件的默认行为
+
+### ✅ 默认总是重新渲染（只要父组件更新）
+
+函数组件**本身不会做 props 的比较**。所以当父组件重新渲染时：
+
+* **不管 props 是否改变**，函数组件也会被重新调用（即重新渲染）。
+
+例子：
+
+```jsx
+function Child({ data }) {
+  console.log("Child render");
+  return <div>{data.value}</div>;
+}
+
+function Parent() {
+  const [count, setCount] = useState(0);
+  const data = { value: 0 };
+
+  return (
+    <>
+      <Child data={data} />
+      <button onClick={() => setCount(count + 1)}>Re-render Parent</button>
+    </>
+  );
+}
+```
+
+每次点击按钮，`Parent` 重新渲染，`Child` 也重新渲染 —— 即使 `data` 内容没变，但引用变了。
+
+---
+
+## 🔍 二、如何让函数式组件“跳过”无意义渲染？
+
+默认行为是“**每次都重新渲染**”，如果你要让它像 `PureComponent` 一样有“浅比较”的优化，可以使用：
+
+### ✅ `React.memo`：给函数组件加记忆能力
+
+```js
+const Child = React.memo(function Child({ data }) {
+  console.log("Child render");
+  return <div>{data.value}</div>;
+});
+```
+
+此时：
+
+* React 会对 `props` 做**浅比较**
+* 如果 `props` 的引用没变，跳过渲染
+
+---
+
+## ⚠️ 三、注意引用类型的陷阱
+
+和 `PureComponent` 一样，`React.memo` 的浅比较也只对第一层引用有效。
+
+```jsx
+<Child data={{ value: 0 }} /> // 每次都会重新渲染，因为对象每次都新建
+```
+
+你需要通过 `useMemo` 或 `useCallback` 保证引用稳定：
+
+```js
+const data = useMemo(() => ({ value: 0 }), []);
+```
+
+---
+
+## ✅ 四、总结对比：类组件 vs 函数组件
+
+| 特性        | 类组件默认 (`Component`)            | `PureComponent` | 函数组件            | 函数组件 + `React.memo`         |
+| --------- | ------------------------------ | --------------- | --------------- | --------------------------- |
+| 默认行为      | 总是更新                           | 浅比较 props/state | 总是更新            | 浅比较 props                   |
+| 是否可避免重复渲染 | ❌ 需要手动 `shouldComponentUpdate` | ✅ 自动浅比较         | ❌ 需额外处理         | ✅ 推荐做法                      |
+| 优化方式      | `shouldComponentUpdate`        | 已内建             | 使用 `React.memo` | 使用 `React.memo` + `useMemo` |
+
+---
+
+## 📌 实战建议
+
+* 在**函数组件中默认是重新渲染**，除非使用 `React.memo`。
+* 如果 `props` 包含引用类型（对象、数组、函数），请配合 `useMemo` 或 `useCallback` 保持引用稳定，才能让 `memo` 生效。
+* 如果性能敏感，可以将子组件提取成 memo 组件并加依赖优化。
+
+---
+
+如果你想看具体的“`React.memo` 配合 `useMemo`”优化示例，我可以给你写一份。是否需要？
+

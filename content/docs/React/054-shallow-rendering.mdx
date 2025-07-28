@@ -1,0 +1,83 @@
+---
+title: 什么是 React 中的浅层渲染（shallow rendering）？
+---
+
+在 React 中，**浅层渲染（Shallow Rendering）**是一种测试技术，主要用于**单元测试组件的逻辑而不渲染其子组件**。
+
+---
+
+## ✅ 什么是浅层渲染（Shallow Rendering）
+
+浅层渲染是指 **仅渲染组件本身，不会递归渲染其子组件**，即只渲染组件的第一层结构。
+
+它通常用于配合测试工具（如 Enzyme）进行组件单元测试。
+
+---
+
+## 🧠 原理理解
+
+React 组件是可以嵌套的，通常一个组件会包含很多子组件。**浅层渲染的核心思想是只测试目标组件自身的行为和输出，而不考虑子组件的实现细节**。
+
+这有助于：
+
+* 减少测试的耦合
+* 聚焦于目标组件本身的行为（如 props 是否传对、事件是否触发）
+
+---
+
+## 🧪 示例（使用 Enzyme）
+
+```jsx
+import { shallow } from 'enzyme';
+import MyComponent from './MyComponent';
+
+test('should render title', () => {
+  const wrapper = shallow(<MyComponent title="Hello" />);
+  expect(wrapper.find('h1').text()).toBe('Hello');
+});
+```
+
+> 在这个例子中，`MyComponent` 中即使包含了其他组件，比如 `<ChildComponent />`，`shallow` 渲染时也不会递归渲染 `<ChildComponent />`，而是把它当作一个普通标签占位。
+
+---
+
+## 🔍 与完全渲染（Full Rendering / Mount）对比
+
+| 项目       | Shallow Rendering | Full Rendering（Mount） |
+| -------- | ----------------- | --------------------- |
+| 是否渲染子组件  | ❌ 否               | ✅ 是                   |
+| 渲染性能     | 🚀 快              | 🐢 慢                  |
+| 适合场景     | 单元测试，逻辑验证         | 集成测试，生命周期测试等          |
+| 是否触发生命周期 | ✅（仅部分）            | ✅（完整）                 |
+
+---
+
+## 🔧 工具支持
+
+* **Enzyme**: `shallow()` 方法用于浅层渲染。
+* **React Testing Library**：不主张使用 shallow，它强调测试行为而不是实现细节。
+* 新版 React 中，不再推荐依赖 Enzyme 的 shallow，更多推荐 Testing Library + Mock 或 Integration Test。
+
+---
+
+## ✅ 适用场景
+
+* 只关心组件内部逻辑，不在乎子组件渲染结果。
+* 需要断言组件在不同 props/state 下的行为。
+* 模拟事件处理（如按钮点击、状态切换等）。
+
+---
+
+## 🚫 局限性
+
+* 无法测试组件与子组件之间的交互。
+* 无法完整测试生命周期副作用。
+* 不适用于函数式组件使用 `useEffect` 的副作用场景。
+
+---
+
+## ✅ 总结
+
+浅层渲染是一种用于**隔离测试 React 组件自身逻辑**的技术，适用于快速、低耦合的单元测试，但不适合复杂交互或副作用测试。随着 React 生态的发展，更推荐使用 **React Testing Library** 进行行为驱动的测试。
+
+如果你需要，我也可以帮你对比 shallow 和 mount 的实际代码效果。
