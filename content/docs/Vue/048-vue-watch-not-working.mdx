@@ -1,0 +1,160 @@
+---
+title: vue 中 监听失效是什么？怎么解决
+---
+
+在 Vue（尤其是 Vue 2）中提到“**监听失效**”，通常是指你对某个数据的变化设置了监听（如通过 `watch`、计算属性、或 `$watch`），但当数据发生改变时监听器**没有触发**，导致逻辑失效。
+
+这种情况一般有以下几种常见原因和对应解决办法：
+
+---
+
+## ✅ 一、对象或数组的属性是**动态添加的**
+
+Vue 2 中的响应式系统无法检测**新添加的属性**，因为 Vue 是在初始化时通过 `Object.defineProperty` 拦截已有属性的 `get/set`。
+
+### ❌ 示例（监听失效）：
+
+```js
+data() {
+  return {
+    user: {}
+  }
+},
+watch: {
+  'user.age'(val) {
+    console.log('年龄变了:', val)
+  }
+},
+mounted() {
+  this.user.age = 30 // 无法触发 watcher
+}
+```
+
+### ✅ 解决办法：
+
+1. 使用 `Vue.set()`（Vue 2）：
+
+```js
+this.$set(this.user, 'age', 30)
+```
+
+2. 使用 `reactive` + 解构（Vue 3）要避免破坏响应性：
+
+```js
+const state = reactive({ user: {} })
+state.user.age = 30 // 若 user 是 reactive 的，可以直接加
+```
+
+---
+
+## ✅ 二、数组索引赋值或长度变化不能被监听
+
+Vue 2 中对数组的以下变更**不会触发响应式更新**：
+
+* 使用索引修改数组元素
+* 改变数组长度（`arr.length = ...`）
+
+### ❌ 示例：
+
+```js
+this.list[1] = 'new value'     // 失效
+this.list.length = 0           // 失效
+```
+
+### ✅ 解决办法：
+
+```js
+// 修改数组中的某一项
+this.$set(this.list, 1, 'new value')
+
+// 删除所有项
+this.list.splice(0, this.list.length)
+```
+
+---
+
+## ✅ 三、监听的路径写错或监听不到深层变化
+
+### ❌ 示例：
+
+```js
+watch: {
+  user(val) {
+    console.log('user 改变了') // 但 user.name 改变时不会触发
+  }
+}
+```
+
+### ✅ 解决办法：
+
+1. 使用深度监听：
+
+```js
+watch: {
+  user: {
+    handler(val) {
+      console.log('user 改变了')
+    },
+    deep: true
+  }
+}
+```
+
+2. 精准监听字段：
+
+```js
+watch: {
+  'user.name'(val) {
+    console.log('user.name 改变了')
+  }
+}
+```
+
+---
+
+## ✅ 四、Vue 3 中 reactive 的某些陷阱
+
+* reactive 不能直接解构，否则会失去响应性。
+* reactive 包裹的对象内部添加新属性是响应式的，但数组同样存在变异方法的问题。
+
+补充：使用以下方法可以解决：
+
+| 方法         | 用途说明                          |
+| ---------- | ----------------------------- |
+| `toRef()`  | 把 reactive 对象的某个属性转成响应式 ref   |
+| `toRefs()` | 把整个 reactive 对象的所有属性转成响应式 ref |
+| `storeToRefs()` | 把 Pinia store 的 state 转成响应式 ref  |
+
+
+---
+
+## ✅ 五、异步更新导致监听看似失效（其实是执行顺序问题）
+
+Vue 的响应式更新是**异步队列更新**，你可能在更新后立即访问值但监听器尚未触发。
+
+### 解决：
+
+* 使用 `nextTick` 等待 DOM 更新：
+
+```js
+this.value = 123
+this.$nextTick(() => {
+  // DOM 或 watcher 已更新
+})
+```
+
+---
+
+## 总结：Vue 中监听失效常见原因及解决方案
+
+| 原因                      | 解决方式                            |
+| ----------------------- | ------------------------------- |
+| 对象动态添加属性（Vue 2）         | 使用 `Vue.set()` 或升级到 Vue 3       |
+| 数组通过索引/length 变更        | 使用 `splice()` 或 `Vue.set()`     |
+| 监听路径写错 / 需要深层监听         | 使用 `"a.b"` 路径或 `{ deep: true }` |
+| 解构 reactive 导致失效（Vue 3） | 避免解构响应式对象                       |
+| 异步更新时监听没触发              | 使用 `nextTick()` 等待更新完成          |
+
+---
+
+如果你有具体代码场景，可以贴出来我帮你看看是哪种“监听失效”情况。
