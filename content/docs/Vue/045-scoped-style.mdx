@@ -1,0 +1,115 @@
+---
+title: Vue 中 style 的 scoped 属性有什么用？它的实现原理是什么？
+---
+
+在 Vue 中，`<style scoped>` 是一个非常实用的特性，它的主要作用是**让样式只作用于当前组件**，不会污染到其他组件的样式。
+
+---
+
+## 一、`scoped` 的作用
+
+默认情况下，Vue 组件中的样式是全局的，例如：
+
+```vue
+<style>
+h1 {
+  color: red;
+}
+</style>
+```
+
+上面这个 `h1` 样式会影响到整个页面中所有的 `h1` 标签。而加上 `scoped` 后：
+
+```vue
+<style scoped>
+h1 {
+  color: red;
+}
+</style>
+```
+
+这段样式只会应用在**当前组件内部的 `h1` 元素**上，不会影响其他组件中的 `h1`。
+
+---
+
+## 二、实现原理
+
+`scoped` 的核心原理是**自动给 HTML 元素和样式选择器加上唯一的属性标识符（data-attribute）**，从而实现样式隔离。
+
+### 具体步骤如下：
+
+#### 1. Vue 编译模板时，会为组件分配一个唯一的 `data-v-xxxxxxx` 属性。
+
+例如：
+
+```vue
+<template>
+  <div class="box">Hello</div>
+</template>
+
+<style scoped>
+.box {
+  color: red;
+}
+</style>
+```
+
+编译后，HTML 变成这样：
+
+```html
+<div class="box" data-v-abc123>Hello</div>
+```
+
+CSS 选择器也变成了：
+
+```css
+.box[data-v-abc123] {
+  color: red;
+}
+```
+
+#### 2. 浏览器渲染样式时，由于 CSS 选择器中包含了这个唯一标识 `data-v-abc123`，所以只有带这个属性的元素才会被匹配。
+
+这就实现了样式只作用于当前组件的目的。
+
+---
+
+## 三、注意点
+
+### 1. 父组件的 scoped 样式不会影响子组件
+
+因为子组件的 DOM 上有自己的 `data-v-xxxxx`，和父组件不一样。
+
+### 2. `>>>` / `/deep/` / `::v-deep` 可以穿透 scoped
+
+用于让 scoped 样式影响子组件内部内容。例如：
+
+```css
+/* 支持的方式之一 */
+::v-deep .child {
+  color: blue;
+}
+```
+
+这个样式会作用于子组件中 `.child` 元素。
+
+---
+
+## 四、和 CSS Modules 的区别
+
+* `scoped`: Vue 内置的、自动添加 `data-xxx` 的机制，仍使用原生类名。
+* `CSS Modules`: 会生成哈希类名，如 `.button__1a2b3c`，更彻底的局部作用域控制。
+
+---
+
+## 五、结论
+
+| 特性            | scoped style             |
+| ------------- | ------------------------ |
+| 作用范围          | 当前组件                     |
+| 实现原理          | 自动添加 `data-v-xxxx` 属性选择器 |
+| 是否全局污染        | 否                        |
+| 能否穿透          | 可以，需配合 `::v-deep` 使用     |
+| 和 CSS Modules | 两者都能实现样式隔离，原理不同          |
+
+`scoped` 是 Vue 单文件组件中非常推荐使用的特性之一，能有效控制样式作用范围，避免组件之间样式冲突。

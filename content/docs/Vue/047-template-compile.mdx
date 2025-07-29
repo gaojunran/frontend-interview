@@ -1,0 +1,170 @@
+---
+title: Vue 中 template 的编译过程是怎样的？
+---
+
+在 Vue 3 中，`template` 是核心的一部分，它最终会被 **编译成 JavaScript 渲染函数（render function）**。整个编译过程经历了几个重要的阶段，下面详细讲讲 Vue 3 的模板编译过程：
+
+---
+
+## 一、整体编译流程概览
+
+Vue 3 的模板编译器将模板编译成渲染函数，主要包括以下三步：
+
+```
+template (字符串)
+   ↓
+Parse（解析）
+   ↓
+AST（抽象语法树）
+   ↓
+Transform（转换）
+   ↓
+优化后的 AST
+   ↓
+Codegen（生成代码）
+   ↓
+Render Function（JS 函数）
+```
+
+---
+
+## 二、详细阶段解析
+
+### 1. **Parse（解析阶段）**
+
+* 将 HTML 字符串解析成 **AST（抽象语法树）**。
+* 会识别：
+
+  * 标签名 `<div>`
+  * 属性和指令（如 `v-if`、`:key`）
+  * 插值表达式（如 `{{ message }}`）
+  * 文本节点
+
+举个例子：
+
+```vue
+<template>
+  <div class="hello">{{ msg }}</div>
+</template>
+```
+
+会被解析成类似这样的 AST 结构：
+
+```json
+{
+  "type": "element",
+  "tag": "div",
+  "props": [
+    { "type": "attribute", "name": "class", "value": "hello" }
+  ],
+  "children": [
+    { "type": "interpolation", "content": "msg" }
+  ]
+}
+```
+
+---
+
+### 2. **Transform（转换阶段）**
+
+转换阶段对 AST 进行进一步分析和增强，这里是核心阶段，包括：
+
+#### ✅ 静态提升（Static Hoisting）
+
+* 把不会变的静态节点提取出来，只创建一次。
+
+#### ✅ 表达式处理
+
+* 将插值表达式（如 `{{ msg }}`）转为 `ctx.msg`，保证在渲染函数中正确访问。
+
+#### ✅ 指令处理
+
+* 处理 `v-if` / `v-for` / `v-bind` 等指令，转成合适的 JS 表达式。
+
+#### ✅ 插槽处理
+
+* 识别 `<slot>` 标签，生成相应的插槽渲染逻辑。
+
+#### ✅ 事件绑定处理
+
+* 将 `@click="fn"` 转换为 `onClick: fn` 等形式。
+
+转换后的 AST 会更接近最终 JavaScript 的结构。
+
+---
+
+### 3. **Codegen（代码生成阶段）**
+
+* 将转换后的 AST 生成最终的 **JavaScript 渲染函数代码**。
+* 使用 Vue 运行时的 helper 函数（如 `createVNode`、`toDisplayString` 等）。
+
+例如：
+
+```vue
+<template>
+  <div class="hello">{{ msg }}</div>
+</template>
+```
+
+最终会被编译为如下的渲染函数：
+
+```js
+import { toDisplayString, createElementVNode, openBlock, createElementBlock } from "vue"
+
+export function render(_ctx, _cache) {
+  return (
+    openBlock(),
+    createElementBlock("div", { class: "hello" }, toDisplayString(_ctx.msg))
+  )
+}
+```
+
+---
+
+## 三、编译入口
+
+在运行时或构建时 Vue 会使用不同的编译策略：
+
+### 1. **运行时编译（runtime-compiler）**
+
+* 在浏览器中直接编译 template，适用于 Vue CDN 使用方式。
+* 缺点：体积更大，性能略差。
+
+```js
+new Vue({
+  template: '<div>{{ msg }}</div>'
+})
+```
+
+### 2. **构建时编译（预编译）**
+
+* 使用 Vue CLI / Vite 构建时，`template` 会在构建阶段预先编译为 `render` 函数。
+* 推荐方式，性能更好，体积更小。
+
+---
+
+## 四、Vue 3 编译器的模块组成
+
+Vue 3 编译器本质上是一个独立模块，由以下几个核心组成部分：
+
+* `@vue/compiler-core`: 核心编译逻辑（平台无关）
+* `@vue/compiler-dom`: 处理 HTML 和 DOM 指令
+* `@vue/compiler-sfc`: 处理 `.vue` 单文件组件
+* `@vue/compiler-ssr`: 用于 SSR 渲染函数生成
+
+---
+
+## 五、总结
+
+| 阶段        | 作用描述                  |
+| --------- | --------------------- |
+| Parse     | 将 template 字符串解析为 AST |
+| Transform | 对 AST 进行指令、插值、静态优化等转换 |
+| Codegen   | 生成最终的 JS 渲染函数         |
+
+---
+
+需要可视化演示或调试模板编译结果时，可以使用 Vue 的在线编译器工具：
+🔗 [Vue Template Explorer](https://template-explorer.vuejs.org/)
+
+是否需要我拿一个复杂点的示例（含 `v-for`、`v-if`）来演示整个编译过程？

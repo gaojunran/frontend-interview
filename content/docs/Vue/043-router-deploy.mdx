@@ -1,0 +1,155 @@
+---
+title: Vue Router 的 history 模式部署上线时有哪些注意事项？
+---
+
+在使用 Vue Router 的 **`history` 模式** 时，将项目部署上线需要特别注意配置问题，否则会出现如「刷新页面报 404」等问题。下面我详细讲讲 **部署时的注意事项、原因和各类服务器的配置方式**：
+
+---
+
+## ✅ 一、问题的本质
+
+### `history` 模式的特点：
+
+* 浏览器地址栏会显示干净的路径，如：`/user/profile`，而非带有 `#` 的 `/#/user/profile`
+* 所有路由都被 Vue Router 接管（前端路由）
+
+### 问题出现原因：
+
+服务器 **默认只识别根路径 `/index.html`**，当用户手动输入或刷新如 `/user/profile`，服务器会尝试请求一个物理路径 `/user/profile`，结果找不到对应文件，返回 404。
+
+---
+
+## ✅ 二、正确的部署策略
+
+### 🧩 解决方案：**重定向所有路径到 `index.html`**
+
+你需要配置服务器：**无论访问哪个路径，都返回 `index.html`**，由前端的 Vue Router 再决定展示哪个页面。
+
+---
+
+## ✅ 三、各类服务器的配置方式
+
+### 1️⃣ **Nginx**
+
+```nginx
+server {
+  listen 80;
+  server_name yourdomain.com;
+  root /path/to/dist;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+```
+
+* `try_files $uri $uri/ /index.html;`：先尝试文件路径，找不到就回退到 `index.html`
+
+---
+
+### 2️⃣ **Apache**
+
+在项目的根目录添加 `.htaccess` 文件：
+
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+```
+
+* 作用：把非实际文件的路径都重写为 `index.html`
+
+---
+
+### 3️⃣ **Caddy**
+
+```caddyfile
+example.com
+
+root * /path/to/dist
+file_server
+try_files {path} /index.html
+```
+
+* `try_files {path} /index.html`：核心配置，确保任意路径 fallback 到 `index.html`
+
+---
+
+### 4️⃣ **Vite 的预设方案（用于本地预览）**
+
+如果你用 Vite + Vue3，可以使用：
+
+```bash
+vite preview
+```
+
+这会自动启用 history 模式的支持（预设了 fallback）
+
+---
+
+## ✅ 四、前端构建配置注意
+
+### 1. `vue.config.js` 中的 `publicPath`
+
+```js
+// vue.config.js
+module.exports = {
+  publicPath: '/',
+}
+```
+
+* `publicPath` 是资源（JS、CSS、图片）请求的前缀，如果你部署在子路径，如 `/app/`，应设置为：
+
+```js
+publicPath: '/app/'
+```
+
+### 2. 构建命令
+
+```bash
+npm run build
+```
+
+会生成 `dist/` 文件夹，将这个文件夹部署到服务器即可。
+
+---
+
+## ✅ 五、调试技巧
+
+* 在浏览器打开 F12 → Network → 看失败的请求路径
+* 检查构建后的 `index.html` 中 `<script src="...">` 是否能加载成功
+* 检查服务器是否把 `index.html` 返回了（可以用 curl 或 devtools）
+
+---
+
+## ✅ 六、避免 fallback 的替代方案（了解）
+
+如果你不想配置服务器 fallback，可以改用 **Hash 模式**：
+
+```js
+const router = createRouter({
+  history: createWebHashHistory(), // 带 #
+  routes: [...]
+})
+```
+
+但这会让 URL 带有 `#`，不利于 SEO 和分享体验。
+
+---
+
+## ✅ 总结
+
+| 注意事项                          | 是否必需    |
+| ----------------------------- | ------- |
+| 配置服务器 fallback 到 `index.html` | ✅ 必需    |
+| 设置正确的 `publicPath`            | ✅ 必需    |
+| 确保构建后文件完整、资源路径正确              | ✅ 必需    |
+| 使用 CDN 或反向代理时路径保持一致           | ✅ 推荐    |
+| 可选地开启 gzip 压缩、缓存头等优化          | 🚀 性能优化 |
+
+如果你告诉我你用的哪种服务器，我可以给你具体配置。

@@ -1,0 +1,183 @@
+---
+title: Vue Router 的核心实现原理是什么？
+---
+
+Vue Router 是 Vue.js 官方的路由解决方案，其核心实现原理可以归结为：**监听 URL 的变化，动态地将组件渲染到页面中**。它是如何做到这一点的？下面从几个核心部分详细讲讲：
+
+---
+
+## 一、核心功能概述
+
+Vue Router 的实现主要包括以下核心模块：
+
+1. **路由映射表（Route Map）构建**
+2. **URL 变化监听（History 模式或 Hash 模式）**
+3. **响应式的路由状态管理**
+4. **路由匹配机制**
+5. **动态组件渲染（`<router-view>`）**
+6. **导航守卫机制**
+
+---
+
+## 二、核心原理详解
+
+### 1. 路由配置与路由映射表构建
+
+开发者在使用时会传入一个配置数组：
+
+```js
+const routes = [
+  { path: '/', component: Home },
+  { path: '/about', component: About },
+];
+```
+
+Vue Router 内部会将其转成一张 **映射表**，方便快速查找匹配的组件：
+
+```js
+{
+  '/': Home,
+  '/about': About
+}
+```
+
+> 实现方式通常是通过构造函数将配置转成字典结构。
+
+---
+
+### 2. URL 变化监听：两种模式
+
+Vue Router 支持两种模式：
+
+#### ✅ Hash 模式（默认）
+
+* 使用 `window.location.hash`。
+* 优点：兼容性好，不需要服务端支持。
+* 实现：监听 `hashchange` 事件。
+
+```js
+window.addEventListener('hashchange', onRouteChange)
+```
+
+#### ✅ History 模式（HTML5）
+
+* 使用 `history.pushState()` 和 `popstate` 事件。
+* 优点：URL 更简洁。
+* 缺点：需要服务端支持 fallback 到 `index.html`。
+
+```js
+window.addEventListener('popstate', onRouteChange)
+```
+
+---
+
+### 3. 响应式路由状态管理
+
+Vue Router 内部维护一个响应式对象 `currentRoute`，包含当前路径和匹配的组件信息：
+
+```js
+const currentRoute = ref(window.location.pathname) // 或 hash
+```
+
+当 URL 变化后，这个状态会更新，从而触发视图重新渲染。
+
+---
+
+### 4. 路由匹配机制
+
+核心就是根据当前路径（`location.pathname` 或 `location.hash`）去查找匹配的组件：
+
+```js
+const route = routeMap[currentRoute.value]
+```
+
+对于嵌套路由，还会做递归匹配。
+
+---
+
+### 5. 动态组件渲染 `<router-view>`
+
+Vue Router 提供一个全局组件 `<router-view>`：
+
+```html
+<router-view></router-view>
+```
+
+这个组件的本质是一个 **占位符组件**，它会根据当前路由状态动态地渲染匹配的组件。
+
+实现方式如下（简化）：
+
+```js
+app.component('router-view', {
+  setup() {
+    const route = useCurrentRoute(); // 响应式
+    return () => h(route.value.component)
+  }
+});
+```
+
+---
+
+### 6. 路由导航与守卫机制
+
+调用 `router.push('/about')` 时：
+
+1. 会更新 `history.pushState` 或 `location.hash`。
+2. URL 变化触发 `onRouteChange`。
+3. 匹配新路由，触发 `beforeEach` 等导航守卫。
+4. 渲染新的组件。
+
+内部通过一个 **导航流程队列**，逐步执行守卫函数（如 `beforeEach`, `beforeEnter`）：
+
+```js
+router.beforeEach((to, from, next) => {
+  if (authRequired && !isLoggedIn()) next('/login')
+  else next()
+})
+```
+
+---
+
+## 三、总结
+
+| 模块                | 作用           |
+| ----------------- | ------------ |
+| 路由映射表             | 根据路径匹配对应组件   |
+| Hash / History 模式 | 监听 URL 变化    |
+| 响应式状态             | 路由变化驱动视图更新   |
+| `<router-view>`   | 动态渲染路由组件     |
+| 路由守卫              | 控制导航流程、权限判断等 |
+
+---
+
+## 四、简化实现（Hash 模式示例）
+
+```js
+class MyRouter {
+  constructor(options) {
+    this.routes = options.routes;
+    this.routeMap = this.createRouteMap(this.routes);
+    this.current = ref(this.getCurrentPath());
+
+    window.addEventListener('hashchange', () => {
+      this.current.value = this.getCurrentPath();
+    });
+  }
+
+  createRouteMap(routes) {
+    const map = {};
+    routes.forEach(r => {
+      map[r.path] = r.component;
+    });
+    return map;
+  }
+
+  getCurrentPath() {
+    return window.location.hash.slice(1) || '/';
+  }
+}
+```
+
+---
+
+如果你想我用实际代码一步步实现一个最小可用版 Vue Router，我也可以写给你。是否需要？

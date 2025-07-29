@@ -1,0 +1,152 @@
+---
+title: 如何对 Vue 项目进行搜索引擎优化（SEO）？
+---
+
+Vue 项目默认是单页面应用（SPA），而 SPA 天生对搜索引擎不友好，因为内容是通过 JavaScript 动态渲染的，而很多搜索引擎（尤其是非 Google）抓取不到这些内容。为了让 Vue 项目具备良好的搜索引擎优化（SEO）能力，必须从以下几个方面着手：
+
+---
+
+## ✅ 一、使用 SSR（服务端渲染）
+
+最有效的 Vue SEO 方式是使用 **服务端渲染（SSR）**，让服务器生成完整的 HTML 页面交给浏览器和搜索引擎。
+
+### 常用方案：
+
+* **[Nuxt.js](https://nuxt.com/)**：基于 Vue 的 SSR 框架，开箱即用，支持静态生成、混合渲染，非常适合 SEO。
+* 自己搭 SSR（不推荐）：
+  使用 `vue-server-renderer`，结合 Node.js 和 Express 手动构建 SSR 应用，复杂度高、维护成本大。
+
+### 优点：
+
+* 首屏内容由服务器生成，爬虫可抓取完整 HTML。
+* 提升加载速度和可访问性。
+
+---
+
+## ✅ 二、使用静态站点生成（SSG）
+
+适用于内容基本不变的 Vue 项目，比如博客、文档站。
+
+### 推荐工具：
+
+* **Nuxt 的 Static Generation 模式**：`nuxt generate` 命令会构建出一堆静态 HTML 文件。
+* **VitePress / VuePress**：用于构建文档网站，内置 SEO 优化机制。
+
+### 优点：
+
+* 部署简单（CDN 即可）。
+* 极致性能、可完全被爬虫抓取。
+
+---
+
+## ✅ 三、使用预渲染（Prerendering）
+
+适合页面少、内容不常更新的小型 Vue 项目。
+
+### 工具：
+
+* [prerender-spa-plugin](https://github.com/chrisvfritz/prerender-spa-plugin)：Webpack 插件，构建时预渲染指定的页面。
+
+### 工作原理：
+
+构建阶段模拟浏览器访问特定路由，生成静态 HTML，写入 `dist`。
+
+---
+
+## ✅ 四、配置正确的 Meta 标签
+
+即使使用了 SSR 或预渲染，也需要对页面中的 `<meta>` 信息进行动态配置。
+
+### 推荐做法：
+
+在每个页面组件中设置页面标题和描述：
+
+#### 使用 `vue-meta`（Vue 2）或 `@vueuse/head`（Vue 3）：
+
+```ts
+// Vue 3 示例
+import { useHead } from '@vueuse/head'
+
+useHead({
+  title: '首页 - 我的站点',
+  meta: [
+    { name: 'description', content: '这是我的首页介绍' },
+    { name: 'keywords', content: 'Vue, SEO, 示例' },
+  ],
+})
+```
+
+---
+
+## ✅ 五、其他优化建议
+
+### 1. **生成 Sitemap**
+
+* 使用 [sitemap.xml](https://www.xml-sitemaps.com/) 或 `sitemap` npm 包动态生成。
+* 配合 Google Search Console 提交站点地图。
+
+### 2. **robots.txt 配置**
+
+* 控制哪些页面可以被搜索引擎抓取：
+
+```txt
+User-agent: *
+Allow: /
+Disallow: /admin
+Sitemap: https://yourdomain.com/sitemap.xml
+```
+
+### 3. **合理设置 Canonical 标签**
+
+防止重复内容导致权重分散：
+
+```html
+<link rel="canonical" href="https://yourdomain.com/page" />
+```
+
+### 4. **内容语义化**
+
+* 使用语义 HTML 标签（如 `<article>`、`<section>`、`<header>`）
+* 确保图片包含 `alt` 属性，链接使用 `<a>` 而非 `<div>` 等伪元素。
+
+### 5. **使用结构化数据（Schema.org）**
+
+向搜索引擎描述页面结构，可增强搜索结果展示（例如带星评、价格）：
+
+```html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Vue SEO 全攻略",
+  "author": { "@type": "Person", "name": "Nebula" }
+}
+</script>
+```
+
+---
+
+## ✅ 六、页面性能优化（间接影响 SEO）
+
+搜索引擎也会将页面加载性能纳入排名算法：
+
+* 使用 `lazy loading` 加载图片和组件。
+* 使用 `code splitting` 和按需加载（Vue Router 的 `import()`）。
+* 开启 gzip 或 brotli 压缩。
+* 使用 CDN 加速资源。
+* 使用 Lighthouse 分析性能问题。
+
+---
+
+## 总结一张图：
+
+| 技术方案      | 场景      | 优点            | 工具                    |
+| --------- | ------- | ------------- | --------------------- |
+| SSR       | 内容频繁变动  | 强 SEO 能力、动态页面 | Nuxt.js               |
+| SSG       | 内容静态    | 高性能、部署简单      | Nuxt、VuePress         |
+| Prerender | 页面少、改动少 | 简单可控          | prerender-spa-plugin  |
+| Meta 管理   | 所有页面    | SEO 细节        | vue-meta、@vueuse/head |
+
+---
+
+如果你告诉我你的项目规模、页面数量、是否经常更新内容，我可以帮你选出最适合的 SEO 实施方式。需要吗？

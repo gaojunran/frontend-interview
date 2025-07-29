@@ -1,0 +1,142 @@
+---
+title: Vue Router 的组件内路由钩子有哪些？分别在什么时机调用？
+---
+
+Vue Router 提供了 **组件内路由钩子（Component In-Route Guards）** 来帮助我们在路由跳转时控制组件的行为。
+
+这些钩子是组件内定义的方法，它们只在当前路由渲染该组件时才会调用。主要包括以下 3 个钩子：
+
+---
+
+## ✅ 1. `beforeRouteEnter(to, from, next)`
+
+**触发时机：**
+在路由进入**该组件对应的路由**之前调用。此时组件还 **没有被创建**，所以 `this` 是无法访问的。
+
+**常用场景：**
+
+* 判断是否允许进入某个页面
+* 发起数据请求
+* 延迟进入页面（例如权限验证）
+
+**参数说明：**
+
+```js
+beforeRouteEnter(to, from, next) {
+  // ✅ 不能访问 this（组件实例还没创建）
+  // 但可以通过 next(vm => {}) 在导航确认后访问组件实例
+}
+```
+
+**访问组件实例方式：**
+
+```js
+beforeRouteEnter(to, from, next) {
+  next(vm => {
+    // 这里可以访问到组件实例 vm
+    vm.fetchData()
+  })
+}
+```
+
+---
+
+## ✅ 2. `beforeRouteUpdate(to, from, next)`
+
+**触发时机：**
+在当前路由改变，但是该组件被复用时调用。即组件 **没有被销毁**，只是路由参数或查询参数变了。
+
+**典型场景：**
+
+* 动态路由参数变更时刷新数据
+  例如从 `/user/1` → `/user/2`，组件还是 `<User>`，但 id 变了。
+
+**使用方式：**
+
+```js
+beforeRouteUpdate(to, from, next) {
+  // 可以访问 this，因为组件已经创建了
+  this.userId = to.params.id;
+  this.fetchData();
+  next();
+}
+```
+
+---
+
+## ✅ 3. `beforeRouteLeave(to, from, next)`
+
+**触发时机：**
+在导航离开当前组件对应的路由时调用。
+
+**典型场景：**
+
+* 页面有未保存的数据时提醒用户
+* 阻止误操作（例如填写表单时误离开）
+
+**使用方式：**
+
+```js
+beforeRouteLeave(to, from, next) {
+  if (this.hasUnsavedChanges) {
+    const answer = window.confirm('你有未保存的更改，确定离开吗？');
+    if (answer) {
+      next(); // 放行
+    } else {
+      next(false); // 中断导航
+    }
+  } else {
+    next(); // 放行
+  }
+}
+```
+
+---
+
+## ⚠️ 注意事项
+
+* 这些钩子是 **组件内专用**，而不是全局的。
+* 如果你在 `setup()` 中使用 `<script setup>`，这些钩子无法直接声明为函数方法，需通过 `onBeforeRouteUpdate` 等组合式 API 实现（在 Vue Router 4 中支持）。
+
+---
+
+## Vue Router 4 + Composition API 版本（组合式 API）
+
+如果你使用的是 Vue 3 + `<script setup>`，可以用：
+
+```ts
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  onBeforeRouteEnter
+} from 'vue-router'
+
+onBeforeRouteEnter((to, from, next) => {
+  next(vm => {
+    // 访问组件实例
+  })
+})
+
+onBeforeRouteUpdate((to, from, next) => {
+  // 可以直接访问响应式变量
+  next()
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  next()
+})
+```
+
+---
+
+## 总结表格：
+
+| 钩子名称                | 触发时机          | 是否能访问 `this`           |
+| ------------------- | ------------- | ---------------------- |
+| `beforeRouteEnter`  | 进入该组件路由前      | ❌（可用 `next(vm => {})`） |
+| `beforeRouteUpdate` | 当前组件复用时路由参数变化 | ✅                      |
+| `beforeRouteLeave`  | 离开该组件对应的路由前   | ✅                      |
+
+---
+
+如需我讲讲全局路由守卫或路由元信息（meta）配合这些钩子的使用，也可以继续问我。

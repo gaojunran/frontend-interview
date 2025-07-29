@@ -1,0 +1,145 @@
+---
+title: 什么是事件总线 EventBus？怎么在 Vue 项目中使用它？
+---
+
+**事件总线（EventBus）** 是一种组件之间通信的模式，特别适用于非父子关系的组件之间传递消息。它的核心思想是：通过一个“中央事件调度器”充当**中介者（Mediator）**，所有组件都向它发送或监听事件，从而实现松耦合通信。
+
+---
+
+## 🧠 一、EventBus 是什么？
+
+* 它就是一个 **发布/订阅（Pub/Sub）** 模式的实现。
+* 通常是一个对象（在 Vue 中可以是一个 `mitt` 实例或自定义的 `EventEmitter`），
+
+  * **发送事件（emit）**：A 组件告诉总线，“我有个事件”；
+  * **监听事件（on）**：B 组件告诉总线，“我对这个事件感兴趣”。
+
+---
+
+## 🧩 二、Vue3 中使用 EventBus 的方式
+
+Vue3 **不再推荐使用 Vue 实例作为事件中心**，所以我们通常采用 **第三方库 `mitt`** 实现事件总线。
+
+---
+
+### ✅ 方案一：使用 [`mitt`](https://github.com/developit/mitt)（推荐）
+
+### 1. 安装
+
+```bash
+npm install mitt
+```
+
+### 2. 创建 EventBus 实例
+
+`src/utils/eventBus.ts`
+
+```ts
+import mitt from 'mitt'
+
+type Events = {
+  login: string
+  logout: void
+  'user:update': { name: string; age: number }
+}
+
+const emitter = mitt<Events>()
+
+export default emitter
+```
+
+### 3. 使用 EventBus
+
+#### 🔸 在发送组件中 emit
+
+```ts
+import emitter from '@/utils/eventBus'
+
+emitter.emit('login', 'Nebula')  // 发送 login 事件，传入用户名
+```
+
+#### 🔹 在接收组件中 on
+
+```ts
+import { onMounted, onBeforeUnmount } from 'vue'
+import emitter from '@/utils/eventBus'
+
+onMounted(() => {
+  emitter.on('login', (username) => {
+    console.log('用户登录了：', username)
+  })
+})
+
+onBeforeUnmount(() => {
+  emitter.off('login')  // 一定要销毁监听，避免内存泄露
+})
+```
+
+---
+
+### ✅ 方案二：自定义一个简单的 EventBus
+
+如果你不想用 mitt，也可以自己实现：
+
+```ts
+// src/utils/eventBus.ts
+type Callback = (...args: any[]) => void
+
+class EventBus {
+  private events: Map<string, Set<Callback>> = new Map()
+
+  on(event: string, callback: Callback) {
+    if (!this.events.has(event)) this.events.set(event, new Set())
+    this.events.get(event)!.add(callback)
+  }
+
+  off(event: string, callback?: Callback) {
+    if (!callback) {
+      this.events.delete(event)
+    } else {
+      this.events.get(event)?.delete(callback)
+    }
+  }
+
+  emit(event: string, ...args: any[]) {
+    this.events.get(event)?.forEach(cb => cb(...args))
+  }
+}
+
+export default new EventBus()
+```
+
+使用方法和 `mitt` 类似。
+
+---
+
+## 🧾 三、使用场景示例
+
+* 登录成功后广播“用户信息更新”，其他组件（比如导航栏、用户中心）响应变化；
+* 表单中多个组件需要感知某个“状态切换”；
+* 不方便做 props 和 emit 传递的嵌套深的组件通信；
+* modal 弹窗控制、全局 loading 控制等。
+
+---
+
+## ⚠️ 四、注意事项
+
+| 问题     | 说明                                                                            |
+| ------ | ----------------------------------------------------------------------------- |
+| ⚠ 内存泄露 | 监听事件时要记得在组件销毁前手动 `off`                                                        |
+| ⚠ 类型安全 | 推荐使用 `mitt<Events>()` 来约束事件名称和参数类型                                            |
+| ⚠ 滥用   | EventBus 是“万能胶”，滥用可能让状态追踪变复杂，推荐优先使用 props/emit、provide/inject 或状态管理库（如 Pinia） |
+
+---
+
+## ✅ 五、总结
+
+| 方法           | 适用场景        | 优点                | 缺点        |
+| ------------ | ----------- | ----------------- | --------- |
+| EventBus     | 非父子组件通信     | 简单、轻量             | 容易滥用、不易追踪 |
+| `mitt`       | Vue3 推荐实现方式 | 轻量 (\<200 行)，支持 TS | 需要注意内存管理  |
+| Vuex / Pinia | 状态同步需求      | 状态可追踪             | 学习成本略高    |
+
+---
+
+需要我补充使用 `EventBus` 实现一个实际的组件通信例子吗？

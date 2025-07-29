@@ -1,0 +1,189 @@
+---
+title: 使用 Vue 渲染大量数据时，如何进行优化？
+---
+
+在 Vue 3 中渲染大量数据时，如果不加优化，页面性能会明显下降，甚至卡顿。为了让页面在数据量大时依然保持流畅体验，需要从以下几个方面进行优化：
+
+---
+
+## 🧠 一、问题本质
+
+大量数据渲染的性能瓶颈主要出现在以下几个方面：
+
+* **DOM 数量太多**：真实 DOM 操作代价大。
+* **组件实例创建开销大**：每个组件的响应式系统和生命周期都有成本。
+* **频繁更新视图**：响应式数据变动频繁会触发不必要的更新。
+* **内存占用高**：大数据+大 DOM 会占用大量内存资源。
+
+---
+
+## 🚀 二、优化策略
+
+### 1. **虚拟滚动（Virtual Scroll）**
+
+只渲染可视区域的部分数据，滚动时动态复用组件。
+
+#### 🔧 实现方式：
+
+* 使用第三方库：
+
+  * [`vue-virtual-scroller`](https://github.com/Akryum/vue-virtual-scroller)
+  * [`vue3-virtual-scroll-list`](https://github.com/tangbc/vue-virtual-scroll-list)
+
+```vue
+<VirtualList
+  :items="items"
+  :item-size="40"
+  height="400"
+>
+  <template #default="{ item }">
+    <div class="item">{{ item.name }}</div>
+  </template>
+</VirtualList>
+```
+
+#### ✅ 优点：
+
+* 显著减少 DOM 数量。
+* 提升渲染和滚动性能。
+
+---
+
+### 2. **懒加载 / 分批渲染**
+
+初始时只加载一部分数据，其余通过滚动或分页加载。
+
+```js
+const allData = ref([])
+const visibleData = ref([])
+
+onMounted(() => {
+  allData.value = fetchBigData()
+  visibleData.value = allData.value.slice(0, 100)
+})
+
+function loadMore() {
+  const next = visibleData.value.length + 100
+  visibleData.value.push(...allData.value.slice(visibleData.value.length, next))
+}
+```
+
+---
+
+### 3. **组件划分 + `v-once` / `defineRender`**
+
+如果某些内容不变，用 `v-once` 避免响应式追踪。
+
+```vue
+<div v-once>静态内容只渲染一次</div>
+```
+
+在 `script setup` 中，使用 `defineRender()` 自定义渲染逻辑，减少组件开销。
+
+---
+
+### 4. **避免不必要的响应式追踪**
+
+Vue 会递归地将对象设为响应式，处理大数据时应谨慎。
+
+#### ❌ 不推荐：
+
+```js
+const bigList = reactive(largeArray) // 性能差
+```
+
+#### ✅ 推荐：
+
+```js
+const bigList = ref(largeArray) // 或 shallowRef()
+```
+
+或者：
+
+```js
+const bigList = shallowReactive({ list: largeArray })
+```
+
+---
+
+### 5. **防抖/节流用户交互**
+
+在搜索、滚动、输入等操作中加入防抖处理，减少更新频率。
+
+```js
+import debounce from 'lodash/debounce'
+
+const onInput = debounce((val) => {
+  search(val)
+}, 300)
+```
+
+---
+
+### 6. **分页展示**
+
+通过分页减少每次加载的数据量。
+
+```js
+const currentPage = ref(1)
+const pageSize = 100
+const paginatedData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return allData.value.slice(start, start + pageSize)
+})
+```
+
+---
+
+### 7. **异步组件 + Suspense**
+
+大组件拆分为异步加载模块，在需要时再加载，避免一次性加载。
+
+```vue
+<Suspense>
+  <template #default>
+    <AsyncHeavyComponent />
+  </template>
+  <template #fallback>
+    <div>Loading...</div>
+  </template>
+</Suspense>
+```
+
+---
+
+### 8. **Web Worker 处理数据计算**
+
+数据处理逻辑复杂时，放到 Web Worker 中执行，避免阻塞主线程。
+
+---
+
+### 9. **使用纯函数组件**
+
+Vue 3 中可以使用函数组件，无状态、无响应式，适合渲染大量静态内容。
+
+---
+
+### 10. **避免重复渲染 key**
+
+为 `v-for` 提供唯一、稳定的 `key`，避免 diff 出错导致重新渲染。
+
+```vue
+<div v-for="item in list" :key="item.id">{{ item.name }}</div>
+```
+
+---
+
+## ✅ 总结
+
+| 优化策略                | 场景            | 效果             |
+| ------------------- | ------------- | -------------- |
+| 虚拟滚动                | 大量列表项         | 🚀显著提升性能       |
+| 分批加载 / 懒加载          | 不要求一次加载全部数据   | 🚀减少内存和 DOM 占用 |
+| v-once / shallowRef | 不变数据或大对象      | 🚀减少响应式和渲染开销   |
+| 防抖节流                | 输入、搜索、滚动等频繁操作 | 🚀控制更新频率       |
+| 函数组件 / Suspense     | 重型组件或动态组件     | 🚀按需加载避免阻塞渲染   |
+
+---
+
+如果你有具体场景（如聊天记录、表格、瀑布流等），我可以给出更贴合的优化方案。需要的话告诉我你的数据结构或 UI 需求即可。
