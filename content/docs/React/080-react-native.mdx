@@ -1,0 +1,126 @@
+---
+title: React Native 和 React 有什么区别？
+---
+
+当然！React 和 React Native 关系密切但又有本质区别，理解它们的异同对前端和移动开发都很重要。下面我详细讲讲两者的区别，重点讲 React Native。
+
+---
+
+## 1. React 和 React Native 的基本定义
+
+* **React**：也叫 React.js 或 ReactJS，是一个用于构建用户界面的 JavaScript 库，主要用于开发网页（Web）应用。它负责构建 UI 组件，使用的是 HTML（JSX）和 DOM。
+
+* **React Native**：是基于 React 思想构建的框架，用于开发原生移动应用（iOS、Android）。它使用 JavaScript 和 JSX 语法，但不是生成网页，而是生成真正的原生控件。
+
+---
+
+## 2. 技术栈与渲染机制差异
+
+| 方面        | React                                  | React Native                          |
+| --------- | -------------------------------------- | ------------------------------------- |
+| **渲染目标**  | 网页DOM（HTML）                            | 原生移动UI组件（Native UI）                   |
+| **渲染层**   | 浏览器DOM                                 | 原生平台的视图系统（UIView、View等）               |
+| **使用的标签** | HTML标签（`<div>`, `<span>`, `<input>` 等） | 原生组件（`<View>`, `<Text>`, `<Image>` 等） |
+| **样式写法**  | CSS（或 CSS-in-JS、Sass 等）                | 类似 CSS 的样式对象（StyleSheet）              |
+| **语言基础**  | JavaScript + JSX                       | JavaScript + JSX + Native API调用       |
+
+React 只负责管理网页的 DOM，React Native 不操纵 DOM，而是调用原生平台的组件，性能更接近原生应用。
+
+---
+
+## 3. 运行环境不同
+
+* **React** 运行在浏览器里，用浏览器的 JavaScript 引擎和 DOM。
+
+* **React Native** 运行在移动设备上，利用 JavaScriptCore（iOS 和部分 Android 支持），通过桥接机制调用原生代码渲染 UI。
+
+---
+
+## 4. 组件库和 UI 组件差异
+
+React Native 提供一套专门的内置组件，比如：
+
+* `<View>` 替代网页中的 `<div>`
+* `<Text>` 替代网页中的文本标签 `<p>`, `<span>`
+* `<ScrollView>`, `<FlatList>` 用于列表滚动
+* `<Image>` 处理图片
+* 还有触摸手势、动画、摄像头、GPS 等移动设备特有功能组件
+
+这些都是移动端特有的原生控件封装，不是 HTML 标签。
+
+---
+
+## 5. 样式写法区别
+
+* React 中样式多用 CSS，支持各种 CSS 语法、类名、选择器。
+
+* React Native 不支持传统 CSS，而是用 JavaScript 对象定义样式，类似：
+
+```js
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 10,
+  },
+  text: {
+    fontSize: 16,
+    color: '#333',
+  }
+});
+```
+
+没有 CSS 选择器，样式作用范围更局限，使用 Flexbox 布局为主。
+
+---
+
+## 6. 平台特性和原生模块
+
+React Native 可以直接调用原生平台的 API：
+
+* 访问相机、定位、推送通知、蓝牙等硬件功能
+* 自定义原生模块（Objective-C/Swift、Java/Kotlin）
+* 访问原生 UI 组件和动画系统，性能更好
+
+React 则只能操作浏览器 API，不能访问硬件和原生系统。
+
+---
+
+## 7. 开发和调试体验
+
+* React 开发一般使用浏览器的开发者工具，热更新快，支持各种浏览器插件。
+
+* React Native 开发用 Expo 或 React Native CLI，支持热重载和快速刷新（Fast Refresh），可以直接在手机或模拟器调试。
+
+---
+
+## 8. 项目构建和发布
+
+* React 项目打包成网页（静态资源），部署到服务器或 CDN。
+
+* React Native 项目构建成原生应用包（APK、IPA），通过 App Store、Google Play 发布。
+
+---
+
+## 9. 代码复用
+
+虽然两者代码风格类似，React Native 与 React 有一些共享的库和概念，但 UI 代码不能直接通用，需为移动和网页写不同组件。
+
+不过，也有 React Native Web 这种方案，可以让 React Native 组件运行在网页。
+
+---
+
+## 总结
+
+| 特点     | React            | React Native          |
+| ------ | ---------------- | --------------------- |
+| 目标平台   | Web 浏览器          | iOS 和 Android 原生移动端   |
+| 渲染机制   | 虚拟 DOM + 浏览器 DOM | 虚拟 DOM + 原生视图组件调用     |
+| 样式     | CSS              | JavaScript 样式对象       |
+| UI 组件  | HTML 标签          | 原生 UI 组件              |
+| 原生功能调用 | 只能调用浏览器 API      | 可调用移动设备硬件和原生 API      |
+| 代码复用   | 网页专用             | 可跨 iOS/Android，有限网页支持 |
+
+---
+
+如果你想，我可以帮你详细讲讲 React Native 开发流程、环境搭建、核心组件用法，或者示范一个简单的 React Native 项目代码示例。你需要吗？

@@ -1,0 +1,118 @@
+---
+title: 什么是高阶组件 HOC 的属性代理？
+---
+
+在 React 中，高阶组件（Higher-Order Component，简称 HOC）是一种用于**复用组件逻辑的高级技术**。其中，\*\*属性代理（Props Proxy）\*\*是实现 HOC 的一种常见模式。
+
+---
+
+## ✅ 什么是属性代理（Props Proxy）？
+
+**属性代理**指的是：**高阶组件通过操作被包裹组件的 props 来增强其行为或功能**。也就是说，HOC 会：
+
+1. 接收传入的 props；
+2. 对其进行处理或增强；
+3. 然后再把这些 props 传递给原始组件。
+
+---
+
+## 🔧 属性代理的典型作用
+
+* 修改 props
+* 增加额外 props
+* 条件性渲染组件
+* 获取或拦截 ref
+* 注入状态或生命周期
+
+---
+
+## 🧩 示例：一个简单的属性代理 HOC
+
+```jsx
+import React from 'react';
+
+// 这是一个属性代理 HOC
+function withLogger(WrappedComponent) {
+  return class extends React.Component {
+    componentDidMount() {
+      console.log('Props:', this.props);
+    }
+
+    render() {
+      // 把原始 props 原封不动地传递给被包裹组件
+      return <WrappedComponent {...this.props} />;
+    }
+  };
+}
+
+// 一个简单组件
+function Hello(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+// 包装后的组件
+const HelloWithLogger = withLogger(Hello);
+
+// <HelloWithLogger name="Nebula" /> 会输出 props 并渲染 Hello
+```
+
+---
+
+## 🧠 属性代理可以做的更多事
+
+### ✅ 添加或修改 props
+
+```jsx
+return <WrappedComponent {...this.props} isAdmin={true} />;
+```
+
+### ✅ 过滤 props
+
+```jsx
+const { secretToken, ...rest } = this.props;
+return <WrappedComponent {...rest} />;
+```
+
+### ✅ 包装 props（如包装函数）
+
+```jsx
+const newProps = {
+  ...this.props,
+  onClick: () => {
+    console.log('Clicked!');
+    this.props.onClick?.();
+  }
+};
+return <WrappedComponent {...newProps} />;
+```
+
+### ✅ 获取 ref
+
+```jsx
+render() {
+  return <WrappedComponent ref={this.wrappedInstance} {...this.props} />;
+}
+```
+
+---
+
+## 📌 与继承反转的区别（属性代理 vs. Inheritance Inversion）
+
+| 对比项  | 属性代理（Props Proxy）         | 继承反转（Inheritance Inversion） |
+| ---- | ------------------------- | --------------------------- |
+| 实现方式 | HOC 内部渲染 WrappedComponent | HOC 继承 WrappedComponent     |
+| 控制粒度 | 操作 props                  | 操作生命周期和内部状态                 |
+| 应用场景 | 逻辑增强、prop 注入              | 深度定制、生命周期控制                 |
+
+一般推荐优先使用“属性代理”，它更安全、更可维护。
+
+---
+
+## ✅ 总结
+
+* 属性代理是高阶组件的一种实现方式；
+* 它通过操作 props 来增强被包装组件；
+* 常用于复用逻辑、注入 props、拦截事件、封装权限等；
+* 相比继承反转，属性代理更常用也更简单。
+
+如需进一步理解，也可以将 HOC 的“属性代理”看作一种“**组件中介层**”，它中转并增强 props。是否需要示例 Redux 的 `connect` 也是属性代理的例子？

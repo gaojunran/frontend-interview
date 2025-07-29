@@ -1,0 +1,112 @@
+---
+title: React 的函数式组件是否具有生命周期？
+---
+
+React 的函数式组件本身**没有传统意义上的生命周期方法**（比如 `componentDidMount`、`shouldComponentUpdate` 等），但借助 **Hooks（尤其是 `useEffect` 等）**，可以模拟和控制组件在生命周期各阶段的行为。下面详细讲讲。
+
+---
+
+## 🔁 类组件的生命周期回顾
+
+类组件生命周期大致分为三类阶段：
+
+| 生命周期阶段 | 方法名                                          |
+| ------ | -------------------------------------------- |
+| 初始化阶段  | `constructor`、`componentDidMount`            |
+| 更新阶段   | `shouldComponentUpdate`、`componentDidUpdate` |
+| 卸载阶段   | `componentWillUnmount`                       |
+
+---
+
+## ✅ 函数组件没有生命周期方法，但有 Hooks
+
+函数式组件没有类的结构，所以不能定义生命周期方法。但 React 通过 **Hooks API** 提供了一种新的方式来在函数组件中处理副作用、状态和生命周期。
+
+---
+
+## 🧠 用 Hooks 模拟生命周期
+
+### 1. `componentDidMount`：组件挂载时运行一次
+
+使用 `useEffect`，依赖数组为空 `[]`：
+
+```jsx
+useEffect(() => {
+  console.log('组件已挂载');
+}, []);
+```
+
+这段代码只会在组件第一次渲染后执行一次，就像类组件的 `componentDidMount`。
+
+---
+
+### 2. `componentDidUpdate`：组件更新后运行
+
+使用 `useEffect`，依赖数组中传入需要监听的值：
+
+```jsx
+useEffect(() => {
+  console.log('count 发生了变化');
+}, [count]);
+```
+
+每当 `count` 变化时，副作用都会执行，类似于 `componentDidUpdate`。
+
+---
+
+### 3. `componentWillUnmount`：组件卸载时运行
+
+`useEffect` 的返回函数会在组件卸载时触发：
+
+```jsx
+useEffect(() => {
+  const timer = setInterval(() => console.log('running'), 1000);
+
+  return () => {
+    clearInterval(timer); // 清理副作用
+    console.log('组件即将卸载');
+  };
+}, []);
+```
+
+---
+
+### ✅ 生命周期总结对照表（函数组件 vs 类组件）
+
+| 生命周期行为    | 类组件方法                  | 函数组件 Hooks 实现                                 |
+| --------- | ---------------------- | --------------------------------------------- |
+| 组件挂载后运行一次 | `componentDidMount`    | `useEffect(() => { ... }, [])`                |
+| 组件更新时运行   | `componentDidUpdate`   | `useEffect(() => { ... }, [deps])`            |
+| 组件卸载前运行   | `componentWillUnmount` | `useEffect(() => { return () => {...} }, [])` |
+
+---
+
+## 💡 小技巧：多个 `useEffect` 会分开管理副作用
+
+你可以根据不同的依赖拆分多个 `useEffect`，提高可维护性：
+
+```jsx
+useEffect(() => {
+  console.log('监听 A');
+}, [a]);
+
+useEffect(() => {
+  console.log('监听 B');
+}, [b]);
+```
+
+---
+
+## 🚫 函数组件中不能模拟的生命周期？
+
+大部分生命周期都可以通过 Hooks 实现，但像 `getDerivedStateFromProps`（用于同步 props 到 state）就不太推荐在函数组件中模仿，而是通过计算派生状态或自定义 Hook 来解决。
+
+---
+
+## ✅ 结论
+
+* 函数组件 **没有传统生命周期方法**。
+* 通过 **Hooks（尤其是 `useEffect`）可以模拟生命周期行为**。
+* 使用 Hooks 让副作用逻辑更加清晰、解耦，也让代码更加函数式和组合化。
+
+如果你想要我用完整的代码例子来展示生命周期 Hook 的行为，我可以随时给出。

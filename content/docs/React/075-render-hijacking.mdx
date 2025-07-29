@@ -1,0 +1,141 @@
+---
+title: 什么是渲染劫持（render hijacking）？它的应用场景是什么？
+---
+
+React 的“**渲染劫持（render hijacking）**”是一种**拦截和控制组件渲染行为的技术手段**，本质上是通过高阶组件（HOC）或某些模式，**在组件渲染之前修改其渲染逻辑**，从而实现对组件的“劫持”和增强。
+
+---
+
+## 一、什么是渲染劫持？
+
+> 渲染劫持指的是：**在组件即将渲染时，拦截它的 `render()` 方法或渲染结果，并对其进行包装、替换或增强**。
+
+这种做法并不会改变组件本身的代码逻辑，而是通过外部手段（如 HOC、`cloneElement`、`children` 作为函数等）控制组件的输出。
+
+---
+
+## 二、常见的渲染劫持方式
+
+### 1. **高阶组件（HOC）**
+
+HOC 是实现渲染劫持最常见的手段，它包装一个组件，返回一个新的组件，在中间插入一些逻辑。
+
+```jsx
+function withRenderHijack(WrappedComponent) {
+  return class extends React.Component {
+    render() {
+      // 添加逻辑：比如权限控制
+      if (!this.props.isAllowed) {
+        return <div>权限不足</div>;
+      }
+
+      // 劫持渲染：注入新的 props
+      return <WrappedComponent {...this.props} hijacked={true} />;
+    }
+  };
+}
+```
+
+### 2. **`React.cloneElement()`**
+
+可以在父组件中**克隆子组件**，并对其添加/修改 props，改变其行为：
+
+```jsx
+function Parent({ children }) {
+  return React.Children.map(children, child =>
+    React.cloneElement(child, { addedProp: 'renderHijacked' })
+  );
+}
+```
+
+### 3. **`children` 作为函数（Function as Children）**
+
+通过让 `children` 是一个函数来控制其渲染逻辑：
+
+```jsx
+function RenderHijacker({ children }) {
+  const allowed = true;
+  return allowed ? children('hijacked') : <div>权限不足</div>;
+}
+
+// 使用
+<RenderHijacker>
+  {info => <TargetComponent info={info} />}
+</RenderHijacker>
+```
+
+### 4. **自定义 Hooks（限制更大，但可以控制状态或副作用）**
+
+虽然不能直接拦截渲染输出，但可以通过控制逻辑来间接影响组件渲染。
+
+---
+
+## 三、渲染劫持的应用场景
+
+### ✅ 1. **权限控制**
+
+根据用户权限拦截某些组件的渲染：
+
+```jsx
+function withAuth(WrappedComponent) {
+  return props => props.loggedIn ? <WrappedComponent {...props} /> : <Redirect to="/login" />;
+}
+```
+
+### ✅ 2. **日志记录 / 性能分析**
+
+在组件渲染前后记录日志、分析性能：
+
+```jsx
+function withLogger(WrappedComponent) {
+  return class extends React.Component {
+    componentDidMount() {
+      console.log('Mounted:', WrappedComponent.name);
+    }
+    render() {
+      return <WrappedComponent {...this.props} />;
+    }
+  };
+}
+```
+
+### ✅ 3. **注入行为**
+
+注入样式、数据、事件处理器：
+
+```jsx
+function withTheme(WrappedComponent) {
+  return props => <WrappedComponent {...props} theme="dark" />;
+}
+```
+
+### ✅ 4. **测试 / Mock**
+
+渲染替代组件或 mock 掉实际组件：
+
+```jsx
+function withMock(WrappedComponent, MockComponent) {
+  return process.env.NODE_ENV === 'test' ? MockComponent : WrappedComponent;
+}
+```
+
+---
+
+## 四、渲染劫持的注意事项
+
+| 项     | 说明                   |
+| ----- | -------------------- |
+| ✅ 优点  | 非侵入式增强组件逻辑、便于复用、解耦功能 |
+| ⚠️ 缺点 | 隐蔽性强，调试困难，增加组件复杂度    |
+| 🚫 禁忌 | 滥用 HOC、改变组件意图、破坏组件边界 |
+
+---
+
+## 五、小结
+
+**React 渲染劫持 = 控制组件输出的中间逻辑**，是更灵活、可插拔的 UI 构建手段。
+它主要通过高阶组件、cloneElement、函数式 children 等方式实现，常用于权限控制、注入逻辑、日志分析等场景。
+
+如果你正在写大型、可扩展的组件库，或者想增强组件的能力而不修改源码，**渲染劫持是非常实用的模式**。
+
+是否需要我演示一个实际应用场景的完整例子？比如“权限控制”和“样式注入”结合？

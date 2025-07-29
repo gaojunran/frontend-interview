@@ -1,0 +1,133 @@
+---
+title: 如何使用高阶组件（HOC）实现一个 loading 组件？
+---
+
+好的！我来详细讲讲如何用 React 的高阶组件（HOC）来实现一个通用的 **loading 组件** 功能。
+
+---
+
+## 什么是高阶组件（HOC）？
+
+高阶组件是一个函数，接收一个组件作为参数，返回一个新的组件。它主要用于复用组件逻辑，比如状态管理、数据请求、权限校验、loading 状态处理等。
+
+形式大致是：
+
+```jsx
+const EnhancedComponent = higherOrderComponent(WrappedComponent);
+```
+
+---
+
+## 目标
+
+我们想做一个 HOC，能够给任意组件包一层“加载状态”逻辑。当处于加载状态时，显示 loading 动画；加载完成则显示包裹的组件。
+
+---
+
+## 实现步骤
+
+### 1. 定义 HOC 函数
+
+```jsx
+import React from 'react';
+
+function withLoading(WrappedComponent) {
+  // 返回一个新组件
+  return function LoadingComponent({ isLoading, ...props }) {
+    if (isLoading) {
+      return <div>Loading...</div>; // 这里可以换成你喜欢的 loading UI
+    }
+    // 加载完成，渲染传入的组件，传递其他所有 props
+    return <WrappedComponent {...props} />;
+  };
+}
+```
+
+### 2. 使用 HOC
+
+假设我们有一个普通组件 `UserList`：
+
+```jsx
+function UserList({ users }) {
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+用 HOC 包装它：
+
+```jsx
+const UserListWithLoading = withLoading(UserList);
+```
+
+然后在父组件中使用：
+
+```jsx
+function App() {
+  const [loading, setLoading] = React.useState(true);
+  const [users, setUsers] = React.useState([]);
+
+  React.useEffect(() => {
+    // 模拟请求数据
+    setTimeout(() => {
+      setUsers([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]);
+      setLoading(false);
+    }, 2000);
+  }, []);
+
+  return <UserListWithLoading isLoading={loading} users={users} />;
+}
+```
+
+---
+
+## 解释
+
+* `withLoading` 是高阶组件，接受一个组件，返回一个新的组件 `LoadingComponent`。
+* 新组件接受一个 `isLoading` prop，来决定是否显示 loading。
+* 当 `isLoading` 为 `true`，显示 loading 界面，否则显示被包装的组件。
+* 其它 props 通过 `{...props}` 传递给被包装组件，保证灵活性。
+
+---
+
+## 进阶：自定义 Loading 组件
+
+我们可以让 HOC 支持传入自定义的 Loading 组件：
+
+```jsx
+function withLoading(WrappedComponent, LoadingComponent = () => <div>Loading...</div>) {
+  return function (props) {
+    const { isLoading, ...rest } = props;
+    if (isLoading) return <LoadingComponent />;
+    return <WrappedComponent {...rest} />;
+  };
+}
+```
+
+用法：
+
+```jsx
+const Spinner = () => <div className="spinner">⚙️ Loading...</div>;
+
+const UserListWithSpinner = withLoading(UserList, Spinner);
+
+<UserListWithSpinner isLoading={true} users={[]} />
+```
+
+---
+
+## 总结
+
+* HOC 是复用逻辑的好方式，适合做 loading 组件。
+* HOC 包装的组件可接收所有原始 props 和额外的 `isLoading`。
+* 可以灵活自定义 loading 样式。
+* 适合在多个组件里共享 loading 逻辑，避免重复写加载判断代码。
+
+---
+
+如果你需要，我还可以帮你写更复杂一点的 loading HOC，比如支持异步请求自动控制 loading 状态，或者 TypeScript 版本，随时告诉我！

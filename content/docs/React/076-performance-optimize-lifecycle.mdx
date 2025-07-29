@@ -1,0 +1,112 @@
+---
+title: React 的性能优化主要集中在哪个生命周期？它的优化原理是什么？
+---
+
+React 的性能优化主要集中在 **组件更新阶段（Update Phase）** 的生命周期，这个阶段会决定组件是否需要重新渲染和更新 DOM，是 React 性能瓶颈和优化的重点区域。
+
+---
+
+## 🔄 一、组件生命周期划分
+
+React 的生命周期（以类组件为例）大致分为三个阶段：
+
+1. **挂载阶段（Mounting）**：组件第一次被插入 DOM。
+2. **更新阶段（Updating）**：组件的 props 或 state 改变时重新渲染。
+3. **卸载阶段（Unmounting）**：组件被移除。
+
+> 其中性能优化 **重点集中在“更新阶段”**，因为：
+
+* 挂载只发生一次；
+* 卸载影响小；
+* 更新会频繁触发，是性能瓶颈的来源。
+
+---
+
+## 🚀 二、更新阶段的关键生命周期（类组件）
+
+在类组件中，关键生命周期函数包括：
+
+| 生命周期方法                  | 作用           | 是否用于优化     |
+| ----------------------- | ------------ | ---------- |
+| `shouldComponentUpdate` | 判断组件是否需要重新渲染 | ✅ 主要优化点    |
+| `render`                | 渲染 JSX       | ❌ 尽量轻量     |
+| `componentDidUpdate`    | 处理副作用        | ⚠️ 不直接优化性能 |
+
+React 会在更新前调用 `shouldComponentUpdate(nextProps, nextState)`，默认返回 `true`，表示组件会更新。如果你重写这个方法来对比新旧 props/state 的变化，可以阻止不必要的渲染：
+
+```js
+shouldComponentUpdate(nextProps, nextState) {
+  return nextProps.value !== this.props.value;
+}
+```
+
+---
+
+## ⚡ 三、性能优化原理（函数组件 / Hooks）
+
+在现代 React 中，函数组件更常用，性能优化手段有：
+
+### 1. `React.memo()`
+
+对函数组件进行**记忆化处理**，类似类组件的 `shouldComponentUpdate`。
+
+```js
+const MyComponent = React.memo(function MyComponent(props) {
+  return <div>{props.value}</div>;
+});
+```
+
+> ✅ 原理：只有当 props 变化时才重新渲染组件，避免重复渲染。
+
+---
+
+### 2. `useMemo()` 和 `useCallback()`
+
+避免不必要的计算或函数引用变化：
+
+* `useMemo()`：缓存值
+* `useCallback()`：缓存函数
+
+```js
+const memoizedValue = useMemo(() => computeExpensiveValue(a, b), [a, b]);
+const memoizedCallback = useCallback(() => doSomething(a), [a]);
+```
+
+> ✅ 原理：只有依赖项变化时才重新计算/创建，避免子组件重复渲染。
+
+---
+
+## 🧠 四、Fiber 协调机制中的优化
+
+React 16+ 引入的 Fiber 架构，对更新流程进行优化：
+
+* 分片式渲染（Time Slicing）：将渲染任务切片，避免阻塞主线程；
+* 可中断更新（interruptible）：低优先级任务可被高优先级任务打断；
+* **基于优先级的调度算法**：优化响应速度和用户体验。
+
+---
+
+## 🛠️ 五、其他优化手段
+
+| 技术                    | 说明                         |
+| --------------------- | -------------------------- |
+| Virtual DOM diff 算法优化 | React 自动处理，但要避免 key 重复或不稳定 |
+| 避免不必要的状态提升            | 避免上层组件频繁重新渲染               |
+| 拆分组件                  | 减小渲染单元粒度，提升复用              |
+| 使用 `key` 优化列表         | 帮助 React 精准 diff 子节点       |
+| 懒加载（Lazy loading）     | 延迟加载大组件或图片资源               |
+| 使用生产构建（React.prod）    | 移除调试信息，加快运行速度              |
+
+---
+
+## ✅ 总结：React 性能优化核心
+
+| 方面       | 内容                                                         |
+| -------- | ---------------------------------------------------------- |
+| **主要阶段** | 更新阶段（Update）                                               |
+| **核心原理** | 避免不必要的重新渲染                                                 |
+| **工具**   | `shouldComponentUpdate`、`React.memo`、`useMemo/useCallback` |
+| **底层机制** | Fiber 协调、分片渲染、优先级调度                                        |
+| **补充优化** | 拆分组件、懒加载、合理使用 key、减少状态依赖                                   |
+
+如需，我可以配合写一个优化前后的对比示例 👇。需要吗？

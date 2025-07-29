@@ -1,0 +1,120 @@
+---
+title: 什么是 React 的高阶组件 HOC？它与普通组件有什么区别？它的优缺点和应用场景是什么？
+---
+
+在 React 中，高阶组件（**HOC, Higher-Order Component**）是一种**复用组件逻辑的高级技巧**，它本质上是一个**函数**，**接收一个组件作为参数，并返回一个新的组件**。
+
+---
+
+### ✅ 一句话定义：
+
+> **HOC 是一个函数，接受一个组件并返回一个新的增强后的组件。**
+
+```tsx
+const EnhancedComponent = withSomething(WrappedComponent);
+```
+
+---
+
+## ✳️ 1. 高阶组件的定义
+
+```tsx
+function withLogger(WrappedComponent) {
+  return function EnhancedComponent(props) {
+    console.log('props:', props);
+    return <WrappedComponent {...props} />;
+  };
+}
+```
+
+使用方式：
+
+```tsx
+const MyComponentWithLogger = withLogger(MyComponent);
+```
+
+---
+
+## 🔄 2. 高阶组件 vs 普通组件
+
+| 比较项  | 高阶组件（HOC）     | 普通组件             |
+| ---- | ------------- | ---------------- |
+| 本质   | **函数**（返回组件）  | React 组件本身（函数或类） |
+| 用途   | 封装、增强逻辑复用     | 直接渲染 UI          |
+| 参数   | **接收组件作为参数**  | 接收 props         |
+| 返回值  | 返回增强后的组件      | 返回 JSX           |
+| 抽象程度 | 更高（抽象逻辑、增强能力） | 低（直接渲染内容）        |
+
+---
+
+## 💡 3. 常见应用场景
+
+| 场景                   | 示例说明                                               |
+| -------------------- | -------------------------------------------------- |
+| 权限控制                 | `withAuth(Component)`：如果未登录就重定向                    |
+| 日志记录 / 监控            | `withLogger(Component)`：打印 props、生命周期信息            |
+| 加载状态控制               | `withLoading(Component)`：包装加载指示器                   |
+| 接入 Redux、Router 等上下文 | `connect()`（Redux）、`withRouter()`（React Router v5） |
+| 封装动画                 | `withFadeIn(Component)`：为组件添加过渡动画                  |
+
+---
+
+## ✅ 4. 优点
+
+1. ✅ **逻辑复用强大**：抽象重复逻辑，减少冗余代码。
+2. ✅ **不修改原组件代码**：符合开闭原则，增强原组件而不侵入其实现。
+3. ✅ **组合灵活**：可以链式组合多个 HOC。
+4. ✅ **提高可维护性**：让代码职责更清晰。
+
+---
+
+## ⚠️ 5. 缺点
+
+| 缺点                 | 说明                            |
+| ------------------ | ----------------------------- |
+| 嵌套地狱（Wrapper Hell） | 多个 HOC 嵌套导致调试困难，组件树复杂         |
+| 不透明性               | 不容易直观看出组件真实行为                 |
+| props 冲突风险         | HOC 添加的 props 可能与原组件 props 冲突 |
+| 类型定义复杂（TS）         | 用 TypeScript 编写 HOC 时类型推导难    |
+
+---
+
+## 🔧 6. 实战例子：权限控制 HOC
+
+```tsx
+function withAuth(WrappedComponent) {
+  return function (props) {
+    const isLoggedIn = checkLogin(); // 伪代码
+    if (!isLoggedIn) {
+      return <Redirect to="/login" />;
+    }
+    return <WrappedComponent {...props} />;
+  };
+}
+```
+
+---
+
+## 🆚 7. HOC vs Render Props vs Hooks
+
+| 特性       | HOC      | Render Props | Hooks       |
+| -------- | -------- | ------------ | ----------- |
+| 抽象方式     | 函数组件包装组件 | 回调函数传递渲染     | 函数组件内部使用    |
+| 可读性      | 嵌套多可能变差  | 多层嵌套易变复杂     | 可读性高        |
+| 类型支持（TS） | 略显复杂     | 一般           | 非常好         |
+| 推荐程度     | ✅ 曾经主流   | 🔶 中等        | ✅✅ React 推荐 |
+
+---
+
+## ✅ 总结
+
+| 项目      | 内容                                   |
+| ------- | ------------------------------------ |
+| 是什么     | 函数，接收一个组件，返回增强后的新组件                  |
+| 有什么用    | 实现逻辑复用、权限控制、状态管理、装饰组件等               |
+| 与普通组件区别 | HOC 是\*\*“组件的组件”\*\*，用于“包装”或“增强”其他组件 |
+| 优点      | 强大的逻辑复用、非侵入性增强、可组合                   |
+| 缺点      | 调试困难、props 冲突、嵌套复杂、TS 类型较繁琐          |
+| 什么时候用   | 多组件共享逻辑、跨组件增强逻辑、封装上下文等               |
+
+> 如果你使用 React 18+，推荐优先使用 Hooks（如 useSelector, useRef, useTranslation 等）替代传统 HOC，因为 Hooks 可读性更好、组合更灵活。但 HOC 在某些场景下（如跨组件封装逻辑）仍然是很实用的工具。需要我帮你对比 hooks 和 HOC 的迁移方式也可以讲。

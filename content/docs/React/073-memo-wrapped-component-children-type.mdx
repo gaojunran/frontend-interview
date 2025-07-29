@@ -1,0 +1,223 @@
+---
+title: 为什么使用 React.memo 和 React.forwardRef 包装的组件会提示 children 类型不匹配？
+---
+
+这个问题常见于 **使用 TypeScript 的 React 项目**中，错误类似于：
+
+```
+Type '{ children: ReactNode; ... }' is not assignable to type ...
+```
+
+根本原因是：
+
+> **在使用 `React.memo` 和 `React.forwardRef` 组合包装组件时，类型信息如果没正确传递，TypeScript 无法推断 `children` 类型，或者无法识别 `ref`，导致类型不匹配错误。**
+
+---
+
+## 一、问题重现示例
+
+### 原组件写法：
+
+```tsx
+type MyComponentProps = {
+  children?: React.ReactNode;
+};
+
+const MyComponent = (props: MyComponentProps, ref: React.Ref<HTMLDivElement>) => {
+  return <div ref={ref}>{props.children}</div>;
+};
+
+export default React.memo(React.forwardRef(MyComponent));
+```
+
+### 使用组件时：
+
+```tsx
+<MyComponent>
+  <p>Hello</p>
+</MyComponent>
+```
+
+🚫 报错（children 类型不匹配）
+
+---
+
+## 二、原因解析
+
+### ✅ `React.forwardRef` 会改变组件类型：
+
+```ts
+const Forwarded = React.forwardRef(MyComponent);
+```
+
+它返回的是 `ForwardRefExoticComponent<Props & RefAttributes<T>>`
+
+### ❌ `React.memo` 默认无法自动推断 forwardRef 后的泛型
+
+当你这样写时：
+
+```ts
+export default React.memo(React.forwardRef(MyComponent));
+```
+
+由于 `memo` 没有显式地指定泛型信息，TypeScript 无法正确保留 `children` 或 `ref` 的类型信息。
+
+---
+
+## 三、正确写法（显式指定类型）
+
+### ✅ 方式 1：拆分中间变量，明确类型
+
+```tsx
+import React, { forwardRef, memo, ReactNode } from 'react';
+
+type MyComponentProps = {
+  children?: ReactNode;
+};
+
+const MyComponent = (
+  props: MyComponentProps,
+  ref: React.Ref<HTMLDivElement>
+) => {
+  return <div ref={ref}>{props.children}</div>;
+};
+
+const Forwarded = forwardRef<HTMLDivElement, MyComponentProps>(MyComponent);
+
+export default memo(Forwarded);
+```
+
+这里的关键是：
+
+```ts
+forwardRef<HTMLDivElement, MyComponentProps>
+```
+
+显式指定 ref 和 props 类型，TypeScript 就不会丢失类型信息。
+
+---
+
+## 四、推荐写法总结
+
+| 写法                                         | 是否推荐 | 原因                     |
+| ------------------------------------------ | ---- | ---------------------- |
+| `memo(forwardRef(fn))` 不加类型                | ❌    | 类型丢失，children/ref 识别错误 |
+| 拆成两步：`const A = forwardRef...` 再 `memo(A)` | ✅    | 类型清晰，children/ref 正确推断 |
+| 使用泛型参数 `<T, P>` 明确类型                       | ✅    | 提高可读性和类型安全             |
+
+---
+
+## 五、小结
+
+* `forwardRef` 和 `memo` 都是高阶组件，类型包装比较深。
+* 默认写法 TypeScript 无法自动保留类型信息。
+* 要解决 `children` 或 `ref` 类型不匹配的问题，**必须显式指定泛型类型**。
+* 推荐将 `forwardRef` 和 `memo` 拆开写，增强类型推断能力。
+
+---
+
+`React.forwardRef` 的作用是：
+
+> **让函数组件支持接收父组件传入的 `ref`，并将其转发（forward）到子组件内部的某个实际 DOM 元素或子组件上。**
+
+---
+
+## 一、背景：函数组件默认不支持 ref
+
+在 React 中，`ref` 是用来访问 DOM 或组件实例的。比如：
+
+```tsx
+const inputRef = useRef(null);
+
+return <input ref={inputRef} />;
+```
+
+这个可以访问 `<input>` DOM。但如果你写了一个自定义函数组件：
+
+```tsx
+const MyInput = () => <input />;
+
+// 错误：函数组件不能接收 ref
+<MyInput ref={someRef} /> ❌
+```
+
+函数组件默认 **不能接收 `ref`**，因为它不是类组件、也没有实例。
+
+---
+
+## 二、`forwardRef` 的作用：让函数组件也能接收 `ref`
+
+使用 `forwardRef`，你可以将 ref 正确“转发”到组件内部的 DOM 或其他组件上。
+
+### ✅ 示例：
+
+```tsx
+import React, { forwardRef } from 'react';
+
+const MyInput = forwardRef<HTMLInputElement, {}>((props, ref) => {
+  return <input ref={ref} {...props} />;
+});
+
+// 父组件中
+const App = () => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  return (
+    <>
+      <MyInput ref={inputRef} />
+      <button onClick={focusInput}>Focus</button>
+    </>
+  );
+};
+```
+
+✅ 现在 `ref` 能正常作用在 `<input>` 上，点击按钮会聚焦输入框。
+
+---
+
+## 三、使用场景总结
+
+| 场景                                    | 是否适合使用 `forwardRef` |
+| ------------------------------------- | ------------------- |
+| 自定义组件需要让父组件访问内部 DOM（如 `input`, `div`） | ✅ 是                 |
+| 封装的 UI 组件库组件（如 `TextField`, `Modal`）  | ✅ 是                 |
+| 无需操作 DOM 或不需要 ref 的展示型组件              | ❌ 否                 |
+
+---
+
+## 四、和 `useImperativeHandle` 搭配
+
+有时候你希望暴露自定义的实例方法（而不仅仅是 DOM 元素），可以搭配 `useImperativeHandle` 使用：
+
+```tsx
+const MyInput = forwardRef((props, ref) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    blur: () => inputRef.current?.blur(),
+  }));
+
+  return <input ref={inputRef} />;
+});
+```
+
+这样，父组件就可以使用：
+
+```tsx
+myInputRef.current.focus(); // 调用暴露的方法
+```
+
+---
+
+## 五、总结一句话
+
+> `forwardRef` 的本质是：**让你可以把 ref 传入函数组件，并转发到组件内部的某个元素或子组件上。**
+
+---
+
+如果你想知道它的底层原理或实际应用中的注意事项，也可以告诉我，我可以进一步展开讲讲。
