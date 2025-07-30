@@ -1,0 +1,146 @@
+---
+title: 什么是 TypeScript 里的条件类型、映射类型？
+---
+
+在 TypeScript 中，\*\*条件类型（Conditional Types）**和**映射类型（Mapped Types）\*\*是强大的类型工具，可以帮助你编写更灵活、更具表达力的类型逻辑。下面我将分别详细介绍这两者，并通过示例加深理解。
+
+---
+
+## 🧩 一、条件类型（Conditional Types）
+
+### 1. 概念
+
+条件类型允许根据类型之间的\*\*关系（extends）\*\*来进行判断，从而返回不同的类型结果。
+
+```ts
+T extends U ? X : Y
+```
+
+解释：
+
+* 如果 `T` 是 `U` 的子类型，则返回类型 `X`，否则返回类型 `Y`。
+
+### 2. 示例
+
+```ts
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<'hello'>; // true
+type B = IsString<123>;     // false
+```
+
+### 3. 联合类型分发特性（Distributive Conditional Types）
+
+```ts
+type ToArray<T> = T extends any ? T[] : never;
+
+type A = ToArray<string>;      // string[]
+type B = ToArray<string | number>; // string[] | number[]
+```
+
+解释：条件类型在处理联合类型时会「自动分发」，即对联合的每个成员都单独计算一次。
+
+#### 如果不想分发联合类型
+
+```ts
+type NoDistrib<T> = [T] extends [any] ? T[] : never;
+
+type C = NoDistrib<string | number>; // (string | number)[]
+```
+
+---
+
+## 🧱 二、映射类型（Mapped Types）
+
+### 1. 概念
+
+映射类型用于**遍历已有类型的键（key）并生成新类型**。
+
+语法格式：
+
+```ts
+type MyMapped<T> = {
+  [P in keyof T]: SomeType
+}
+```
+
+### 2. 示例
+
+```ts
+type Person = {
+  name: string;
+  age: number;
+};
+
+type ReadonlyPerson = {
+  [P in keyof Person]: Readonly<Person[P]>;
+};
+// 相当于：
+/*
+type ReadonlyPerson = {
+  name: Readonly<string>;
+  age: Readonly<number>;
+}
+*/
+```
+
+更常见的形式是将值保持不变，仅修饰属性：
+
+```ts
+type Readonly<T> = {
+  readonly [P in keyof T]: T[P];
+};
+
+type Partial<T> = {
+  [P in keyof T]?: T[P];
+};
+```
+
+### 3. 结合条件类型
+
+```ts
+type NullableProps<T> = {
+  [P in keyof T]: T[P] extends string ? string | null : T[P];
+};
+
+type Example = {
+  name: string;
+  age: number;
+};
+
+type Result = NullableProps<Example>;
+// => {
+//   name: string | null;
+//   age: number;
+// }
+```
+
+---
+
+## 🧠 补充：keyof 与 in 的作用
+
+* `keyof T`：获取某个类型的所有键名组成的联合类型。
+* `in`：在映射类型中用于遍历键。
+
+```ts
+type Keys = keyof { a: string; b: number }; // "a" | "b"
+
+type Mapped<T> = {
+  [K in keyof T]: T[K];
+}
+```
+
+---
+
+## ✅ 总结对比
+
+| 特性     | 条件类型                       | 映射类型                             |
+| ------ | -------------------------- | -------------------------------- |
+| 用途     | 类型间判断逻辑                    | 遍历已有类型的属性生成新类型                   |
+| 关键语法   | `T extends U ? X : Y`      | `[K in keyof T]: ...`            |
+| 是否支持组合 | ✅（可嵌套、递归）                  | ✅（可嵌套、组合条件类型）                    |
+| 场景示例   | 类型工具如 `Exclude<T, U>`、类型推断 | 工具类型如 `Partial<T>`、`Readonly<T>` |
+
+---
+
+如果你想，我也可以演示如何自己实现 `Pick<T, K>` 或 `Omit<T, K>` 等工具类型。是否需要？

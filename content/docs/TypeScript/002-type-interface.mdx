@@ -1,0 +1,175 @@
+---
+title: TypeScript 的类型别名和接口有什么区别？
+---
+
+TypeScript 中的 **类型别名（`type`）** 和 **接口（`interface`）** 都可以用来定义对象的结构或类型，但它们在功能、使用场景和扩展性方面存在一些差异。下面是详细的讲解：
+
+---
+
+## 一、相同点
+
+两者都可以用来描述：
+
+* 对象的结构
+* 函数签名
+* 混合类型（比如可以调用也有属性的函数）
+
+示例：
+
+```ts
+// 接口
+interface User {
+  name: string;
+  age: number;
+}
+
+// 类型别名
+type UserAlias = {
+  name: string;
+  age: number;
+};
+```
+
+---
+
+## 二、主要区别
+
+### 1. **扩展方式不同**
+
+#### 接口：支持多次声明合并、继承（推荐用于面向对象风格）
+
+```ts
+interface A {
+  x: number;
+}
+
+interface A {
+  y: number;
+}
+
+// 合并成 { x: number; y: number }
+const obj: A = { x: 1, y: 2 };
+
+interface B extends A {
+  z: number;
+}
+```
+
+#### 类型别名：不支持声明合并，只能通过交叉类型扩展
+
+```ts
+type A = { x: number };
+// ❌ 不能再次声明 A
+
+type B = A & { y: number }; // 用交叉类型扩展
+```
+
+---
+
+### 2. **功能范围不同**
+
+#### 接口只能描述对象、类、函数结构（更偏向面向对象）
+
+```ts
+interface Person {
+  name: string;
+  greet(): void;
+}
+```
+
+#### 类型别名可以描述更复杂、灵活的类型组合（更偏向类型编程）
+
+```ts
+type StringOrNumber = string | number;
+
+type Callback = (x: number) => void;
+
+type Nested = {
+  id: number;
+  data: {
+    name: string;
+  };
+};
+```
+
+---
+
+### 3. **声明合并（Declaration Merging）**
+
+这是 `interface` 特有的能力。
+
+```ts
+interface Animal {
+  name: string;
+}
+
+interface Animal {
+  age: number;
+}
+
+// 最终合并为 { name: string; age: number }
+const dog: Animal = { name: 'Lucky', age: 3 };
+```
+
+`type` 不支持这种合并，一旦重复声明会报错。
+
+---
+
+### 4. **implements 限制**
+
+类可以 `implements` 接口，但不能 `implements` 联合类型（即 `type` 的联合类型）。
+
+```ts
+interface Walkable {
+  walk(): void;
+}
+
+class Person implements Walkable {
+  walk() {}
+}
+
+// ❌ 报错
+type WalkableOrRunnable = Walkable | { run(): void };
+// class A implements WalkableOrRunnable {} // 报错
+```
+
+---
+
+### 5. **映射类型和条件类型**
+
+类型别名才能使用映射（mapped types）和条件类型（conditional types）。
+
+```ts
+type Keys = 'a' | 'b';
+type Flags = {
+  [K in Keys]: boolean;
+};
+
+type IsString<T> = T extends string ? true : false;
+type Test = IsString<'hi'>; // true
+```
+
+---
+
+## 三、总结对比表
+
+| 特性            | `interface`    | `type`      |
+| ------------- | -------------- | ----------- |
+| 声明合并          | ✅ 支持           | ❌ 不支持       |
+| 扩展方式          | `extends`      | `&` 交叉类型    |
+| 支持联合类型（Union） | ❌ 不支持          | ✅ 支持        |
+| 支持映射和条件类型     | ❌ 不支持          | ✅ 支持        |
+| 用于类实现         | ✅ 推荐           | ⚠️ 限制较多     |
+| 推荐场景          | 面向对象、公共 API 定义 | 灵活类型组合、工具类型 |
+
+---
+
+## 四、使用建议
+
+* 如果你在定义公共 API、类的接口、或第三方库类型定义 → **优先使用 `interface`**
+* 如果你要组合多个类型、使用联合、条件、映射类型 → **使用 `type`**
+* 简单来说：**对象结构推荐用 interface，复杂类型操作用 type**
+
+---
+
+需要我帮你判断在你项目中的具体使用场景该用哪一个吗？可以贴些代码来看一下。

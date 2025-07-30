@@ -1,0 +1,273 @@
+---
+title: 有哪些登录鉴权方案？
+---
+
+前后端分离架构下，登录鉴权是保障系统安全的核心部分，业界已经发展出多种成熟方案。下面我们来分为三部分讲解：
+
+---
+
+## ✅ 一、常见的前后端登录鉴权方案
+
+### 1. **Session + Cookie**
+
+* **流程**：
+
+  1. 用户登录，后端生成 `Session ID`，保存于服务端内存或数据库。
+  2. 后端通过 `Set-Cookie` 返回给前端。
+  3. 浏览器自动携带 Cookie 访问后端，后端验证 Session 是否有效。
+* **特点**：
+
+  * 简单、成熟。
+  * 跨域部署复杂（需配置 CORS 和 Cookie 跨域）。
+  * 无法很好支持移动端、API 等非浏览器客户端。
+
+---
+
+### 2. **Token 认证（如 JWT）**
+
+* **流程**：
+
+  1. 用户登录，后端签发 Token（常用 JWT）。
+  2. 前端存储 Token（通常在 `localStorage` / `sessionStorage` / `cookie`）。
+  3. 后续请求在 `Authorization` 头部携带 Token。
+  4. 后端校验 Token（可选是否从数据库校验黑名单/刷新状态）。
+* **特点**：
+
+  * 无状态，天然支持前后端分离、多端访问。
+  * 易扩展，可存用户角色、权限等信息。
+  * JWT 一旦泄漏较难撤销；Token 续期处理麻烦。
+
+---
+
+### 3. **OAuth 2.0 / OpenID Connect**
+
+* **流程**：
+
+  * 第三方登录，如 GitHub/Google 登录；或企业内部单点登录。
+  * OpenID Connect 是 OAuth2 的身份层扩展。
+* **适用场景**：
+
+  * 多系统统一登录（SSO）、对接第三方登录。
+  * 安全标准高，复杂度也高。
+
+---
+
+### 4. **Session + Token 混合模式**
+
+* 使用 Token 携带身份，Session 存储用户临时状态。
+* 如登录时返回一个访问令牌和一个刷新令牌，短期访问令牌用于请求鉴权，长期刷新令牌用于续期。
+
+---
+
+## ✅ 二、当前主流的方案（2025年）
+
+### ✅ **JWT + Refresh Token** 是目前最主流的前后端鉴权方案：
+
+* **Access Token（短期）**：用户每次请求携带，生命周期短（如 15 分钟）。
+* **Refresh Token（长期）**：在 Token 过期时，自动续期（生命周期几天或更长）。
+* **优势**：
+
+  * 无状态、支持多终端。
+  * 可扩展权限、角色、客户端信息。
+  * 安全性提升：配合 `HttpOnly`、`SameSite` Cookie 使用或加签算法。
+
+---
+
+## ✅ 三、最新/趋势性方案（2024-2025）
+
+### 1. **Token Rotation（令牌轮换）**
+
+* 每次使用 Refresh Token 都返回新的 Access/Refresh Token，旧的 Refresh Token 作废。
+* 防止 Refresh Token 被窃取后重复使用（Replay Attack）。
+* 已被如 Auth0 等主流身份服务支持。
+
+### 2. **WebAuthn（无密码认证）**
+
+* 利用浏览器/系统的生物识别（如指纹、FaceID）、安全密钥（如 YubiKey）进行登录。
+* 遵循 FIDO2 标准。
+* 优点：彻底抛弃密码，极大提升安全性。
+* 缺点：兼容性有限，客户端要求较高。
+
+### 3. **基于零信任架构的鉴权系统（Zero Trust）**
+
+* 鉴权不再仅依赖登录时的信息，而是结合：设备指纹、位置、行为模式、网络环境等动态评估。
+* 多用于企业场景、API 保护等。
+
+---
+
+## ✅ 总结对比表
+
+| 方案                  | 是否无状态 | 多端支持    | 跨域支持  | 安全性 | 使用复杂度 |
+| ------------------- | ----- | ------- | ----- | --- | ----- |
+| Cookie + Session    | ❌ 有状态 | ❌ 不佳    | ❌ 需配置 | 中   | 简单    |
+| JWT Token           | ✅ 无状态 | ✅ 好     | ✅     | 中-高 | 低     |
+| JWT + Refresh Token | ✅ 无状态 | ✅ 非常好   | ✅     | 高   | 中     |
+| OAuth2 / OIDC       | ✅ 无状态 | ✅ 非常好   | ✅     | 非常高 | 高     |
+| WebAuthn            | ✅ 无状态 | ✅（前提支持） | ✅     | 极高  | 很高    |
+
+---
+
+## ✅ 实战推荐（前后端分离）
+
+**推荐方案**：
+
+* **JWT + Refresh Token**
+
+  * 使用 `Authorization: Bearer <token>` 携带请求。
+  * Refresh Token 设置为 `HttpOnly Cookie` 更安全。
+  * 搭配 Token Rotation 防止泄漏。
+  * 使用 Redis 存储刷新 Token 的状态或黑名单列表，可实现踢出登录、注销等控制。
+
+---
+
+好的，下面是对 `JWT + Refresh Token` 方案的详细讲解，包括原理、流程、安全策略、实战建议等，适合前后端分离项目使用。
+
+---
+
+## ✅ 一、为什么需要 Refresh Token？
+
+**单一 JWT 有如下问题**：
+
+* 不能长期有效（否则容易被盗用）。
+* 太短则用户频繁登录，体验差。
+* 一旦泄露，中间人可伪造身份，难以撤销。
+
+**引入 Refresh Token** 可以兼顾：
+
+* **安全性（短效 Access Token）**
+* **用户体验（长期有效 Refresh Token）**
+
+---
+
+## ✅ 二、核心概念
+
+| 名称                | 类型           | 生命周期        | 存储位置                   | 作用                  |
+| ----------------- | ------------ | ----------- | ---------------------- | ------------------- |
+| **Access Token**  | JWT          | 通常 5\~15 分钟 | localStorage、cookie、内存 | 每次请求带上，用于鉴权         |
+| **Refresh Token** | 一串随机字符串或 JWT | 通常 7\~30 天  | 建议放 HttpOnly Cookie    | 用于换取新的 Access Token |
+
+---
+
+## ✅ 三、完整流程图
+
+```
+1. 用户登录：
+   → 提交账号密码
+   → 后端校验后签发：
+     - Access Token（短期）
+     - Refresh Token（长期）
+
+2. 前端存储：
+   - Access Token 放在内存或 localStorage
+   - Refresh Token 放 HttpOnly + Secure Cookie
+
+3. 请求时：
+   - 每个 API 请求头部加 Authorization: Bearer <Access Token>
+
+4. Access Token 过期：
+   - 使用 Refresh Token 调用 `/auth/refresh`
+   - 后端校验通过，签发新 Access Token
+
+5. 登出：
+   - 前端清除存储
+   - 后端将 Refresh Token 加入黑名单（如果持久化）
+
+6. 安全异常：
+   - 如果 Refresh Token 被盗 → 通过 token rotation 阻止重放
+```
+
+---
+
+## ✅ 四、后端实现建议
+
+### Access Token（JWT）
+
+* 内容包含用户 ID、权限、过期时间（`exp`）。
+* 通过服务端私钥签名（`HS256`/`RS256`）。
+* 建议不存敏感信息（如密码、手机号）。
+
+### Refresh Token
+
+* **方式一：随机字符串**（推荐）：
+
+  * 生成后存入数据库或 Redis（绑定用户 ID、IP、UA）。
+  * 校验时查库比对。
+* **方式二：JWT 格式的 Refresh Token**（要考虑可撤销、是否带状态）。
+
+---
+
+## ✅ 五、安全建议（重点）
+
+| 风险               | 安全建议                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| Token 被盗         | - 使用 HTTPS<br />- Access Token 生命周期短（如 5 分钟）                               |
+| Refresh Token 被盗 | - 设置为 `HttpOnly` 且 `SameSite=Strict` 的 Cookie<br /> - 启用 **Token Rotation** |
+| 被重放攻击            | - Refresh Token 用一次就失效，签发新 Refresh Token                                  |
+| CSRF             | - Refresh Token 设置为 Cookie 时，需防 CSRF（加上 CSRF Token 验证）                    |
+| 被盗刷              | - 绑定 Refresh Token 和 UA/IP<br /> - 加入黑名单系统支持主动失效                            |
+
+---
+
+## ✅ 六、前端处理建议
+
+### 存储建议：
+
+| Token 类型      | 推荐存储方式                | 原因              |
+| ------------- | --------------------- | --------------- |
+| Access Token  | `内存` 或 `localStorage` | 请求时灵活，方便携带      |
+| Refresh Token | `HttpOnly Cookie`     | 防止 XSS 访问，提高安全性 |
+
+### 自动续期（前端实现逻辑）：
+
+```ts
+// 请求前检查 Access Token 是否过期
+// 如果过期，调用 /auth/refresh 用 Refresh Token 换取新的 Access Token
+// 换成功后再重试原请求
+```
+
+常见场景下可使用 axios 拦截器统一封装。
+
+---
+
+## ✅ 七、Token Rotation：增强安全
+
+**刷新 Access Token 时也换掉 Refresh Token，旧的 Refresh Token 作废。**
+
+* 服务端保存 Refresh Token 的 ID + 状态。
+* 一旦旧 Refresh Token 被再次使用，直接拒绝，标记为攻击行为。
+
+---
+
+## ✅ 八、实际接口设计建议
+
+| 接口                    | 方法            | 描述 |
+| --------------------- | ------------- | -- |
+| `POST /auth/login`    | 登录，返回 AT + RT |    |
+| `POST /auth/refresh`  | 用 RT 换 AT     |    |
+| `POST /auth/logout`   | 清除 RT，加入黑名单   |    |
+| `GET /me`             | 当前用户信息，AT 鉴权  |    |
+| `POST /auth/register` | 注册用户          |    |
+
+---
+
+## ✅ 九、方案优缺点总结
+
+| 优点            | 缺点             |
+| ------------- | -------------- |
+| 无状态认证，扩展性强    | 增加了刷新逻辑        |
+| 跨端支持好，支持前后端分离 | 若管理不当，RT 泄露风险大 |
+| 用户体验流畅，少登录    | 黑名单、轮换等机制实现复杂  |
+
+---
+
+## ✅ 十、生产推荐实践
+
+* 使用短效 JWT + HttpOnly Refresh Token。
+* Token Rotation + 黑名单机制。
+* 配合 CSRF Token 提高安全。
+* 加强登录防护（验证码、IP 限制、多因子认证 MFA）。
+* Refresh Token 存数据库/Redis，支持登出、踢人。
+
+---
+
+如你项目是 Vue/React 前端 + Node.js/Java 后端，我也可以提供具体代码实现示例。是否需要？

@@ -1,0 +1,210 @@
+---
+title: ️ TypeScript 有哪些常用类型？
+---
+
+TypeScript 常用类型大致可以分为三类：**原始类型**、**对象类型** 和 **工具类型**。下面详细讲解每类及其常见用法和注意点。
+
+---
+
+## 一、原始类型（Primitive Types）
+
+这些是 JavaScript 本身支持的类型，TypeScript 对它们做了静态类型增强。
+
+| 类型          | 示例              | 描述                               |
+| ----------- | --------------- | -------------------------------- |
+| `string`    | `"hello"`       | 字符串类型                            |
+| `number`    | `123`、`3.14`    | 数字类型（不区分整数/浮点数）                  |
+| `boolean`   | `true`、`false`  | 布尔类型                             |
+| `bigint`    | `123n`          | 任意大整数，用于高精度计算                    |
+| `symbol`    | `Symbol('key')` | 唯一值标识符，常用于对象属性键                  |
+| `null`      | `null`          | 空值（需开启 `strictNullChecks` 才严格检查） |
+| `undefined` | `undefined`     | 未定义（变量声明但未赋值）                    |
+| `any`       | 任意              | 关闭类型检查，**不推荐随意使用**               |
+| `unknown`   | 任意              | 和 `any` 类似，但使用前需要类型判断，**更安全**    |
+
+---
+
+## 二、对象类型（Object Types）
+
+### 1. 数组类型
+
+```ts
+let arr: number[] = [1, 2, 3];
+let arr2: Array<string> = ['a', 'b'];
+```
+
+### 2. 元组（Tuple）
+
+固定长度、固定类型的数组。
+
+```ts
+let tuple: [string, number] = ['name', 20];
+```
+
+### 3. 枚举（Enum）
+
+可定义一组有名字的常量。
+
+```ts
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right,
+}
+```
+
+也可以使用字符串枚举：
+
+```ts
+enum Role {
+  Admin = 'admin',
+  User = 'user',
+}
+```
+
+### 4. 接口（Interface）
+
+用于定义对象的结构。
+
+```ts
+interface Person {
+  name: string;
+  age?: number; // 可选属性
+}
+```
+
+可以用 `readonly` 和索引签名：
+
+```ts
+interface Config {
+  readonly id: string;
+  [key: string]: string | number;
+}
+```
+
+### 5. 类型别名（Type Alias）
+
+```ts
+type UserID = string | number;
+type Point = { x: number; y: number };
+```
+
+类型别名可以用于联合、交叉、映射等。
+
+---
+
+## 三、函数类型
+
+```ts
+function add(x: number, y: number): number {
+  return x + y;
+}
+
+type AddFn = (a: number, b: number) => number;
+```
+
+还可以定义返回值为 `void`、`never`（永不返回）：
+
+```ts
+function log(message: string): void {}
+function fail(): never {
+  throw new Error('failed');
+}
+```
+
+---
+
+## 四、联合类型与交叉类型
+
+### 联合类型（`|`）
+
+```ts
+let value: string | number;
+value = 'hello';
+value = 42;
+```
+
+### 交叉类型（`&`）
+
+```ts
+type A = { name: string };
+type B = { age: number };
+type Person = A & B; // { name: string, age: number }
+```
+
+---
+
+## 五、字面量类型
+
+```ts
+type Direction = 'up' | 'down' | 'left' | 'right';
+```
+
+可以配合联合类型，模拟类似枚举的效果。
+
+---
+
+## 六、工具类型（Utility Types）
+
+TypeScript 提供了很多内置的辅助工具类型，常见的有：
+
+| 工具类型            | 用法示例                                                              | 说明                     |           |
+| --------------- | ----------------------------------------------------------------- | ---------------------- | --------- |
+| `Partial<T>`    | `Partial<{a: number, b: string}>`                                 | 将所有属性设为可选              |           |
+| `Required<T>`   | `Required<{a?: number}>`                                          | 将所有属性设为必填              |           |
+| `Readonly<T>`   | `Readonly<{a: number}>`                                           | 所有属性变只读                |           |
+| `Pick<T, K>`    | `Pick<Person, 'name'>`                                            | 选取部分属性                 |           |
+| `Omit<T, K>`    | `Omit<Person, 'age'>`                                             | 去掉某些属性                 |           |
+| `Record<K, T>`  | `Record<string, number>`                                          | 构建一个键值类型对象             |           |
+| `Exclude<T, U>` | `Exclude<"a" \| "b", "b">`→`"a"`      | 从 T 中排除 U |
+| `Extract<T, U>` | `Extract<"a" \| "b", "c" \|"b">`→`"b"` | 取交集部分     |
+| `ReturnType<T>` | `ReturnType<() => number>` → `number`                             | 获取函数返回值类型              |           |
+| `Parameters<T>` | `Parameters<(a: string, b: number) => void>` → `[string, number]` | 获取函数参数类型               |           |
+
+---
+
+## 七、泛型（Generic Types）
+
+```ts
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+let output = identity<number>(123);
+```
+
+泛型支持约束：
+
+```ts
+function logLength<T extends { length: number }>(arg: T): void {
+  console.log(arg.length);
+}
+```
+
+---
+
+## 八、类型断言（Type Assertion）
+
+```ts
+const val = someValue as string;
+const el = document.getElementById('app') as HTMLDivElement;
+```
+
+也可以写成 `<string>someValue`（在 `.tsx` 中不推荐）。
+
+---
+
+## 总结
+
+| 类型类别 | 包含内容                                                                            |
+| ---- | ------------------------------------------------------------------------------- |
+| 原始类型 | string, number, boolean, symbol, null, undefined, any, unknown, bigint          |
+| 对象类型 | array, tuple, interface, type alias, enum                                       |
+| 函数类型 | 定义参数与返回值                                                                        |
+| 特殊类型 | union, intersection, literal, void, never                                       |
+| 工具类型 | Partial, Required, Pick, Omit, Record, Exclude, Extract, ReturnType, Parameters |
+| 泛型支持 | 灵活复用函数或结构                                                                       |
+| 类型断言 | 强制指定变量类型                                                                        |
+
+你可以告诉我具体想在哪一类深入，我可以继续细讲。

@@ -1,0 +1,227 @@
+---
+title: 前端框架中常用的设计模式有哪些？
+---
+
+在前端开发中，虽然不像后端那样广泛使用传统的设计模式（如单例、工厂、策略等），但随着项目规模的增长，设计模式同样变得重要，尤其是在组件化、状态管理、模块组织等方面。以下是前端开发中**常用的设计模式**，并附上详细说明和实际应用场景：
+
+---
+
+## 一、创建型模式
+
+### 1. 单例模式（Singleton）
+
+**定义**：一个类只允许创建一个实例，并提供一个全局访问点。
+
+**前端场景**：
+
+* 全局状态管理（如 Vuex、Pinia、Redux）
+* EventBus（事件总线）
+
+```js
+class Store {
+  constructor() {
+    if (Store.instance) return Store.instance;
+    this.state = {};
+    Store.instance = this;
+  }
+}
+const store1 = new Store();
+const store2 = new Store();
+console.log(store1 === store2); // true
+```
+
+---
+
+### 2. 工厂模式（Factory）
+
+**定义**：定义一个用于创建对象的接口，由子类决定实例化哪个类。
+
+**前端场景**：
+
+* 根据不同配置生成组件实例、图表实例等。
+
+```js
+function createButton(type) {
+  switch(type) {
+    case 'primary': return new PrimaryButton();
+    case 'secondary': return new SecondaryButton();
+    default: return new DefaultButton();
+  }
+}
+```
+
+---
+
+## 二、结构型模式
+
+### 3. 装饰器模式（Decorator）
+
+**定义**：在不改变原对象的情况下，动态地添加功能。
+
+**前端场景**：
+
+* 高阶组件（HOC）或 Vue/React 装饰器语法
+* `@debounce`、`@log` 等功能扩展
+
+```ts
+function log(target, key, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = function (...args) {
+    console.log(`Call ${key} with`, args);
+    return original.apply(this, args);
+  };
+}
+```
+
+---
+
+### 4. 代理模式（Proxy）
+
+**定义**：为其他对象提供一个代理以控制对其的访问。
+
+**前端场景**：
+
+* Vue3 响应式的实现（Proxy 实现响应式）
+* 拦截请求或数据访问
+
+```js
+const data = {
+  name: 'Nebula'
+};
+const proxy = new Proxy(data, {
+  get(target, prop) {
+    console.log(`访问了 ${prop}`);
+    return target[prop];
+  }
+});
+console.log(proxy.name);
+```
+
+---
+
+## 三、行为型模式
+
+### 5. 观察者模式（Observer）
+
+**定义**：对象之间建立一对多依赖关系，一个对象变化通知所有依赖者。
+
+**前端场景**：
+
+* Vue 的响应式系统（发布-订阅模式）
+* 事件监听 / 发布订阅（EventEmitter）
+
+```js
+class EventBus {
+  constructor() {
+    this.events = {};
+  }
+  on(event, cb) {
+    (this.events[event] ||= []).push(cb);
+  }
+  emit(event, ...args) {
+    this.events[event]?.forEach(cb => cb(...args));
+  }
+}
+```
+
+---
+
+### 6. 策略模式（Strategy）
+
+**定义**：定义一系列算法，把它们封装起来，并使它们可以互换使用。
+
+**前端场景**：
+
+* 表单验证策略
+* 复杂业务条件分发（如计算价格、处理规则）
+
+```js
+const strategies = {
+  isEmail: val => /@/.test(val),
+  minLength: (val, len) => val.length >= len
+};
+function validate(value, rule) {
+  return strategies[rule.type](value, rule.param);
+}
+```
+
+---
+
+### 7. 命令模式（Command）
+
+**定义**：将请求封装成对象，从而允许参数化客户和请求。
+
+**前端场景**：
+
+* undo/redo 操作实现
+* 键盘快捷键映射操作
+
+```js
+class Command {
+  constructor(execute, undo) {
+    this.execute = execute;
+    this.undo = undo;
+  }
+}
+const addCommand = new Command(() => count++, () => count--);
+```
+
+---
+
+## 四、其他常用模式
+
+### 8. 模板方法模式（Template Method）
+
+**定义**：在父类中定义算法框架，子类提供具体实现。
+
+**前端场景**：
+
+* 抽象组件（父类封装流程，子组件实现细节）
+
+```js
+class AbstractComponent {
+  init() {
+    this.beforeRender();
+    this.render();
+    this.afterRender();
+  }
+}
+```
+
+---
+
+### 9. 组合模式（Composite）
+
+**定义**：将对象组合成树形结构，使得客户端可以统一处理个体对象和组合对象。
+
+**前端场景**：
+
+* 组件树结构（如 Vue/React 组件）
+* DOM 树操作
+
+---
+
+## 五、Vue 和 React 特有实现思路中的模式
+
+| 框架    | 模式示例                        |
+| ----- | --------------------------- |
+| Vue   | Proxy（响应式）、观察者、发布订阅         |
+| React | 装饰器、组合模式、高阶组件、Hooks 中的策略和工厂 |
+
+---
+
+## 总结
+
+| 模式名  | 场景            |
+| ---- | ------------- |
+| 单例   | 状态管理、全局配置     |
+| 工厂   | 动态组件/图表创建     |
+| 装饰器  | HOC、函数增强      |
+| 代理   | Vue3 响应式、权限控制 |
+| 观察者  | 数据监听、事件系统     |
+| 策略   | 表单校验、行为分发     |
+| 命令   | 快捷键系统、撤销重做    |
+| 模板方法 | 抽象类、组件继承      |
+| 组合   | UI 树、DOM 结构   |
+
+如果你有具体的应用场景，比如要优化组件设计、实现状态同步，欢迎告诉我，我可以推荐最合适的模式应用。

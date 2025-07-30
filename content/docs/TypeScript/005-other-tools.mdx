@@ -1,0 +1,183 @@
+---
+title: TypeScript 内建工具 NonNull, NoInfer, ThisParameterType, OmitThisParameter, ThisType 有什么作用？
+---
+
+在 TypeScript 中，内建工具类型（utility types）可以帮助我们在类型系统中进行复杂的变换和约束。你提到的这几个工具类型：
+
+* `NonNullable<T>`
+* `NoInfer<T>`
+* `ThisParameterType<T>`
+* `OmitThisParameter<T>`
+* `ThisType<T>`
+
+它们分别用于不同场景。下面我来详细讲讲它们的 **作用、使用场景和例子**。
+
+---
+
+## 1. `NonNullable<T>`
+
+### ✅ 作用：
+
+从 `T` 类型中排除 `null` 和 `undefined`。
+
+### 📌 语法：
+
+```ts
+type NonNullable<T> = T extends null | undefined ? never : T;
+```
+
+### 📘 示例：
+
+```ts
+type A = string | null | undefined;
+type B = NonNullable<A>; // 结果: string
+```
+
+### ✅ 使用场景：
+
+在函数或对象属性中，我们想确保值不会是 `null` 或 `undefined`，就可以使用这个工具类型。
+
+---
+
+## 2. `NoInfer<T>`（不是官方公开 API，但经常用于技巧）
+
+### ✅ 作用：
+
+**阻止类型参数被类型推导**，强制使用调用时提供的类型。
+
+> 它不是 TypeScript 官方提供的工具类型，但可以通过类型技巧实现如下：
+
+### 📌 实现方式（技巧）：
+
+```ts
+type NoInfer<T> = [T][T extends any ? 0 : never];
+```
+
+### 📘 示例：
+
+```ts
+function processValue<T>(value: T, defaultValue: NoInfer<T>): T {
+  return value ?? defaultValue;
+}
+
+processValue<string | undefined>(undefined, "hello"); // defaultValue 必须是 string | undefined
+```
+
+如果没有 `NoInfer`，`defaultValue` 可能会被推导为 `string`，使泛型类型失效。
+
+### ✅ 使用场景：
+
+用于函数中多个参数共享一个类型 `T`，但你不想让第二个参数影响类型推导结果。
+
+---
+
+## 3. `ThisParameterType<T>`
+
+### ✅ 作用：
+
+提取函数类型中 `this` 的类型。
+
+### 📌 语法：
+
+```ts
+type ThisParameterType<T> = T extends (this: infer U, ...args: any) => any ? U : unknown;
+```
+
+### 📘 示例：
+
+```ts
+function say(this: { name: string }) {
+  console.log(this.name);
+}
+
+type This = ThisParameterType<typeof say>; 
+// 结果: { name: string }
+```
+
+### ✅ 使用场景：
+
+用于组合函数绑定上下文，比如 `bind` 的类型推导。
+
+---
+
+## 4. `OmitThisParameter<T>`
+
+### ✅ 作用：
+
+从函数类型中移除 `this` 参数。
+
+### 📌 语法：
+
+```ts
+type OmitThisParameter<T> = unknown extends ThisParameterType<T> ? T : T extends (...args: infer A) => infer R ? (...args: A) => R : T;
+```
+
+### 📘 示例：
+
+```ts
+function say(this: { name: string }) {
+  console.log(this.name);
+}
+
+const bound: OmitThisParameter<typeof say> = say.bind({ name: 'Tom' });
+bound(); // OK
+```
+
+### ✅ 使用场景：
+
+当你想把一个有 `this` 的函数赋值给一个普通函数变量（比如 `bind` 之后的函数），就可以使用这个工具类型。
+
+---
+
+## 5. `ThisType<T>`
+
+### ✅ 作用：
+
+用于**对象字面量中声明 `this` 类型**，主要用于上下文推导，而不是真正的类型检查。
+
+> 它不改变对象本身的结构，仅影响 TypeScript 在对象内部推导 `this` 的类型。
+
+### 📌 示例：
+
+```ts
+type ObjectDescriptor<D, M> = {
+  data?: D;
+  methods?: M & ThisType<D & M>; // 设置 this 的类型为 D & M
+};
+
+function makeObject<D, M>(desc: ObjectDescriptor<D, M>): D & M {
+  const data: object = desc.data || {};
+  const methods: object = desc.methods || {};
+  return Object.assign({}, data, methods);
+}
+
+const obj = makeObject({
+  data: { x: 0, y: 0 },
+  methods: {
+    moveBy(dx: number, dy: number) {
+      this.x += dx; // ✅ 自动推断 this.x 和 this.y
+      this.y += dy;
+    },
+  },
+});
+```
+
+### ✅ 使用场景：
+
+用于 Vue 2 Options API 中声明 `this`，或其他基于对象配置风格的 API。
+
+---
+
+## 总结对比
+
+| 工具类型                   | 作用                       | 主要使用场景                        |
+| ---------------------- | ------------------------ | ----------------------------- |
+| `NonNullable<T>`       | 去除 `null` 和 `undefined`  | 保证值不为 `null/undefined`        |
+| `NoInfer<T>`           | 阻止类型推导                   | 精确控制类型参数，防止被推导覆盖              |
+| `ThisParameterType<T>` | 获取函数的 `this` 类型          | 编写 `bind` 等工具函数               |
+| `OmitThisParameter<T>` | 移除函数的 `this` 参数          | 将有 `this` 的函数转为普通函数           |
+| `ThisType<T>`          | 为对象设置 `this` 类型推导（非类型声明） | 对象配置风格 API，比如 Vue Options API |
+
+---
+
+如果你想了解这些工具类型的底层实现，或看看一些组合用法（比如 `NoInfer` + 泛型函数组合优化参数提示），也可以继续问我。
