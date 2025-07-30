@@ -31,7 +31,7 @@ title: Vue Router 的 history 模式部署上线时有哪些注意事项？
 
 ### 1️⃣ **Nginx**
 
-```nginx
+```
 server {
   listen 80;
   server_name yourdomain.com;
@@ -51,7 +51,7 @@ server {
 
 在项目的根目录添加 `.htaccess` 文件：
 
-```apache
+```
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -68,7 +68,7 @@ server {
 
 ### 3️⃣ **Caddy**
 
-```caddyfile
+```
 example.com
 
 root * /path/to/dist
