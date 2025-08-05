@@ -1,0 +1,160 @@
+---
+title: 什么是 Node.js 中的 crypto 模块？它有什么作用？
+---
+
+在 Node.js 中，`crypto` 模块是一个内置模块，用于实现加密功能，如 **哈希算法、加密与解密、签名与验证** 等。它封装了 OpenSSL 提供的加密功能，支持对称加密、非对称加密、消息摘要等常见用途。
+
+---
+
+## 一、作用概述
+
+Node.js 的 `crypto` 模块主要用于以下几类加密任务：
+
+| 类型    | 功能                        |
+| ----- | ------------------------- |
+| 哈希    | 创建不可逆的数据指纹，如 SHA256、MD5 等 |
+| HMAC  | 利用密钥进行哈希计算，适合验证数据完整性      |
+| 对称加密  | 使用同一密钥加密/解密，如 AES         |
+| 非对称加密 | 使用公钥/私钥加密或签名，如 RSA        |
+| 数字签名  | 私钥签名、公钥验证，常用于身份验证         |
+| 密钥派生  | 如 PBKDF2，用于安全生成密钥         |
+| 随机数生成 | 安全随机数，用于令牌、密钥等            |
+
+你可以通过 `require('crypto')` 来使用该模块。
+
+---
+
+## 二、常用功能讲解
+
+### 1. 哈希（Hash）
+
+```js
+const crypto = require('crypto');
+
+const hash = crypto.createHash('sha256');
+hash.update('hello world');
+console.log(hash.digest('hex')); // 输出 SHA-256 的十六进制值
+```
+
+* `createHash(algorithm)`：如 `'sha256'`、`'md5'`
+* `update(data)`：可以多次调用
+* `digest(encoding)`：如 `'hex'`、`'base64'`
+
+---
+
+### 2. HMAC（带密钥的哈希）
+
+```js
+const hmac = crypto.createHmac('sha256', 'my-secret-key');
+hmac.update('message');
+console.log(hmac.digest('hex'));
+```
+
+适合用于验证消息完整性。
+
+---
+
+### 3. 对称加密（AES）
+
+```js
+const algorithm = 'aes-256-cbc';
+const key = crypto.randomBytes(32);
+const iv = crypto.randomBytes(16);
+
+function encrypt(text) {
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return encrypted;
+}
+
+function decrypt(encrypted) {
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+```
+
+注意：需要安全存储 `key` 和 `iv`。
+
+---
+
+### 4. 非对称加密与签名（RSA）
+
+```js
+const { generateKeyPairSync, privateEncrypt, publicDecrypt } = crypto;
+
+const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+});
+
+const message = 'hello';
+
+const encrypted = privateEncrypt(privateKey, Buffer.from(message));
+const decrypted = publicDecrypt(publicKey, encrypted);
+
+console.log(decrypted.toString()); // hello
+```
+
+也可用于签名：
+
+```js
+const sign = crypto.createSign('SHA256');
+sign.update('data');
+const signature = sign.sign(privateKey, 'hex');
+
+const verify = crypto.createVerify('SHA256');
+verify.update('data');
+console.log(verify.verify(publicKey, signature, 'hex')); // true
+```
+
+---
+
+### 5. 随机数生成
+
+```js
+const token = crypto.randomBytes(16).toString('hex');
+console.log(token); // 安全的随机字符串
+```
+
+常用于生成 session token、验证码等。
+
+---
+
+### 6. 密钥派生（PBKDF2）
+
+```js
+crypto.pbkdf2('password', 'salt', 100000, 64, 'sha512', (err, derivedKey) => {
+  if (err) throw err;
+  console.log(derivedKey.toString('hex'));
+});
+```
+
+常用于从密码派生出加密密钥。
+
+---
+
+## 三、常见用途场景
+
+| 场景           | 相关功能                  |
+| ------------ | --------------------- |
+| 登录系统中的密码加密存储 | Hash（如 bcrypt、PBKDF2） |
+| JWT 签名或消息签名  | HMAC 或 RSA 签名         |
+| HTTPS 通信     | TLS 底层使用 RSA/ECC      |
+| 文件完整性校验      | 哈希算法（SHA256）          |
+| 安全数据传输       | AES 加密                |
+| API token 生成 | 随机数                   |
+
+---
+
+## 四、注意事项
+
+* 不推荐使用 `md5`，因为已被破解。
+* 加密密钥和 IV 必须妥善存储。
+* 使用异步 API（如 `crypto.pbkdf2`）以避免阻塞事件循环。
+* 建议使用更高层封装库（如 `jsonwebtoken`、`bcrypt`）处理复杂安全需求。
+
+---
+
+如需示例或具体场景代码，我可以继续提供。你有想了解哪一类加密场景？

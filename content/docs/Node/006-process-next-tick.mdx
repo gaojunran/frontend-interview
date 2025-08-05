@@ -1,0 +1,152 @@
+---
+title: Node.js 的 process.nextTick() 有什么作用？
+---
+
+`process.nextTick()` 是 Node.js 中一个非常核心的异步 API，用于**将一个回调函数延迟到当前执行栈清空之后、事件循环（event loop）下一阶段开始之前执行**。它是 Node.js 提供的一种微任务调度机制。
+
+---
+
+## 一、`process.nextTick()` 的作用
+
+简单来说：
+
+> `process.nextTick()` 会将函数推入 **“next tick 队列”** 中，这个队列会在当前执行栈执行完毕后立即执行（**比 `setTimeout`、`setImmediate` 更早执行**）。
+
+它主要用于：
+
+* 延迟执行一个函数，确保当前代码逻辑执行完成。
+* 在异步函数中提前处理错误或清理。
+* 在模块内部封装异步逻辑，模拟异步行为。
+* 避免递归调用导致的栈溢出。
+
+---
+
+## 二、执行时机对比（事件循环中的位置）
+
+Node.js 的事件循环中：
+
+```text
+┌───────────────────────────────┐
+│           timers              │ <-- setTimeout, setInterval
+├───────────────────────────────┤
+│     pending callbacks         │
+├───────────────────────────────┤
+│     idle, prepare             │
+├───────────────────────────────┤
+│     poll                      │ <-- I/O 事件在这儿处理
+├───────────────────────────────┤
+│     check                     │ <-- setImmediate
+├───────────────────────────────┤
+│     close callbacks           │
+└───────────────────────────────┘
+           ↑
+           └───── microtasks（包含 process.nextTick 和 Promise.then）
+```
+
+每一轮事件循环前：
+
+* Node 会先清空所有的 **`process.nextTick()` 回调**（这些优先级甚至高于 Promise 的 `.then()` 回调）
+* 然后才处理其他队列（如 timers、poll、check 等）
+
+---
+
+## 三、与其他异步函数对比
+
+| 方法                  | 执行时机               |
+| ------------------- | ------------------ |
+| `process.nextTick`  | 当前阶段执行完后，**立即执行**  |
+| `Promise.then()`    | 当前阶段执行完后，**随后执行**  |
+| `setTimeout(fn, 0)` | 下一轮事件循环的 timers 阶段 |
+| `setImmediate()`    | 下一轮事件循环的 check 阶段  |
+
+示例对比：
+
+```js
+setTimeout(() => {
+  console.log('setTimeout');
+}, 0);
+
+setImmediate(() => {
+  console.log('setImmediate');
+});
+
+process.nextTick(() => {
+  console.log('nextTick');
+});
+
+Promise.resolve().then(() => {
+  console.log('promise');
+});
+```
+
+输出顺序大概率是：
+
+```
+nextTick
+promise
+setTimeout
+setImmediate
+```
+
+---
+
+## 四、实际使用场景举例
+
+### 1. 异步错误处理
+
+```js
+function doSomething(callback) {
+  process.nextTick(() => {
+    callback(new Error("Something went wrong"));
+  });
+}
+```
+
+### 2. 避免递归栈溢出
+
+```js
+function asyncRecursion(n) {
+  if (n === 0) return;
+  process.nextTick(() => {
+    console.log(n);
+    asyncRecursion(n - 1);
+  });
+}
+
+asyncRecursion(100000);  // 不会栈溢出
+```
+
+### 3. 保证异步行为一致性（API 设计）
+
+```js
+function maybeAsync(cb) {
+  if (Math.random() > 0.5) {
+    cb(); // 同步
+  } else {
+    setTimeout(cb, 10); // 异步
+  }
+}
+
+// 使用 nextTick 强制异步
+function alwaysAsync(cb) {
+  process.nextTick(cb);
+}
+```
+
+---
+
+## 五、注意事项
+
+* **不要滥用** `process.nextTick()`，过多的 `nextTick` 任务会导致长时间阻塞事件循环（“starvation”），阻止 I/O 等其他任务执行。
+* 它的优先级很高，在事件循环中的所有任务之前执行，需谨慎使用。
+
+---
+
+## 总结
+
+| 特点            | 描述            |
+| ------------- | ------------- |
+| 优先级极高         | 当前事件循环阶段末立即执行 |
+| 常用于错误处理、递归调度等 | 异步化回调、防止栈溢出   |
+| 易导致阻塞，慎重使用    | 会阻塞事件循环的其他阶段  |
+

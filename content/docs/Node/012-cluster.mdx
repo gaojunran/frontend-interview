@@ -1,0 +1,151 @@
+---
+title: 什么是集群？如何在 Node.js 中实现集群和负载均衡？
+---
+
+在计算机系统中，\*\*集群（Cluster）\*\*是一种将多个服务器或进程组织在一起，协同工作以提升性能、可用性和扩展性的技术。**在 Node.js 中，集群可以用来充分利用多核 CPU 的能力，提高并发处理能力和吞吐量。**
+
+---
+
+## 一、什么是集群（Cluster）
+
+**集群的定义：**
+
+> 集群是指多个计算资源（通常是服务器或进程）协同工作的系统，它们对外表现为一个整体。
+
+常见的集群类型：
+
+* **负载均衡集群**（Load-balancing Cluster）：多个服务器/进程处理请求，负载分摊。
+* **高可用集群**（High Availability Cluster）：一个系统故障后另一个自动接管。
+* **计算集群**：多个节点处理同一任务的不同部分。
+
+---
+
+## 二、为什么需要在 Node.js 中使用集群？
+
+Node.js 是单线程的（事件驱动 + 非阻塞 I/O），但是：
+
+* 在多核 CPU 上，一个 Node.js 实例默认只能用到 **一个核心**。
+* 为了提升性能，我们可以启动多个 Node.js 进程（称为 worker），分布到多个核心上运行。
+
+---
+
+## 三、Node.js 中的集群模块（cluster 模块）
+
+Node.js 提供了内置的 `cluster` 模块来实现多进程集群。
+
+### 使用原理：
+
+* 主进程（Master）负责创建和管理多个子进程（Worker）。
+* 所有 Worker 共用一个端口，由操作系统或主进程实现负载均衡。
+* 每个 Worker 是一个独立的 Node.js 实例，具有自己的事件循环。
+
+---
+
+## 四、使用 cluster 实现集群的基本示例
+
+```js
+// cluster_server.js
+const cluster = require('cluster');
+const http = require('http');
+const os = require('os');
+
+const numCPUs = os.cpus().length;
+
+if (cluster.isMaster) {
+  console.log(`主进程 ${process.pid} 正在运行`);
+
+  // 创建与 CPU 核心数相同数量的 worker
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  // 监听 worker 退出事件
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`工作进程 ${worker.process.pid} 已退出`);
+    console.log('正在启动新进程...');
+    cluster.fork(); // 出现故障自动恢复
+  });
+
+} else {
+  // Worker 进程创建 HTTP 服务器
+  http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end(`由进程 ${process.pid} 处理的请求\n`);
+  }).listen(3000);
+
+  console.log(`工作进程 ${process.pid} 已启动`);
+}
+```
+
+### 启动方式：
+
+```bash
+node cluster_server.js
+```
+
+访问 `http://localhost:3000/`，多次刷新页面，会发现不同进程响应了请求。
+
+---
+
+## 五、Node.js 集群中的负载均衡机制
+
+* **Linux 系统**默认由 **内核**实现负载均衡（SO\_REUSEPORT）。
+* **Windows/macOS** 则由 Node.js 主进程进行**内部轮询**（Round-robin）调度。
+
+\*\*注意：\*\*集群中的多个进程是完全独立的，不共享内存数据，只能通过 IPC（进程间通信）进行消息传递。
+
+---
+
+## 六、共享数据问题与解决方案
+
+由于多个 Worker 进程是彼此独立的，**无法共享内存或变量状态**。
+
+### 解决方案：
+
+1. **使用外部存储**：如 Redis、数据库等用于共享状态。
+2. **主进程集中管理状态**，通过 `process.send()` 和 `process.on('message')` 与 worker 通信。
+
+---
+
+## 七、集群适合哪些场景？
+
+* 高并发 Web 服务
+* CPU 密集型任务（但建议用子进程或 worker\_threads）
+* 多核利用率优化
+* 提高容错性（worker 崩溃自动重启）
+
+---
+
+## 八、第三方工具推荐
+
+为了更好地管理集群，推荐使用一些工具：
+
+### 1. **PM2**
+
+* 流行的 Node.js 进程管理工具
+* 一行命令自动实现多进程负载均衡：
+
+  ```bash
+  pm2 start app.js -i max
+  ```
+
+### 2. **Nginx + 多进程服务**
+
+* 用 Nginx 做反向代理，将请求分发给多个独立 Node.js 实例
+
+---
+
+## 九、总结
+
+| 概念           | 说明                                                |
+| ------------ | ------------------------------------------------- |
+| 集群           | 多个进程或服务器协同工作                                      |
+| `cluster` 模块 | Node.js 内置模块，支持多进程并行处理                            |
+| Master       | 负责创建和管理 Worker                                    |
+| Worker       | 负责实际处理请求                                          |
+| 通信方式         | IPC 通信：`process.send()` 和 `process.on('message')` |
+| 数据共享         | 使用 Redis 或数据库等外部系统                                |
+
+---
+
+如果你有实际的项目需求，我也可以帮你设计具体的集群架构或改进方案。需要的话可以继续提问！

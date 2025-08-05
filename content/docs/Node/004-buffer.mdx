@@ -1,0 +1,171 @@
+---
+title: Node.js 中的 Buffer 对象是什么？它有什么作用？
+---
+
+在 Node.js 中，`Buffer` 对象是一个**用于处理二进制数据**的核心模块。它是 Node.js 提供的一个类（`Buffer` 类），用来在 TCP 流、文件系统操作等场景中读写原始的二进制数据。
+
+---
+
+## 🔧 为什么需要 Buffer？
+
+在浏览器环境中，JavaScript 主要处理字符串（`string`）和 JSON（`object`），对二进制数据支持很弱。但在 Node.js 中，我们经常要处理：
+
+* 文件（读取图片、音频等）
+* 网络（如 TCP、UDP 套接字）
+* 加密（如加密哈希操作）
+* 流媒体数据（视频流、音频流）
+
+这些都需要处理**字节级的原始数据**，而不是字符串。因此，Node.js 提供了 `Buffer`。
+
+---
+
+## 🧱 Buffer 是什么？
+
+`Buffer` 是 Node.js 的一个**全局对象**（无需 `require` 即可使用），代表一块内存区域，**用来存储原始的二进制数据**。
+
+```js
+const buf = Buffer.from('Hello', 'utf8');
+console.log(buf); // <Buffer 48 65 6c 6c 6f>
+```
+
+这个 `Buffer` 实际上是一组十六进制的字节。
+
+---
+
+## 📦 创建 Buffer 的几种方式
+
+### 1. `Buffer.from(string[, encoding])`
+
+从字符串创建 Buffer（默认 UTF-8 编码）：
+
+```js
+const buf = Buffer.from('你好');
+```
+
+### 2. `Buffer.alloc(size)`
+
+分配一个指定大小的**初始化过的** Buffer（填满 0）：
+
+```js
+const buf = Buffer.alloc(10); // 10字节的 buffer，全是 0
+```
+
+### 3. `Buffer.allocUnsafe(size)`
+
+分配一个未初始化的 Buffer（**更快，但可能包含旧数据**）：
+
+```js
+const buf = Buffer.allocUnsafe(10);
+```
+
+### 4. `Buffer.from(array)`
+
+从字节数组创建：
+
+```js
+const buf = Buffer.from([0x61, 0x62, 0x63]); // 'abc'
+```
+
+---
+
+## 🔄 Buffer 与字符串的转换
+
+```js
+const buf = Buffer.from('Hello');
+
+// 转回字符串
+const str = buf.toString(); // 'Hello'
+
+// 改编码
+const hex = buf.toString('hex'); // '48656c6c6f'
+const base64 = buf.toString('base64'); // 'SGVsbG8='
+```
+
+---
+
+## 🔍 Buffer 的常用操作
+
+### 读取和写入
+
+```js
+const buf = Buffer.alloc(4);
+buf.writeUInt8(0x12, 0); // 写入一个 8 位无符号整数
+buf.writeUInt16LE(0x1234, 1); // 写入一个 16 位 LE 的整数
+```
+
+### 切片（不会复制内容）
+
+```js
+const buf = Buffer.from('abcdef');
+const subBuf = buf.slice(2, 4); // <Buffer 63 64> 对应 'cd'
+```
+
+### 拷贝
+
+```js
+const buf1 = Buffer.from('hello');
+const buf2 = Buffer.alloc(5);
+buf1.copy(buf2);
+```
+
+### 拼接多个 buffer
+
+```js
+const buf1 = Buffer.from('Hello, ');
+const buf2 = Buffer.from('World!');
+const buf3 = Buffer.concat([buf1, buf2]);
+console.log(buf3.toString()); // 'Hello, World!'
+```
+
+---
+
+## 🧠 Buffer 的底层原理（简略）
+
+Buffer 本质上是对 `Uint8Array` 的封装，并在其基础上提供了一些方法和兼容性处理。它直接操作内存，在性能和灵活性方面比字符串强得多。
+
+---
+
+## ⚠️ 安全注意事项
+
+* 使用 `Buffer.alloc()` 而非 `Buffer.allocUnsafe()`，除非你知道你在做什么。
+* `Buffer` 是固定大小的，不能自动增长（不像数组或字符串）。
+* 避免泄露敏感数据（如密码），不要把未清空的 Buffer 暴露出去。
+
+---
+
+## 🛠 Buffer 使用场景举例
+
+### 📄 读取文件中的图片
+
+```js
+const fs = require('fs');
+const buf = fs.readFileSync('image.png');
+// buf 就是原始字节数据
+```
+
+### 📡 处理网络数据
+
+```js
+const net = require('net');
+const server = net.createServer((socket) => {
+  socket.on('data', (data) => {
+    console.log('接收到数据：', data); // data 是 Buffer 类型
+  });
+});
+server.listen(8000);
+```
+
+---
+
+## ✅ 总结
+
+| 特性   | 描述                                                       |
+| ---- | -------------------------------------------------------- |
+| 类型   | 原始二进制数据                                                  |
+| 用途   | 网络、文件、加密、图像等底层数据处理                                       |
+| 重要方法 | `from()`, `alloc()`, `slice()`, `toString()`, `concat()` |
+| 安全注意 | 尽量使用 `alloc()`，避免 `allocUnsafe()` 泄露旧数据                  |
+
+---
+
+如果你有具体的 Buffer 使用场景，我可以为你举例演示。是否需要？

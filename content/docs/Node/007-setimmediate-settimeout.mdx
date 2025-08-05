@@ -1,0 +1,159 @@
+---
+title: Node.js 中的定时器函数 setImmediate() 和 setTimeout() 有什么区别？
+---
+
+在 Node.js 中，`setImmediate()` 和 `setTimeout()` 都是用来延迟执行函数的定时器函数，但它们的**执行时机和机制是不同的**。下面是它们的详细对比：
+
+---
+
+## 🌟 一句话总结
+
+| 函数               | 执行时机                                              |
+| ---------------- | ------------------------------------------------- |
+| `setTimeout()`   | **在下一轮事件循环的某个时间点**                                |
+| `setImmediate()` | **当前事件循环结束后立即执行**（即下一轮 event loop 的 **check** 阶段） |
+
+---
+
+## 🧠 基本介绍
+
+### ✅ `setTimeout(callback, delay)`
+
+* 用于在至少 `delay` 毫秒后执行回调函数。
+* `delay` 的默认值是 0。
+* 但**不是精确延迟**，它的执行要依赖事件循环的调度。
+
+```js
+setTimeout(() => {
+  console.log('setTimeout');
+}, 0);
+```
+
+### ✅ `setImmediate(callback)`
+
+* 用于在**当前事件循环完成后**尽快执行回调。
+* 不接受时间参数。
+* 总是排在下一轮事件循环的 `check` 阶段。
+
+```js
+setImmediate(() => {
+  console.log('setImmediate');
+});
+```
+
+---
+
+## 🧬 执行顺序上的区别（重点）
+
+执行顺序依赖于代码所在的上下文。来看几个例子：
+
+### 示例 1：直接调用
+
+```js
+setTimeout(() => {
+  console.log('timeout');
+}, 0);
+
+setImmediate(() => {
+  console.log('immediate');
+});
+```
+
+**可能输出：**
+
+```
+timeout
+immediate
+```
+
+**也可能是：**
+
+```
+immediate
+timeout
+```
+
+为什么？因为这时两者都排入事件循环中，具体谁先执行取决于系统调度。
+
+### 示例 2：放在 I/O 回调中（推荐记住）
+
+```js
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  setTimeout(() => {
+    console.log('timeout');
+  }, 0);
+
+  setImmediate(() => {
+    console.log('immediate');
+  });
+});
+```
+
+**结果几乎总是：**
+
+```
+immediate
+timeout
+```
+
+✅ 原因：
+
+* I/O 回调完成后，进入事件循环的 **check 阶段**（执行 `setImmediate`）。
+* `setTimeout` 是在 **timers 阶段** 执行，但在当前轮结束后，可能被延迟。
+
+---
+
+## 🔄 Node.js 事件循环阶段对照
+
+```
+┌───────────────────────────────┐
+│           timers              │ ← setTimeout/setInterval
+├───────────────────────────────┤
+│       pending callbacks       │
+├───────────────────────────────┤
+│           idle, prepare       │
+├───────────────────────────────┤
+│           poll                │ ← I/O 回调处理
+├───────────────────────────────┤
+│           check               │ ← setImmediate
+├───────────────────────────────┤
+│           close callbacks     │
+└───────────────────────────────┘
+```
+
+---
+
+## 🎯 总结对比表
+
+| 特性       | `setTimeout(fn, 0)` | `setImmediate(fn)`      |
+| -------- | ------------------- | ----------------------- |
+| 延迟参数     | 支持                  | 不支持                     |
+| 执行阶段     | timers 阶段           | check 阶段                |
+| 最早可能执行时间 | 下轮事件循环的 timers 阶段   | 当前 I/O 回调后，立即在 check 阶段 |
+| 典型用途     | 定时执行任务，控制节流或限流      | 在 I/O 操作之后执行任务          |
+
+---
+
+## 💡 实战建议
+
+* 使用 `setImmediate`：适合在 **I/O 完成后马上执行的任务**。
+* 使用 `setTimeout(fn, 0)`：适合想让函数延迟执行但**不关心是否立即执行**。
+
+---
+
+如果你想深入调试两者的执行顺序，可以用这个小工具反复跑：
+
+```js
+for (let i = 0; i < 5; i++) {
+  setTimeout(() => console.log('timeout'), 0);
+  setImmediate(() => console.log('immediate'));
+}
+```
+
+多运行几次，你会发现输出顺序不是固定的（取决于环境和系统调度）。
+
+---
+
+如需，我可以帮你画一张事件循环阶段的图或者生成调试脚本。

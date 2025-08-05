@@ -1,0 +1,128 @@
+---
+title: 什么是 Stream 流？举例说明如何在 Node.js 中使用流处理数据？
+---
+
+在 Node.js 中，**Stream（流）**是一种处理数据的**抽象接口**，用于**分段读取或写入数据**，而不是一次性加载或输出所有内容。这在处理大型数据集（如文件、网络数据、视频等）时尤其有用，可以提高内存效率和性能。
+
+---
+
+## 一、为什么使用 Stream？
+
+假设你要读取一个 5GB 的文件，如果使用传统的 `fs.readFile()` 方法，Node.js 会尝试一次性将整个文件加载进内存，这可能会导致内存溢出。而流则可以**一块一块**（chunk by chunk）地处理文件或数据：
+
+* 节省内存
+* 响应更快（可以边读取边处理）
+* 更适合处理大数据和网络传输
+
+---
+
+## 二、Stream 的四种类型
+
+Node.js 中的 Stream 有四种基本类型：
+
+| 类型        | 描述              | 示例                       |
+| --------- | --------------- | ------------------------ |
+| Readable  | 可读流，用于读取数据      | `fs.createReadStream()`  |
+| Writable  | 可写流，用于写入数据      | `fs.createWriteStream()` |
+| Duplex    | 双工流，可读可写        | `net.Socket`（TCP 连接）     |
+| Transform | 变换流，可读可写 + 数据转换 | `zlib.createGzip()`（压缩流） |
+
+---
+
+## 三、流的工作模式
+
+流有两种工作模式：
+
+* **流动模式（Flowing Mode）**：数据自动被读取并通过事件传出（如 `data` 事件）。
+* **暂停模式（Paused Mode）**：需要手动调用 `.read()` 来读取数据。
+
+---
+
+## 四、例子：使用流读取并写入文件
+
+### 1. 使用 `fs.createReadStream` 和 `fs.createWriteStream`
+
+```js
+const fs = require('fs');
+
+// 创建可读流
+const readable = fs.createReadStream('input.txt');
+
+// 创建可写流
+const writable = fs.createWriteStream('output.txt');
+
+// 管道连接：将读取的数据写入目标
+readable.pipe(writable);
+
+readable.on('end', () => {
+  console.log('文件复制完成');
+});
+```
+
+这个例子中，流自动处理了 chunk 的读取与写入，不需要我们手动处理每一块数据。
+
+---
+
+## 五、例子：使用流手动处理数据块
+
+```js
+const fs = require('fs');
+
+const readable = fs.createReadStream('input.txt', { encoding: 'utf8' });
+
+readable.on('data', (chunk) => {
+  console.log('读取到一块数据：', chunk);
+});
+
+readable.on('end', () => {
+  console.log('读取完成');
+});
+```
+
+---
+
+## 六、Transform 流示例：将文件内容转换为大写
+
+```js
+const fs = require('fs');
+const { Transform } = require('stream');
+
+const upperCaseTransform = new Transform({
+  transform(chunk, encoding, callback) {
+    // 转换为大写并传递出去
+    this.push(chunk.toString().toUpperCase());
+    callback();
+  }
+});
+
+fs.createReadStream('input.txt')
+  .pipe(upperCaseTransform)
+  .pipe(fs.createWriteStream('uppercase.txt'));
+```
+
+---
+
+## 七、常见事件
+
+| 事件       | 描述                   |
+| -------- | -------------------- |
+| `data`   | 当有数据可读时触发            |
+| `end`    | 没有更多数据可读时触发          |
+| `error`  | 读取或写入过程中出错触发         |
+| `finish` | 所有数据被写入后触发（Writable） |
+| `close`  | 关闭流时触发               |
+
+---
+
+## 八、总结：什么时候用 Stream？
+
+使用 Stream 的典型场景：
+
+* 文件读取/写入（如日志处理、文件复制）
+* 网络请求响应处理（如 HTTP 服务）
+* 视频/音频流媒体处理
+* 大型数据集处理（JSON、CSV 解析）
+
+---
+
+如果你希望我举一个基于 HTTP 的流使用示例，比如边下载边响应，也可以继续问我！

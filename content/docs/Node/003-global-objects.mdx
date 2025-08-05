@@ -1,0 +1,129 @@
+---
+title: 什么是 Node.js 全局对象？有哪些全局对象？
+---
+
+在 Node.js 中，“全局对象（global objects）”是指可以在任何模块中直接访问而不需要 `require` 或 `import` 的对象。它们在 Node.js 运行时始终可用，类似于浏览器环境中的 `window` 对象。
+
+---
+
+## 🔹 Node.js 全局对象的核心是 `global`
+
+在浏览器中，全局对象是 `window` 或 `self`；
+在 Node.js 中，全局对象是 `global`。
+
+你可以在任何地方使用 `global` 来访问或定义全局变量和函数。
+
+```js
+global.myVar = 123;
+
+console.log(myVar); // ReferenceError: myVar is not defined
+console.log(global.myVar); // 123 ✅
+```
+
+> 注意：**在 Node.js 中直接定义的变量不会自动变成 `global` 属性**，除非你显式地加到 `global`。
+
+---
+
+## 🔹 常见的 Node.js 全局对象
+
+下面是 Node.js 中的一些重要全局对象和全局函数，它们可以直接使用。
+
+---
+
+### ✅ 全局变量/对象
+
+| 名称           | 说明                                   |
+| ------------ | ------------------------------------ |
+| `global`     | Node.js 的全局对象，相当于浏览器中的 `window`      |
+| `process`    | 提供关于当前 Node.js 进程的信息和控制，比如环境变量、退出状态等 |
+| `__dirname`  | 当前模块所在目录的绝对路径                        |
+| `__filename` | 当前模块的绝对路径（包含文件名）                     |
+| `module`     | 当前模块的模块对象                            |
+| `exports`    | 当前模块的导出对象的引用                         |
+| `require`    | 用于引入模块的函数                            |
+
+---
+
+### ✅ 全局函数
+
+| 函数名                   | 说明                        |
+| --------------------- | ------------------------- |
+| `setTimeout(cb, ms)`  | 延迟执行函数                    |
+| `setInterval(cb, ms)` | 每隔一定时间重复执行函数              |
+| `setImmediate(cb)`    | 在当前事件循环结束后尽快执行            |
+| `clearTimeout(id)`    | 取消 `setTimeout` 定时器       |
+| `clearInterval(id)`   | 取消 `setInterval` 定时器      |
+| `clearImmediate(id)`  | 取消 `setImmediate` 定时器     |
+| `queueMicrotask(cb)`  | 将任务放入微任务队列（Node 11+）      |
+| `require()`           | 加载模块                      |
+| `console`             | 控制台输出对象（类似浏览器的 `console`） |
+
+---
+
+### ✅ 特别对象：`process`
+
+`process` 是最常用的全局对象之一，它提供当前 Node.js 进程的信息和控制：
+
+```js
+console.log(process.version); // 当前 Node.js 版本
+console.log(process.platform); // 操作系统平台
+console.log(process.env.NODE_ENV); // 获取环境变量
+process.exit(1); // 退出程序，返回码为 1
+```
+
+---
+
+### ✅ 特别对象：`Buffer`
+
+用于处理二进制数据，也是全局对象：
+
+```js
+const buf = Buffer.from('Hello');
+console.log(buf.toString()); // Hello
+```
+
+---
+
+### ✅ 特别对象：`console`
+
+用于打印信息，类似浏览器的 `console`：
+
+```js
+console.log("普通输出");
+console.error("错误输出");
+console.warn("警告输出");
+console.table([{ name: "Alice" }, { name: "Bob" }]);
+```
+
+---
+
+## 🔸 `global` vs `globalThis`
+
+* `global`：Node.js 的专属全局对象。
+* `globalThis`：是 ES2020 引入的标准全局对象，在任何 JS 环境下都可用。
+
+```js
+console.log(global === globalThis); // true ✅
+```
+
+推荐使用 `globalThis` 写跨平台代码。
+
+---
+
+## 🔹 为什么谨慎使用全局变量？
+
+使用 `global` 定义的变量污染了全局命名空间，容易造成命名冲突或意外覆盖其他模块的变量，因此应谨慎使用。
+
+---
+
+## ✅ 小结
+
+| 分类   | 名称（部分）                                                                                   |
+| ---- | ---------------------------------------------------------------------------------------- |
+| 全局对象 | `global`, `process`, `__dirname`, `__filename`, `module`, `exports`, `require`, `Buffer` |
+| 全局函数 | `setTimeout`, `setInterval`, `setImmediate`, `clearTimeout`, `console.log` 等             |
+| 通用全局 | `globalThis`                                                                             |
+
+---
+
+如果你想深入学习某个全局对象的用途或用法（比如 `process`, `Buffer`, `console` 等），我也可以详细展开讲讲。需要吗？

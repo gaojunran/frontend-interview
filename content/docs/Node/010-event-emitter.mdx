@@ -1,0 +1,134 @@
+---
+title: 什么是 Node.js 中的事件发射器（EventEmitter）？它有什么作用？如何使用？
+---
+
+Node.js 中的 **事件发射器（EventEmitter）** 是实现事件驱动编程的核心模块之一，它允许你在对象间建立发布-订阅（pub-sub）机制：一个对象发出事件，另一个对象监听并对事件做出响应。
+
+---
+
+## 一、什么是 EventEmitter？
+
+`EventEmitter` 是 Node.js 中的一个类，定义在 `events` 模块中。它允许对象发出命名事件，并注册监听器对这些事件进行响应。
+
+> 核心思想：**你可以订阅某个事件（on），然后在合适的时机触发（emit）它。**
+
+Node.js 本身大量使用了事件发射器，比如：
+
+* `http.Server` 在收到请求时会发出 `'request'` 事件
+* `fs.ReadStream` 在读文件时会发出 `'data'` 和 `'end'` 事件
+
+---
+
+## 二、EventEmitter 的作用
+
+1. **解耦**：事件机制使得代码模块之间不需要直接调用，减少耦合。
+2. **异步处理**：非常适合处理异步事件，例如网络请求、文件 I/O、定时器等。
+3. **灵活性强**：可以动态地添加、删除事件监听器。
+
+---
+
+## 三、如何使用 EventEmitter？
+
+### 1. 引入模块
+
+```js
+const EventEmitter = require('events');
+```
+
+### 2. 创建实例
+
+```js
+const emitter = new EventEmitter();
+```
+
+### 3. 监听事件
+
+```js
+emitter.on('greet', (name) => {
+  console.log(`Hello, ${name}!`);
+});
+```
+
+### 4. 触发事件
+
+```js
+emitter.emit('greet', 'Alice');  // 输出：Hello, Alice!
+```
+
+---
+
+## 四、常用 API
+
+| 方法 / 属性                                                   | 说明             |
+| --------------------------------------------------------- | -------------- |
+| `emitter.on(event, listener)`                             | 绑定事件监听器        |
+| `emitter.once(event, listener)`                           | 只监听一次事件        |
+| `emitter.emit(event, [...args])`                          | 触发事件           |
+| `emitter.off(event, listener)` 或 `emitter.removeListener` | 移除事件监听器        |
+| `emitter.removeAllListeners([event])`                     | 移除所有监听器        |
+| `emitter.listenerCount(event)`                            | 获取指定事件的监听器数量   |
+| `emitter.setMaxListeners(n)`                              | 设置最大监听器数，默认 10 |
+
+---
+
+## 五、完整例子
+
+```js
+const EventEmitter = require('events');
+
+class MyEmitter extends EventEmitter {}
+
+const myEmitter = new MyEmitter();
+
+// 注册事件
+myEmitter.on('event', (message) => {
+  console.log('事件触发:', message);
+});
+
+// 注册一次性事件
+myEmitter.once('onceEvent', () => {
+  console.log('一次性事件触发');
+});
+
+// 触发事件
+myEmitter.emit('event', 'Hello World!');
+myEmitter.emit('onceEvent');
+myEmitter.emit('onceEvent'); // 不会再触发
+```
+
+---
+
+## 六、实际应用场景
+
+| 场景       | 示例                     |
+| -------- | ---------------------- |
+| HTTP 服务器 | 监听请求、连接、错误等事件          |
+| 流        | `data`, `end`, `error` |
+| 自定义模块    | 用户登录事件、通知事件等           |
+| 跨模块通信    | 模块之间通过事件共享数据           |
+
+---
+
+## 七、注意事项
+
+1. **监听器过多警告**：默认最多可添加 10 个监听器，超过会有警告。可通过 `setMaxListeners()` 设置。
+2. **避免内存泄漏**：添加监听器但不移除可能导致内存泄漏。
+3. **错误处理**：`'error'` 事件如果未被监听，会导致程序崩溃。建议始终监听 `'error'` 事件。
+
+```js
+emitter.on('error', (err) => {
+  console.error('捕获错误:', err);
+});
+```
+
+---
+
+## 八、总结
+
+* `EventEmitter` 是 Node.js 中实现异步事件处理的核心机制
+* 它采用发布-订阅模式：**`emit` 发出事件，`on` 监听事件**
+* 广泛用于流、网络、I/O、自定义模块等异步场景
+
+---
+
+如果你需要我帮你写一个基于 `EventEmitter` 的小项目（比如聊天室、计时器、任务队列），可以告诉我，我可以详细展示。
