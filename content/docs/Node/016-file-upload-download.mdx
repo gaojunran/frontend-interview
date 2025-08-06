@@ -1,0 +1,154 @@
+---
+title: 在 Node.js 中如何处理文件上传和下载？
+---
+
+在 Node.js 中处理文件上传和下载是构建 Web 应用程序常见的需求之一。以下是**详细讲解**：
+
+---
+
+## 🟢 一、处理文件上传
+
+Node.js 本身没有内建处理上传的能力，通常我们借助第三方中间件，比如：
+
+### ✅ 常用方式：使用 `multer` 中间件（基于 Express）
+
+`multer` 是处理 `multipart/form-data` 的中间件，主要用于上传文件。
+
+### 1. 安装依赖
+
+```bash
+npm install express multer
+```
+
+### 2. 示例代码
+
+```js
+const express = require('express');
+const multer  = require('multer');
+const path = require('path');
+
+// 设置上传文件存储位置和文件名
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // 上传目录
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname); // 避免文件名冲突
+  }
+});
+
+const upload = multer({ storage: storage });
+
+const app = express();
+const PORT = 3000;
+
+// 表单上传处理，'file' 是表单字段名
+app.post('/upload', upload.single('file'), (req, res) => {
+  res.send(`文件 ${req.file.originalname} 上传成功！`);
+});
+
+// 启动服务器
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
+```
+
+### 3. 客户端 HTML 示例
+
+```html
+<form action="/upload" method="post" enctype="multipart/form-data">
+  <input type="file" name="file" />
+  <button type="submit">上传</button>
+</form>
+```
+
+---
+
+## 🔻 补充：上传多个文件或字段
+
+```js
+// 上传多个文件（最多 5 个）
+app.post('/upload-multiple', upload.array('files', 5), (req, res) => {
+  res.send(`${req.files.length} 个文件上传成功`);
+});
+```
+
+---
+
+## 🟢 二、处理文件下载
+
+Node.js 可以用 Express 非常简单地实现文件下载：
+
+### ✅ 使用 `res.download()` 方法
+
+```js
+app.get('/download/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filepath = path.join(__dirname, 'uploads', filename);
+  res.download(filepath, err => {
+    if (err) {
+      res.status(404).send('文件未找到');
+    }
+  });
+});
+```
+
+### 客户端下载方式（直接链接）：
+
+```html
+<a href="/download/sample.txt">下载文件</a>
+```
+
+---
+
+## 📁 文件安全注意事项
+
+* ✅ 限制上传文件类型（通过 `fileFilter`）
+* ✅ 限制文件大小（通过 `limits.fileSize`）
+* ✅ 防止路径穿越攻击（sanitize 文件名、检查路径）
+* ✅ 上传目录设置访问权限（如私有、临时）
+
+---
+
+## ✳️ 示例：限制上传大小和类型
+
+```js
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: function (req, file, cb) {
+    const allowed = ['image/jpeg', 'image/png'];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error('只允许上传 JPG 或 PNG 图片'));
+    }
+    cb(null, true);
+  }
+});
+```
+
+---
+
+## 🧪 测试工具推荐
+
+* Postman（用于测试文件上传接口）
+* curl 示例：
+
+```bash
+curl -F "file=@example.txt" http://localhost:3000/upload
+```
+
+---
+
+## ✅ 总结
+
+| 操作     | 方法/工具                               |
+| ------ | ----------------------------------- |
+| 文件上传   | `multer` 中间件，配合 Express             |
+| 单个文件上传 | `upload.single('file')`             |
+| 多个文件上传 | `upload.array('files')`             |
+| 文件下载   | `res.download()` 或 `res.sendFile()` |
+| 安全处理   | 文件类型验证、大小限制、路径校验等                   |
+
+如果你不使用 Express，还有如 `formidable`、`busboy` 等可选方案，我也可以补充说明。
+
+需要我给你一个完整项目模板吗？

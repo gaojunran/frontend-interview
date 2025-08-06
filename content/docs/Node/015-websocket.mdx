@@ -1,0 +1,305 @@
+---
+title: 如何在 Node.js 中使用 WebSocket 实现实时通信？
+---
+
+在 Node.js 中使用 **WebSocket 实现实时通信**，是构建聊天室、实时通知、协同编辑等应用的关键技术手段。下面我会从原理讲起，再带你一步步实现一个简单的 WebSocket 服务端和客户端。
+
+---
+
+## 一、什么是 WebSocket？
+
+WebSocket 是一种 **全双工通信协议**，它在客户端和服务端之间建立一条持久的连接通道，可以实现低延迟的实时通信。
+
+* 与 HTTP 不同，它不是请求-响应模式。
+* 建立连接之后，客户端和服务端都可以主动发送消息。
+* 使用标准的 `ws://` 或 `wss://` 协议。
+
+---
+
+## 二、Node.js 中实现 WebSocket 的方式
+
+主要有两个选择：
+
+### ✅ 方法一：使用原生模块 `http` + `ws` 第三方库（推荐）
+
+`ws` 是目前最流行、性能最好的 WebSocket 库。
+
+```bash
+npm install ws
+```
+
+---
+
+## 三、示例：使用 `ws` 实现 WebSocket 实时通信
+
+### 1. 服务端（Node.js）
+
+```js
+// server.js
+const http = require('http');
+const WebSocket = require('ws');
+
+// 创建 HTTP 服务器（可选）
+const server = http.createServer();
+
+// 创建 WebSocket 服务器，绑定到 HTTP 服务器上
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (ws) => {
+  console.log('客户端已连接');
+
+  // 接收客户端消息
+  ws.on('message', (message) => {
+    console.log('收到消息：', message.toString());
+
+    // 广播消息给所有客户端
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(`广播：${message}`);
+      }
+    });
+  });
+
+  // 连接关闭
+  ws.on('close', () => {
+    console.log('客户端已断开连接');
+  });
+
+  // 向客户端发送欢迎消息
+  ws.send('欢迎连接到 WebSocket 服务器');
+});
+
+// 启动服务器
+server.listen(3000, () => {
+  console.log('WebSocket 服务运行在 http://localhost:3000');
+});
+```
+
+---
+
+### 2. 客户端（浏览器）
+
+```html
+<!-- client.html -->
+<!DOCTYPE html>
+<html>
+  <body>
+    <input id="msg" placeholder="输入消息" />
+    <button onclick="sendMessage()">发送</button>
+    <ul id="chat"></ul>
+
+    <script>
+      const socket = new WebSocket('ws://localhost:3000');
+
+      socket.onopen = () => {
+        console.log('连接已建立');
+      };
+
+      socket.onmessage = (event) => {
+        const li = document.createElement('li');
+        li.textContent = event.data;
+        document.getElementById('chat').appendChild(li);
+      };
+
+      function sendMessage() {
+        const input = document.getElementById('msg');
+        socket.send(input.value);
+        input.value = '';
+      }
+    </script>
+  </body>
+</html>
+```
+
+---
+
+## 四、关键事件说明（服务端）
+
+| 事件名          | 描述          |
+| ------------ | ----------- |
+| `connection` | 有客户端连接时触发   |
+| `message`    | 接收到客户端消息时触发 |
+| `close`      | 客户端断开连接时触发  |
+| `error`      | 连接或传输错误     |
+
+---
+
+## 五、进阶功能（可选）
+
+1. **使用 `express` 集成 WebSocket**
+   用 Express 处理 HTTP 请求，用 `ws` 处理 WebSocket。
+
+2. **使用 `socket.io`（更高级，功能更多）**
+   自动降级为轮询，提供房间、广播等功能，适合构建复杂系统。
+   安装：`npm install socket.io`
+
+3. **连接心跳检测（防止连接断开）**
+
+---
+
+## 六、使用场景
+
+* 聊天室
+* 实时股票/价格更新
+* 游戏状态同步
+* 协同编辑器（如 Google Docs）
+* 实时通知 / 消息推送
+
+---
+
+当然可以！`socket.io` 是在 WebSocket 基础上构建的一个高层通信库，**比原生 WebSocket 更强大、更易用**，广泛用于 Node.js 实时通信应用中，比如聊天、实时通知、多人协作等。
+
+---
+
+## 一、什么是 Socket.IO？
+
+`Socket.IO` 是一个用于实现 **实时、双向通信** 的 JavaScript 库，包含两个部分：
+
+* \*\*服务端：\*\*运行在 Node.js 上的 `socket.io` 模块。
+* \*\*客户端：\*\*运行在浏览器或其他环境的 `socket.io-client` 模块。
+
+### 与 WebSocket 的区别
+
+| 特性          | 原生 WebSocket | Socket.IO |
+| ----------- | ------------ | --------- |
+| 双向通信        | ✅            | ✅         |
+| 自动重连        | ❌            | ✅         |
+| 跨浏览器兼容性     | ❌            | ✅         |
+| 事件命名/监听     | ❌            | ✅         |
+| 支持广播 / 房间机制 | ❌            | ✅         |
+| 降级为轮询技术支持   | ❌            | ✅         |
+
+---
+
+## 二、安装 Socket.IO
+
+```bash
+npm install socket.io
+npm install socket.io-client
+```
+
+---
+
+## 三、Socket.IO 示例：聊天室通信
+
+### 1. 服务端（Node.js）
+
+```js
+// server.js
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer();
+const io = new Server(server);  // 创建 Socket.IO 服务
+
+io.on('connection', (socket) => {
+  console.log('有客户端连接');
+
+  // 接收客户端消息
+  socket.on('chat message', (msg) => {
+    console.log('收到消息:', msg);
+    
+    // 广播给所有客户端（包括自己）
+    io.emit('chat message', msg);
+  });
+
+  // 客户端断开连接
+  socket.on('disconnect', () => {
+    console.log('客户端断开连接');
+  });
+});
+
+server.listen(3000, () => {
+  console.log('Socket.IO 服务运行在 http://localhost:3000');
+});
+```
+
+---
+
+### 2. 客户端（HTML）
+
+```html
+<!-- client.html -->
+<!DOCTYPE html>
+<html>
+  <body>
+    <input id="msg" placeholder="输入消息" />
+    <button onclick="sendMessage()">发送</button>
+    <ul id="chat"></ul>
+
+    <!-- 引入 Socket.IO 客户端库 -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io('http://localhost:3000');
+
+      socket.on('connect', () => {
+        console.log('已连接到服务器');
+      });
+
+      socket.on('chat message', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        document.getElementById('chat').appendChild(li);
+      });
+
+      function sendMessage() {
+        const input = document.getElementById('msg');
+        socket.emit('chat message', input.value);
+        input.value = '';
+      }
+    </script>
+  </body>
+</html>
+```
+
+---
+
+## 四、事件模型
+
+Socket.IO 提供了一套基于 **事件的 API**，和前端的 `addEventListener` 类似。
+
+### 服务端事件示例：
+
+```js
+socket.on('join', (room) => {
+  socket.join(room);
+});
+
+io.to('room1').emit('message', '你好，room1 的成员');
+```
+
+---
+
+## 五、常用功能一览
+
+| 功能         | 方法示例                                    |
+| ---------- | --------------------------------------- |
+| 发送给所有人     | `io.emit('event', data)`                |
+| 发送给自己以外所有人 | `socket.broadcast.emit('event', data')` |
+| 加入房间       | `socket.join('room')`                   |
+| 给房间发消息     | `io.to('room').emit('event', data)`     |
+| 离开房间       | `socket.leave('room')`                  |
+| 断开连接       | `socket.disconnect()`                   |
+
+---
+
+## 六、Socket.IO 的优点总结
+
+* API 设计更现代（基于事件）
+* 更好的兼容性（支持轮询回退）
+* 自带重连机制
+* 支持分布式部署（通过 `socket.io-redis`）
+* 支持命名空间和房间（类似频道、群组）
+* 更适合复杂实时系统（聊天室、游戏、直播）
+
+---
+
+## 七、使用场景
+
+* 在线聊天室
+* 实时股票/数据推送
+* 实时游戏
+* 实时协作文档
+* 多人白板
+* 实时提醒 / 通知
+

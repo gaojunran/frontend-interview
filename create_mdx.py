@@ -26,6 +26,9 @@ def main():
     if not title:
         print("剪贴板中没有内容，无法获取 title")
         sys.exit(1)
+    if len(title) > 100:
+        print("不合法的标题")
+        sys.exit(1)
 
     # 匹配类似 001-xxx.mdx 的文件
     pattern = re.compile(r'^(\d{3})-.*\.mdx$')
@@ -55,6 +58,8 @@ title: {title}
 
     print(f"✅ 已创建文件: {new_filename}")
     print(f"📋 已复制到剪贴板: {clipboard_text}")
+
+    os.system(f"code {new_filename}")
 
 
 if __name__ == "__main__":

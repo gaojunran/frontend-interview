@@ -1,0 +1,232 @@
+---
+title: 如何在 Node.js 中实现日志记录，并配置不同级别的日志？
+---
+
+在 Node.js 中实现日志记录，尤其是支持不同日志级别（比如 info、warn、error、debug 等），可以通过多种方式来做。下面我会详细讲讲从最基础的实现，到使用成熟的日志库，以及如何配置不同日志级别的完整方案。
+
+---
+
+## 一、日志级别介绍
+
+常见日志级别（重要性由低到高）：
+
+| 级别    | 说明            |
+| ----- | ------------- |
+| debug | 调试信息，最详细的日志   |
+| info  | 常规信息，程序运行状态   |
+| warn  | 警告信息，可能出现问题   |
+| error | 错误信息，程序出现异常   |
+| fatal | 致命错误，程序无法继续运行 |
+
+---
+
+## 二、最简单的日志实现（控制台）
+
+Node.js 自带 `console`，可以满足最基础的日志需求：
+
+```js
+console.log('info:', '程序启动了');
+console.warn('warn:', '内存使用较高');
+console.error('error:', '程序出错了');
+console.debug('debug:', '变量值是', someVar);
+```
+
+但 `console` 无法分类保存日志，也不能灵活配置日志级别。
+
+---
+
+## 三、使用第三方日志库
+
+### 1. **winston**
+
+`winston` 是 Node.js 里非常流行且功能强大的日志库。
+
+#### 安装
+
+```bash
+npm install winston
+```
+
+#### 示例代码
+
+```js
+const winston = require('winston');
+
+// 创建 logger 实例
+const logger = winston.createLogger({
+  level: 'info',  // 默认日志级别，低于该级别的日志不会被记录
+  format: winston.format.combine(
+    winston.format.timestamp(),            // 添加时间戳
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [
+    new winston.transports.Console(),      // 控制台输出
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),  // 只记录 error 级别日志到文件
+    new winston.transports.File({ filename: 'logs/combined.log' }) // 记录所有日志到文件
+  ]
+});
+
+// 使用
+logger.info('程序启动');
+logger.warn('警告信息');
+logger.error('错误信息');
+logger.debug('调试信息，默认不输出，除非将 level 设置为 debug');
+```
+
+#### 配置日志级别说明：
+
+* `level` 属性指定了最小输出级别，比如设置为 `info`，低于 info 级别（如 debug）的日志不会被输出。
+* 可以针对不同传输（console、文件）单独设置级别。
+
+---
+
+### 2. **pino**
+
+`pino` 是一个高性能日志库，适合生产环境。
+
+#### 安装
+
+```bash
+npm install pino
+```
+
+#### 示例
+
+```js
+const pino = require('pino');
+const logger = pino({
+  level: 'info',
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
+
+logger.info('程序启动');
+logger.warn('警告信息');
+logger.error('错误信息');
+logger.debug('调试信息，默认不输出');
+```
+
+---
+
+## 四、如何动态配置日志级别
+
+在生产环境中，常常需要通过环境变量控制日志级别：
+
+```js
+const level = process.env.LOG_LEVEL || 'info';
+
+const logger = winston.createLogger({
+  level: level,
+  // 其他配置...
+});
+```
+
+然后运行程序时：
+
+```bash
+LOG_LEVEL=debug node app.js
+```
+
+即可输出 debug 级别日志。
+
+---
+
+## 五、日志文件管理（日志轮转）
+
+日志文件长时间写入会越来越大，可以结合 `winston-daily-rotate-file` 实现按天切割：
+
+```bash
+npm install winston-daily-rotate-file
+```
+
+```js
+const DailyRotateFile = require('winston-daily-rotate-file');
+
+const transport = new DailyRotateFile({
+  filename: 'logs/application-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  maxFiles: '14d'  // 保留最近 14 天的日志
+});
+
+const logger = winston.createLogger({
+  level: 'info',
+  transports: [
+    transport,
+    new winston.transports.Console()
+  ]
+});
+```
+
+---
+
+## 六、总结示例
+
+一个完整的 `winston` 日志配置示例：
+
+```js
+const winston = require('winston');
+const DailyRotateFile = require('winston-daily-rotate-file');
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.splat(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message, stack }) => {
+          return `${timestamp} ${level}: ${stack || message}`;
+        })
+      )
+    }),
+    new DailyRotateFile({
+      filename: 'logs/app-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '30d',
+      level: 'info'
+    }),
+    new DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: '30d',
+      level: 'error'
+    }),
+  ],
+  exceptionHandlers: [
+    new winston.transports.File({ filename: 'logs/exceptions.log' })
+  ],
+});
+
+module.exports = logger;
+```
+
+使用时：
+
+```js
+const logger = require('./logger');
+
+logger.info('程序开始运行');
+logger.warn('警告：内存使用过高');
+logger.error('错误信息，包含堆栈', new Error('异常'));
+logger.debug('调试信息');
+```
+
+---
+
+## 七、总结
+
+* **基础方案**：用 `console` 输出日志，简单但不灵活。
+* **推荐方案**：使用成熟日志库如 `winston`、`pino`，支持多日志级别、文件写入、格式化、日志轮转。
+* **配置灵活**：通过环境变量控制日志级别。
+* **日志格式**：建议时间戳 + 日志级别 + 消息 + 堆栈信息。
+* **生产环境**：日志文件应做轮转和归档。
+
+---
+
+如果你想，我还可以帮你写一个简单的日志模块示例，或者帮你配置日志和输出到特定文件夹。需要吗？

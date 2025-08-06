@@ -1,0 +1,139 @@
+---
+title: 什么是模板引擎？如何在 Node.js 中使用模板引擎？
+---
+
+### 一、什么是模板引擎（Template Engine）？
+
+模板引擎是一种用于 **将数据和模板结合生成 HTML 页面** 的工具。它的主要目的是将业务逻辑和页面结构分离，使前端页面的开发更简洁、可维护。
+
+---
+
+### 二、模板引擎的工作原理
+
+简单来说：
+
+1. **模板文件**：包含 HTML 和占位符（如 `{{title}}`）。
+2. **数据对象**：比如 `{ title: "Hello World" }`。
+3. **渲染结果**：模板引擎将数据插入到模板中，生成最终 HTML。
+
+例如：
+
+```html
+<!-- index.ejs -->
+<h1>Welcome {{name}}</h1>
+```
+
+使用数据 `{ name: "Alice" }` 渲染后：
+
+```html
+<h1>Welcome Alice</h1>
+```
+
+---
+
+### 三、常见的 Node.js 模板引擎
+
+| 模板引擎            | 特点                            |
+| --------------- | ----------------------------- |
+| **EJS**         | 语法简单，逻辑和 HTML 混合              |
+| **Pug**（原 Jade） | 缩进式语法，简洁但学习成本高                |
+| **Handlebars**  | 更关注语义、安全，支持 helper 和 partials |
+| **Nunjucks**    | Jinja2 风格，功能强大                |
+
+---
+
+### 四、如何在 Node.js 中使用模板引擎（以 Express 框架为例）
+
+#### 1. 使用 EJS 示例
+
+##### 步骤一：安装依赖
+
+```bash
+npm install express ejs
+```
+
+##### 步骤二：创建项目结构
+
+```
+project/
+├── views/
+│   └── index.ejs
+├── app.js
+```
+
+##### 步骤三：编写 EJS 模板
+
+```html
+<!-- views/index.ejs -->
+<!DOCTYPE html>
+<html>
+<head><title><%= title %></title></head>
+<body>
+  <h1>Hello, <%= name %>!</h1>
+</body>
+</html>
+```
+
+##### 步骤四：编写服务器代码
+
+```js
+// app.js
+const express = require('express');
+const app = express();
+
+app.set('view engine', 'ejs'); // 设置模板引擎
+app.set('views', __dirname + '/views'); // 设置模板目录
+
+app.get('/', (req, res) => {
+  res.render('index', { title: 'Welcome', name: 'Alice' }); // 渲染模板
+});
+
+app.listen(3000, () => {
+  console.log('Server is running on http://localhost:3000');
+});
+```
+
+访问浏览器 `http://localhost:3000` 会看到：
+
+```html
+<h1>Hello, Alice!</h1>
+```
+
+---
+
+### 五、没有 Express 的情况怎么办？
+
+即使不用 Express，也可以使用模板引擎直接渲染模板文件：
+
+```js
+const ejs = require('ejs');
+const fs = require('fs');
+
+const template = fs.readFileSync('views/index.ejs', 'utf-8');
+const html = ejs.render(template, { name: 'Alice' });
+
+console.log(html);
+```
+
+---
+
+### 六、使用模板引擎的好处
+
+* **代码分离**：逻辑与视图分离，提高代码可读性和维护性。
+* **动态生成页面**：根据不同数据生成不同内容。
+* **重用模板**：通过模板继承、组件化等方式提高开发效率。
+
+---
+
+### 七、模板引擎选择建议
+
+| 需求               | 推荐引擎       |
+| ---------------- | ---------- |
+| 快速入门、语法简单        | EJS        |
+| 简洁优雅、语法类似 Python | Pug/Jade   |
+| 更强的语义性和安全性       | Handlebars |
+| 高级特性、模块化模板       | Nunjucks   |
+
+---
+
+如果你告诉我你是用于构建 SSR 页面，还是只想生成静态 HTML，我可以给出更有针对性的建议和示例。需要吗？

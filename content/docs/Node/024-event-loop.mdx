@@ -1,0 +1,166 @@
+---
+title: 什么是 Node.js 中的事件循环？
+---
+
+好的！我给你详细讲讲 **Node.js 中的事件循环（Event Loop）**，它是理解 Node.js 异步和非阻塞特性的核心。
+
+---
+
+# 什么是事件循环？
+
+Node.js 是基于 **事件驱动（event-driven）** 和 **异步非阻塞（asynchronous, non-blocking）** 的运行时环境。事件循环就是 Node.js 用来管理和调度异步操作的机制，它保证了单线程上能够高效处理大量并发操作。
+
+简单来说：
+
+* Node.js 主线程是单线程的
+* 但它通过事件循环和事件队列，实现了异步任务的非阻塞执行
+* 事件循环不断地检查任务队列，把可以执行的任务取出来运行
+
+---
+
+# 事件循环的背景
+
+JavaScript 是单线程语言，浏览器和 Node.js 都采用事件循环机制来实现异步操作。
+
+浏览器中的事件循环负责处理用户输入、网络请求、定时器等事件。
+
+Node.js 的事件循环机制是基于 **libuv** 库实现的，比浏览器更复杂，因为它还要处理文件系统 I/O、网络、定时器等多种任务。
+
+---
+
+# Node.js 事件循环的具体工作机制
+
+事件循环是一个不断循环执行的过程，主要工作是监视多个任务队列，并且在主线程空闲时，将异步任务从队列中取出执行。
+
+事件循环本质是一个无限循环（`while(true)`），它在 Node.js 程序运行期间一直运行，直到没有任务可以执行。
+
+---
+
+## 事件循环的阶段（phases）
+
+Node.js 事件循环分为多个阶段（phase），每个阶段都会处理不同类型的任务。大致有以下几个重要阶段：
+
+1. **timers（定时器阶段）**
+
+   * 执行 `setTimeout` 和 `setInterval` 回调
+   * 到了定时时间点，事件循环会执行对应回调
+
+2. **pending callbacks（待决回调阶段）**
+
+   * 执行一些系统操作的回调，比如 TCP 错误回调
+
+3. **idle, prepare（空闲准备阶段）**
+
+   * 内部使用，准备下一轮事件循环
+
+4. **poll（轮询阶段）**
+
+   * 事件循环在此等待新的 I/O 事件发生
+   * 如果有 I/O 事件完成，会执行对应的回调
+   * 如果没有 I/O 事件，且有定时器到期，跳转到 timers 阶段执行定时器回调
+
+5. **check（检查阶段）**
+
+   * 执行 `setImmediate` 注册的回调函数
+   * `setImmediate` 是在 poll 阶段后执行
+
+6. **close callbacks（关闭回调阶段）**
+
+   * 处理关闭事件回调，比如 socket 的 `close` 事件
+
+---
+
+## 事件循环的一个完整过程示意：
+
+1. 执行同步代码，放入调用栈
+
+2. 遇到异步任务（如定时器、I/O 操作等），注册回调到对应的队列，继续执行同步代码
+
+3. 同步代码执行完毕后，事件循环开始进入各个阶段
+
+4. 检查是否有定时器到期，执行 `setTimeout` 回调
+
+5. 处理 I/O 回调（读写文件、网络请求等）
+
+6. 执行 `setImmediate` 回调
+
+7. 处理关闭事件回调
+
+8. 等待下一次事件发生，继续循环
+
+---
+
+# 宏任务（Macro Task）和微任务（Micro Task）
+
+Node.js 事件循环中还区分了宏任务和微任务：
+
+* **宏任务（Macro Task）** 包括：定时器（timers）、I/O、setImmediate 等
+
+* **微任务（Micro Task）** 包括：`process.nextTick()` 和 Promise 的 `.then()` 回调
+
+微任务的执行优先于事件循环的下一个阶段，也就是说：
+
+* 当前阶段所有宏任务执行完后，事件循环会立即执行微任务队列中的所有任务，然后才进入下一个阶段。
+
+这就是为什么 `process.nextTick()` 和 Promise.then 的回调优先级更高。
+
+---
+
+# 一个简单例子说明事件循环
+
+```js
+console.log('start');
+
+setTimeout(() => {
+  console.log('timeout');
+}, 0);
+
+setImmediate(() => {
+  console.log('immediate');
+});
+
+process.nextTick(() => {
+  console.log('nextTick');
+});
+
+Promise.resolve().then(() => {
+  console.log('promise');
+});
+
+console.log('end');
+```
+
+输出结果通常是：
+
+```
+start
+end
+nextTick
+promise
+timeout
+immediate
+```
+
+解释：
+
+* `start` 和 `end` 是同步代码，直接执行
+
+* `process.nextTick` 和 Promise.then 属于微任务，执行优先级更高，紧跟同步代码执行完后执行
+
+* `setTimeout` 和 `setImmediate` 属于宏任务，`setTimeout` 在 timers 阶段，`setImmediate` 在 check 阶段，通常 `setTimeout(..., 0)` 先执行
+
+---
+
+# 总结
+
+* Node.js 事件循环是其异步非阻塞模型的核心机制
+
+* 事件循环不断轮询不同类型的任务队列，协调异步任务执行
+
+* 宏任务和微任务在事件循环中的执行顺序决定了异步代码的执行顺序
+
+* 通过理解事件循环，可以更好地写出高效、合理的异步代码，避免阻塞主线程
+
+---
+
+如果你想，我还可以帮你画个事件循环流程图，或者帮你用代码演示更复杂的事件循环场景，你看怎么样？

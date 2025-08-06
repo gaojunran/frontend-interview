@@ -1,0 +1,113 @@
+---
+title: 在 Node.js 中，如何处理静态文件的服务？
+---
+
+在 Node.js 中处理**静态文件服务（Static File Serving）**，就是让客户端（浏览器）可以访问服务器上的图片、CSS、JS、HTML 等资源。
+
+我们可以使用两种主要方式来处理静态文件：
+
+---
+
+## ✅ 方式一：使用内置模块 `http` 和 `fs` 手动实现
+
+这种方式适合你**不依赖任何框架**，纯粹用 Node.js 搭建一个静态文件服务器。
+
+### 示例：简单的静态文件服务器
+
+```js
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+// 静态文件根目录
+const staticDir = path.join(__dirname, 'public');
+
+// 常见的 MIME 类型
+const mimeTypes = {
+  '.html': 'text/html',
+  '.css':  'text/css',
+  '.js':   'application/javascript',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.ico':  'image/x-icon',
+  '.json': 'application/json',
+};
+
+const server = http.createServer((req, res) => {
+  // 防止路径遍历攻击
+  const safePath = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.join(staticDir, safePath === '/' ? '/index.html' : safePath);
+  const ext = path.extname(filePath);
+  const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.end('404 Not Found');
+    } else {
+      res.writeHead(200, {'Content-Type': contentType});
+      res.end(data);
+    }
+  });
+});
+
+server.listen(3000, () => {
+  console.log('Server running at http://localhost:3000/');
+});
+```
+
+> 把你的静态文件放在 `public/` 文件夹中，比如 `public/index.html`，然后运行服务器即可访问 `http://localhost:3000/index.html`
+
+---
+
+## ✅ 方式二：使用框架如 Express 的内建中间件
+
+如果你使用 **Express** 框架，它提供了开箱即用的 `express.static()` 方法，非常方便。
+
+### 示例：
+
+```js
+const express = require('express');
+const path = require('path');
+const app = express();
+
+// 设置静态资源目录
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 启动服务器
+app.listen(3000, () => {
+  console.log('Static server running at http://localhost:3000/');
+});
+```
+
+现在你可以直接访问：
+
+* `http://localhost:3000/index.html`
+* `http://localhost:3000/style.css`
+* `http://localhost:3000/js/app.js`
+
+> Express 会自动处理 Content-Type、缓存控制、404 响应等。
+
+---
+
+## 🔒 安全建议（通用）
+
+1. **路径校验**：防止用户请求如 `../../etc/passwd` 的路径遍历攻击。
+2. **限制文件类型**：不要开放执行文件（如 `.exe`、`.sh` 等）的访问。
+3. **缓存控制**：合理设置缓存头，提高性能。
+4. **目录索引**：默认关闭目录列表功能，避免用户看到目录结构。
+
+---
+
+## 📦 对比总结
+
+| 方式                  | 优点         | 缺点                        |
+| ------------------- | ---------- | ------------------------- |
+| 手动实现（`http` + `fs`） | 无依赖、灵活可控   | 代码多，需手动处理 MIME、404、缓存、安全等 |
+| 使用 Express          | 简洁、稳定、功能丰富 | 依赖 Express，适合中大型项目        |
+
+---
+
+如果你不确定用哪个方式，一般建议：**简单项目或学习用原生方式，实际开发用 Express。**
+
+如果需要我可以帮你把完整的代码封装成可复用的模块或者 CLI 工具。是否需要？

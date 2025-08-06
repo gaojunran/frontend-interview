@@ -1,0 +1,181 @@
+---
+title: 如何调试 Node.js 程序？有哪些方法？
+---
+
+在调试 Node.js 程序时，有很多种方法可以帮助你排查问题、理解程序行为、提升开发效率。下面是常见的几种调试方法和工具：
+
+---
+
+## ✅ 1. **使用 `console.log()`**
+
+最基础、最常用的调试方式。
+
+```js
+console.log('变量值:', myVar);
+console.error('错误信息:', err);
+```
+
+> ✅ 优点：简单直接，适用于快速排查
+> ⚠️ 缺点：信息杂乱，难以控制输出；不能设置断点或查看调用栈
+
+---
+
+## ✅ 2. **使用内置调试器 `node inspect`**
+
+Node.js 提供了内置调试器：
+
+```bash
+node inspect app.js
+```
+
+交互式命令：
+
+* `n`：下一行
+* `c`：继续执行
+* `sb(行号)`：在指定行设置断点
+* `repl`：进入交互式环境查看变量
+
+也可以加 `--inspect` 使用现代调试器。
+
+---
+
+## ✅ 3. **使用 `--inspect` 与 Chrome DevTools**
+
+推荐方式。Node.js 可以像调试前端 JS 一样调试后端：
+
+```bash
+node --inspect app.js
+```
+
+然后打开浏览器访问：`chrome://inspect`
+
+你可以：
+
+* 设置断点
+* 查看变量、堆栈、作用域
+* 执行表达式
+* 查看内存使用
+
+也可以用 `--inspect-brk` 在第一行暂停：
+
+```bash
+node --inspect-brk app.js
+```
+
+---
+
+## ✅ 4. **使用 VS Code 调试**
+
+如果你使用 [Visual Studio Code](https://code.visualstudio.com/)，推荐使用它的内置调试功能。
+
+1. 打开项目
+2. 点击左侧调试图标（或 `Cmd + Shift + D`）
+3. 添加 `launch.json` 配置：
+
+```json
+{
+  "type": "node",
+  "request": "launch",
+  "name": "调试当前文件",
+  "program": "${file}"
+}
+```
+
+4. 设置断点，点击“开始调试”
+
+> VS Code 支持断点、变量查看、调用栈、调试控制台等功能。
+
+---
+
+## ✅ 5. **使用 `debug` 模块打印调试信息**
+
+这是一个社区流行的日志调试库，用于控制调试输出：
+
+安装：
+
+```bash
+npm install debug
+```
+
+使用：
+
+```js
+const debug = require('debug')('myapp');
+debug('这里是调试信息');
+```
+
+运行时启用指定的调试：
+
+```bash
+DEBUG=myapp node app.js
+```
+
+---
+
+## ✅ 6. **Node.js Profiler 和性能分析**
+
+如果你要调试性能问题，可以使用：
+
+```bash
+node --inspect app.js
+```
+
+然后在 Chrome DevTools 的 “Performance” 里查看：
+
+* 函数调用图（flame graph）
+* 内存泄漏
+* CPU 消耗
+
+也可使用 [clinic.js](https://clinicjs.org/) 等工具
+
+---
+
+## ✅ 7. **日志记录库**
+
+用于更可控的日志记录，比 `console.log` 更可维护：
+
+* [winston](https://github.com/winstonjs/winston)
+* [pino](https://github.com/pinojs/pino)
+* [log4js](https://github.com/log4js-node/log4js-node)
+
+它们可以：
+
+* 分级输出（info、warn、error）
+* 输出到文件
+* JSON 格式化
+
+---
+
+## ✅ 8. **断言调试（单元测试中）**
+
+在测试代码中使用断言可以快速定位错误：
+
+```js
+const assert = require('assert');
+assert.strictEqual(result, expected);
+```
+
+配合测试框架如：
+
+* Jest
+* Mocha
+* AVA
+
+---
+
+## ✅ 总结
+
+| 方法                            | 特点        | 适用场景         |
+| ----------------------------- | --------- | ------------ |
+| `console.log`                 | 简单快速      | 日常调试         |
+| `node inspect`                | 内置 CLI 调试 | 终端调试         |
+| `--inspect` + Chrome DevTools | 图形化强大     | 推荐方式         |
+| VS Code 调试                    | 集成体验好     | 使用 VS Code 时 |
+| `debug` 模块                    | 控制日志输出    | 模块化调试        |
+| Profiler                      | 性能分析      | 优化 CPU / 内存  |
+| 日志库                           | 可维护       | 生产环境日志       |
+| 单元测试断言                        | 自动验证      | TDD、测试驱动     |
+
+---
+
+如需我帮你写一份适用于你的项目的 `launch.json` 或调试脚本，也可以告诉我！

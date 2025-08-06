@@ -1,0 +1,190 @@
+---
+title: 如何在 Node.js 中处理和解析二进制数据？
+---
+
+在 Node.js 中，处理和解析二进制数据主要是通过 `Buffer` 和相关模块（如 `fs`、`net`、`stream`）实现的。以下是详细讲解，包含基础概念、使用场景、方法和实战案例：
+
+---
+
+## 一、什么是二进制数据？
+
+二进制数据是非文本格式的数据，比如：
+
+* 图片、音频、视频文件
+* 网络协议数据包（如 TCP、UDP）
+* 自定义格式的文件（如 `.dat`、`.bin`）
+
+在 JavaScript 中，传统的字符串处理并不能很好处理这些数据。
+
+---
+
+## 二、Node.js 如何处理二进制数据？
+
+### 1. **使用 `Buffer` 对象**
+
+`Buffer` 是 Node.js 的核心类，用于处理原始的二进制数据。它不依赖 V8 的字符串编码，能够直接操作字节数组。
+
+#### 创建 Buffer 的方式：
+
+```js
+const buf1 = Buffer.from('hello');               // 从字符串
+const buf2 = Buffer.alloc(10);                   // 分配 10 个字节
+const buf3 = Buffer.from([0x68, 0x69]);          // 从数组
+```
+
+---
+
+### 2. **读取二进制数据**
+
+```js
+const fs = require('fs');
+
+const data = fs.readFileSync('example.bin');
+console.log(data); // Buffer <...>
+```
+
+---
+
+### 3. **解析二进制数据**
+
+Buffer 提供了一系列读取方法来解析不同格式的数据：
+
+| 方法                     | 说明               | 示例                    |
+| ---------------------- | ---------------- | --------------------- |
+| `readUInt8(offset)`    | 读取 1 字节无符号整数     | `buf.readUInt8(0)`    |
+| `readUInt16LE(offset)` | 读取 2 字节小端整数      | `buf.readUInt16LE(0)` |
+| `readUInt32BE(offset)` | 读取 4 字节大端整数      | `buf.readUInt32BE(0)` |
+| `readFloatLE(offset)`  | 读取 4 字节小端 float  | `buf.readFloatLE(0)`  |
+| `readDoubleBE(offset)` | 读取 8 字节大端 double | `buf.readDoubleBE(0)` |
+
+也有写入方法如 `writeUInt32LE()`、`writeFloatBE()` 等。
+
+---
+
+### 4. **字节顺序（Endian）**
+
+* **LE**（Little Endian）：低位在前（如 Intel）
+* **BE**（Big Endian）：高位在前（如网络协议）
+
+读取时需要知道数据格式是大端还是小端。
+
+---
+
+### 5. **处理部分 Buffer（切片）**
+
+```js
+const slice = buf.slice(0, 4);
+```
+
+注意：`slice()` 不会复制数据，只是引用。
+
+---
+
+## 三、真实场景举例
+
+### 场景 1：解析 PNG 文件头
+
+```js
+const fs = require('fs');
+
+const buf = fs.readFileSync('image.png');
+
+// PNG 文件前 8 个字节是固定签名
+const signature = buf.slice(0, 8);
+console.log(signature.toString('hex')); // 89504e470d0a1a0a
+```
+
+### 场景 2：从 Socket 读取二进制数据
+
+```js
+const net = require('net');
+
+const server = net.createServer((socket) => {
+  socket.on('data', (data) => {
+    console.log('收到数据:', data);
+    const id = data.readUInt16BE(0);
+    const value = data.readFloatLE(2);
+    console.log(`id=${id}, value=${value}`);
+  });
+});
+
+server.listen(3000);
+```
+
+---
+
+## 四、与 `DataView` 和 `ArrayBuffer` 的关系？
+
+Node.js 使用的是 `Buffer`，而不是浏览器中常见的 `ArrayBuffer` 和 `DataView`。不过你可以互相转换：
+
+```js
+const buffer = Buffer.from([0x01, 0x02]);
+const ab = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+const view = new DataView(ab);
+console.log(view.getUint16(0)); // 258
+```
+
+---
+
+## 五、常见技巧和陷阱
+
+### 1. 字符串与 Buffer 互转注意编码
+
+```js
+const buf = Buffer.from('你好', 'utf8');
+const str = buf.toString('utf8');
+```
+
+### 2. Buffer 溢出处理
+
+读取时一定要确保 offset 不越界，否则会抛错。
+
+```js
+if (buf.length >= offset + 4) {
+  buf.readUInt32LE(offset);
+}
+```
+
+---
+
+## 六、处理复杂结构：定义结构体解析器
+
+你可以封装一个简单的结构体解析器：
+
+```js
+function parseStruct(buf) {
+  return {
+    id: buf.readUInt32LE(0),
+    flag: buf.readUInt8(4),
+    temperature: buf.readFloatLE(5),
+  };
+}
+```
+
+如果结构复杂，可使用第三方库（如 [binary-parser](https://www.npmjs.com/package/binary-parser)）：
+
+```js
+const Parser = require('binary-parser').Parser;
+
+const parser = new Parser()
+  .uint32le('id')
+  .uint8('flag')
+  .floatle('temperature');
+
+const data = parser.parse(buffer);
+```
+
+---
+
+## 总结
+
+| 能力    | 使用方法                        |
+| ----- | --------------------------- |
+| 二进制读取 | `fs.readFileSync()` / `net` |
+| 基础处理  | `Buffer` 类                  |
+| 结构解析  | `readUInt*`、`readFloat*` 等  |
+| 高级封装  | 封装函数 / 使用 `binary-parser`   |
+
+---
+
+如果你有具体的二进制格式（比如一个特定协议、文件格式），我也可以帮你写解析器。欢迎贴出 hex 或文档格式。
