@@ -1,0 +1,182 @@
+---
+title: 如何处理 Node.js 应用程序中的高并发请求，并避免阻塞？
+---
+
+在 Node.js 中处理**高并发请求**并\*\*避免阻塞（non-blocking）\*\*是构建高性能服务的核心能力。Node.js 基于事件驱动和非阻塞 I/O 模型，天然适合高并发处理，但如果用法不当，也会遇到性能瓶颈。
+
+---
+
+## 一、Node.js 高并发处理机制基础
+
+### 1. 单线程事件循环
+
+* Node.js 是**单线程处理 JavaScript 代码**，但依赖**libuv 线程池**异步处理 I/O 操作。
+* **事件循环（Event Loop）** 是 Node.js 的核心，负责调度异步任务和回调。
+
+### 2. 非阻塞 I/O
+
+* 文件操作、网络请求、数据库访问等通过异步 API 发起，在后台线程执行，不阻塞主线程。
+* 例如：
+
+  ```js
+  fs.readFile('file.txt', (err, data) => {
+    if (err) throw err;
+    console.log(data.toString());
+  });
+  ```
+
+---
+
+## 二、避免阻塞的关键点
+
+### 1. **禁止或避免使用同步方法**
+
+如：
+
+```js
+const fs = require('fs');
+fs.readFileSync('file.txt');  // 会阻塞整个事件循环
+```
+
+应改用异步：
+
+```js
+fs.readFile('file.txt', callback);
+```
+
+### 2. **避免 CPU 密集型任务在主线程中执行**
+
+例如：图片处理、加密、压缩等。
+
+* **解决方式一：使用 Worker Threads**
+
+  ```js
+  const { Worker } = require('worker_threads');
+  new Worker('./worker-task.js');  // 将密集任务丢给 worker 处理
+  ```
+
+* **解决方式二：使用子进程 cluster/fork**
+
+  ```js
+  const cluster = require('cluster');
+  const numCPUs = require('os').cpus().length;
+
+  if (cluster.isMaster) {
+    for (let i = 0; i < numCPUs; i++) {
+      cluster.fork();  // 启动多个子进程
+    }
+  } else {
+    // 每个子进程独立处理请求
+    require('./server.js');
+  }
+  ```
+
+---
+
+## 三、应对高并发的实用技巧
+
+### 1. **使用反向代理 + 负载均衡**
+
+利用 Nginx / HAProxy 等反向代理服务器，将请求均匀分发到多个 Node.js 实例。
+
+```nginx
+upstream backend {
+    server 127.0.0.1:3000;
+    server 127.0.0.1:3001;
+}
+
+server {
+    location / {
+        proxy_pass http://backend;
+    }
+}
+```
+
+### 2. **使用连接池处理数据库访问**
+
+每个请求都新建数据库连接是非常低效的，容易导致连接过多、阻塞。
+
+建议：
+
+* 使用 ORM（如 Sequelize、Prisma）内建的连接池机制
+* 或使用底层数据库库如 `mysql2`, `pg` 配置连接池：
+
+  ```js
+  const mysql = require('mysql2/promise');
+  const pool = mysql.createPool({ host, user, password, connectionLimit: 10 });
+  ```
+
+---
+
+### 3. **缓存热点数据减少数据库压力**
+
+使用 Redis/Memcached 缓存常用数据：
+
+```js
+const redis = require('redis');
+const client = redis.createClient();
+client.get('some-key', (err, value) => {
+  if (value) {
+    // 从缓存返回
+  } else {
+    // 查询数据库后写入缓存
+  }
+});
+```
+
+---
+
+### 4. **使用消息队列实现异步解耦**
+
+适用于任务型请求（如发送邮件、视频转码）：
+
+* 发送请求时只入队
+* 后台 Worker 异步处理
+
+常用消息队列：
+
+* RabbitMQ
+* Kafka
+* Bull（基于 Redis 的队列库）
+
+```js
+const Queue = require('bull');
+const emailQueue = new Queue('email');
+
+emailQueue.add({ to: 'user@example.com' });
+```
+
+---
+
+## 四、监控与性能分析
+
+### 使用 APM 工具：
+
+* New Relic
+* Datadog
+* Prometheus + Grafana（自建）
+
+### 使用 Node.js 自带工具：
+
+* `--inspect` + Chrome DevTools
+* `clinic.js`（强烈推荐）
+* `node --prof` 生成性能日志
+
+---
+
+## 五、总结
+
+| 技术点            | 作用           |
+| -------------- | ------------ |
+| 非阻塞 I/O        | 基础机制，避免线程被占用 |
+| 异步代码设计         | 不能用同步方式写代码   |
+| Worker Threads | 处理 CPU 密集型任务 |
+| Cluster/Fork   | 利用多核处理更多请求   |
+| 连接池            | 高效访问数据库      |
+| 缓存             | 降低数据库压力，加快响应 |
+| 消息队列           | 任务解耦，异步处理    |
+| 反向代理           | 实现负载均衡       |
+
+---
+
+如你希望我提供一个完整的示例项目（含多进程 + Redis 缓存 + Worker 线程），也可以告诉我。

@@ -1,0 +1,190 @@
+---
+title: Node.js 中的 process.nextTick() 和 setImmediate() 有什么区别？
+---
+
+在 Node.js 中，`process.nextTick()` 和 `setImmediate()` 都是用于**异步执行回调函数**的机制，但它们的执行时机和使用场景有明显区别。下面我们详细讲讲它们的 **定义、执行顺序、实现原理、使用场景和注意事项**。
+
+---
+
+## 一、定义与作用
+
+### `process.nextTick(callback)`
+
+* 是 Node.js 提供的一个特殊函数，用于在**当前操作完成后，下一次事件循环之前**执行回调。
+* 本质是将回调加入到\*\*"next tick queue"\*\*（下一个时间点的任务队列）。
+
+### `setImmediate(callback)`
+
+* 用于在**当前轮事件循环的结束时**执行回调。
+* 本质是将回调加入到\*\*"check 阶段"\*\*的队列中，在 I/O 事件之后运行。
+
+---
+
+## 二、事件循环中的位置（关键差别）
+
+Node.js 的事件循环（Event Loop）主要阶段简化如下：
+
+```
+┌──────────────────────────────┐
+│  timers (setTimeout/setInterval) │
+├──────────────────────────────┤
+│  pending callbacks              │
+├──────────────────────────────┤
+│  idle, prepare                  │
+├──────────────────────────────┤
+│  poll (I/O 轮询)               │
+├──────────────────────────────┤
+│  check (执行 setImmediate)     │
+├──────────────────────────────┤
+│  close callbacks                │
+└──────────────────────────────┘
+       ↑
+       |
+  process.nextTick() 会插队在所有阶段之前
+```
+
+### 关键区别总结：
+
+| 特性         | `process.nextTick()`      | `setImmediate()` |
+| ---------- | ------------------------- | ---------------- |
+| 执行时机       | 当前阶段结束后、事件循环开始前（**立即执行**） | 当前事件循环的 check 阶段 |
+| 优先级        | 更高（永远先执行）                 | 相对较低             |
+| 本质         | 放入 `nextTickQueue`        | 放入 `checkQueue`  |
+| 属于微任务还是宏任务 | 微任务（更类似于 `Promise.then`）  | 宏任务              |
+
+---
+
+## 三、例子：对比执行顺序
+
+```js
+setImmediate(() => {
+  console.log('setImmediate');
+});
+
+process.nextTick(() => {
+  console.log('nextTick');
+});
+
+console.log('同步代码');
+```
+
+输出结果总是：
+
+```
+同步代码
+nextTick
+setImmediate
+```
+
+解释：
+
+* 同步代码先执行
+* `process.nextTick()` 插入当前循环末尾，立即执行
+* `setImmediate()` 要等到当前循环的 check 阶段
+
+---
+
+## 四、使用场景
+
+### ✅ `process.nextTick()` 使用场景
+
+* **在当前执行栈后立即处理任务**，例如：
+
+  * 错误处理的延迟 throw（防止错误在同步流程中被吞）
+  * 确保某些逻辑在异步之前立即执行（但不阻塞当前任务）
+* 案例：
+
+```js
+function MyTask() {
+  console.log('Task init');
+
+  process.nextTick(() => {
+    console.log('Deferred part of task');
+  });
+}
+
+MyTask();
+console.log('Outside function');
+```
+
+输出：
+
+```
+Task init
+Outside function
+Deferred part of task
+```
+
+---
+
+### ✅ `setImmediate()` 使用场景
+
+* **在 I/O 操作之后**安排回调更合适：
+
+  * 避免长时间阻塞事件循环（例如递归地使用 nextTick 会阻塞）
+  * 想等待当前事件循环完成，再开始执行逻辑
+* 案例：
+
+```js
+const fs = require('fs');
+
+fs.readFile(__filename, () => {
+  setImmediate(() => {
+    console.log('setImmediate after I/O');
+  });
+
+  process.nextTick(() => {
+    console.log('nextTick after I/O');
+  });
+});
+```
+
+输出：
+
+```
+nextTick after I/O
+setImmediate after I/O
+```
+
+---
+
+## 五、注意事项 ⚠️
+
+### 🚨 process.nextTick() 的**无限递归风险**
+
+```js
+function repeat() {
+  process.nextTick(repeat);
+}
+repeat(); // 会阻塞整个事件循环，导致程序卡死
+```
+
+* 因为 `nextTick` 回调始终在事件循环前执行，**会饿死事件循环的其它阶段**。
+
+### ✅ 正确控制：
+
+* 不要大量递归地使用 `nextTick`，应使用 `setImmediate` 或 `setTimeout` 分批处理。
+
+---
+
+## 六、总结对比表
+
+| 项目   | process.nextTick | setImmediate      |
+| ---- | ---------------- | ----------------- |
+| 所在队列 | next tick queue  | check queue       |
+| 执行时间 | 当前阶段结束后立即执行      | 当前轮事件循环的末尾        |
+| 优先级  | 更高               | 较低                |
+| 是否异步 | 是（但几乎立即）         | 是                 |
+| 典型场景 | 错误处理、模块初始化、保持顺序性 | 处理 I/O 后续逻辑、大任务分片 |
+| 滥用后果 | 阻塞事件循环           | 无明显副作用            |
+
+---
+
+如果你想：
+
+* **尽快执行任务**（高优先级） → 用 `process.nextTick()`
+* **尽快异步执行但不阻塞事件循环** → 用 `setImmediate()`
+
+---
+
+需要我帮你画图解释事件循环的流程吗？

@@ -1,0 +1,137 @@
+---
+title: 如何使用 Node.js 获取到客户端连接的真实 IP？
+---
+
+在 Node.js 中获取客户端连接的真实 IP 是开发 Web 服务时一个非常常见的需求，比如用于日志、限流、安全控制等。下面详细讲讲：
+
+---
+
+## ✅ 一、基本方法：使用 `req.connection.remoteAddress`
+
+在不使用任何框架（比如 Express）的情况下，可以通过原生 HTTP 模块获取 IP：
+
+```js
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  const ip = req.connection.remoteAddress;
+  res.end(`Your IP is ${ip}`);
+});
+
+server.listen(3000, () => {
+  console.log('Server running at http://localhost:3000/');
+});
+```
+
+**问题：**
+
+* 这个方式在本地测试时可能会返回：`::1`（IPv6 的 localhost），
+* 在实际部署到 Nginx、CDN、代理服务器后，这个 IP 会是**代理的 IP**，而不是客户端的真实 IP。
+
+---
+
+## ✅ 二、在有代理服务器的情况下获取真实 IP（使用 `X-Forwarded-For`）
+
+### 👉 代理（如 Nginx、Cloudflare）会在 HTTP Header 中加入一个叫 `X-Forwarded-For` 的头部：
+
+```http
+X-Forwarded-For: 客户端IP, 中间代理1, 中间代理2...
+```
+
+在 Node.js 中你可以这样获取：
+
+```js
+function getClientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) {
+    return xff.split(',')[0].trim(); // 第一个 IP 就是真实客户端 IP
+  }
+  return req.connection.remoteAddress;
+}
+```
+
+完整示例：
+
+```js
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim()
+            || req.connection.remoteAddress;
+  res.end(`Your IP is ${ip}`);
+});
+
+server.listen(3000);
+```
+
+---
+
+## ✅ 三、如果使用 Express 框架
+
+Express 对此提供了更友好的支持：
+
+### 1. 默认方式：
+
+```js
+app.get('/', (req, res) => {
+  const ip = req.ip;
+  res.send(`Your IP is ${ip}`);
+});
+```
+
+但 Express 默认不信任 `X-Forwarded-For`，你需要启用它：
+
+### 2. 启用代理信任：
+
+```js
+app.set('trust proxy', true);
+
+app.get('/', (req, res) => {
+  res.send(`Your IP is ${req.ip}`);
+});
+```
+
+---
+
+## ✅ 四、处理 IPv6、`::ffff:` 等情况
+
+有时候你拿到的是像 `::ffff:192.168.1.1`，它其实是 IPv4 的映射地址。可以用正则处理：
+
+```js
+function normalizeIp(ip) {
+  return ip?.replace(/^.*:/, ''); // 去除 ::ffff:
+}
+```
+
+---
+
+## ✅ 五、部署时 Nginx 设置（可选）
+
+如果你在 Nginx 代理之后运行 Node.js，确保你设置了：
+
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
+
+---
+
+## ✅ 六、安全注意事项
+
+* `X-Forwarded-For` 可以被客户端伪造，不要直接信任它用于安全敏感的逻辑（如白名单验证）。
+* 如果你信任的是 Cloudflare、Nginx，请配置 `trust proxy` 且只信任可信代理 IP。
+
+---
+
+## ✅ 七、小结
+
+| 场景        | 获取方式                             |
+| --------- | -------------------------------- |
+| 无代理       | `req.connection.remoteAddress`   |
+| 有代理       | `req.headers['x-forwarded-for']` |
+| Express 中 | 设置 `trust proxy` 后用 `req.ip`     |
+| Nginx 代理中 | 确保 Nginx 设置了转发 header            |
+
+---
+
+需要我帮你写一个兼容所有情况的 IP 获取函数吗？

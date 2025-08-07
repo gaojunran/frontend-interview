@@ -1,0 +1,149 @@
+---
+title: 怎么编写原生的 Rust 模块给 Nodejs 使用？
+---
+
+要将 **原生 Rust 模块编译为 Node.js 可用的原生扩展（native addon）**，你可以使用 Node.js 的原生模块接口（N-API）配合 Rust 构建一个 **共享库**，通过 JavaScript 或 TypeScript 来调用这个库。整个过程大致如下：
+
+---
+
+## 🧭 总体流程概览
+
+1. 使用 [`napi-rs`](https://napi.rs/) 框架编写 Rust 代码
+2. 使用 `cargo` 编译生成 Node.js 可用的 native addon（`.node` 文件）
+3. 在 Node.js 中使用 `require()` / `import` 加载调用
+
+---
+
+## ✅ 推荐方式：使用 `napi-rs`
+
+`napi-rs` 是一个现代、安全、跨平台的方式，用 Rust 写 Node.js 扩展。
+
+---
+
+### 🧱 第一步：创建 Rust 项目
+
+```bash
+cargo new rust_addon --lib
+cd rust_addon
+```
+
+---
+
+### 🧾 第二步：编辑 `Cargo.toml`
+
+```toml
+[package]
+name = "rust_addon"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["napi4"] }
+napi-derive = "2"
+```
+
+---
+
+### 🦀 第三步：编写 Rust 代码
+
+编辑 `src/lib.rs`：
+
+```rust
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+
+#[napi]
+pub fn sum(a: i32, b: i32) -> i32 {
+    a + b
+}
+```
+
+---
+
+### 🔧 第四步：编译为 Node.js 模块
+
+安装构建工具：
+
+```bash
+cargo install napi-cli
+```
+
+编译：
+
+```bash
+napi build --release
+```
+
+生成的 `.node` 文件会在 `./npm` 或 `target` 目录中。
+
+---
+
+### 🧪 第五步：在 Node.js 中调用
+
+创建一个测试文件：
+
+```js
+// index.js
+const addon = require('./path/to/rust_addon.node');
+
+console.log(addon.sum(3, 4)); // 输出: 7
+```
+
+或者在 ESModule 中：
+
+```js
+import addon from './rust_addon.node';
+console.log(addon.sum(5, 6));
+```
+
+> 注意：路径要指向你生成的 `.node` 文件。
+
+---
+
+## 📦 可选：配套 npm 包开发
+
+你也可以用 `napi` 生成完整的 npm 包目录：
+
+```bash
+napi new my-addon
+cd my-addon
+```
+
+它会自动设置好 TypeScript 类型声明、构建配置等。
+
+---
+
+## ⚙️ 另一种方式（更底层）：使用 `neon`
+
+除了 `napi-rs`，还有 [Neon](https://neon-bindings.com/) 框架：
+
+```bash
+npm init neon my-project
+```
+
+不过目前 `napi-rs` 兼容性和跨平台体验更好。
+
+---
+
+## 🧩 为什么用 napi-rs 而不是直接用 FFI？
+
+* N-API 是 Node.js 提供的官方 C ABI，可以保证不同 Node.js 版本、平台兼容。
+* Rust 生成 `.node` 的动态库，可以直接 require。
+* 使用 napi-rs 自动完成 FFI 接口转换，比自己手动处理更安全、更高效。
+
+---
+
+## 🧠 总结
+
+| 步骤     | 工具             |
+| ------ | -------------- |
+| 编写模块   | Rust + napi-rs |
+| 编译模块   | `napi build`   |
+| JS 端调用 | `require()`    |
+
+---
+
+如果你希望我生成一个完整的最小可用例子（包括 JS 和 Rust 的目录结构），或者想加入异步函数 / Buffer 处理 / 类型绑定等高级特性，也可以告诉我。

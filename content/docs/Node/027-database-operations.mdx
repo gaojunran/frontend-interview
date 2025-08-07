@@ -1,0 +1,190 @@
+---
+title: 在 Node.js 中如何进行数据库操作，比如使用什么 DB 和 ORM？
+---
+
+在 Node.js 中进行数据库操作是后端开发的核心部分之一。你可以连接各种类型的数据库，包括 **关系型数据库（如 MySQL、PostgreSQL）** 和 **非关系型数据库（如 MongoDB、Redis）**。
+
+---
+
+## 🧱 常用数据库类型
+
+| 类型      | 常见数据库                            | 说明                                         |
+| ------- | -------------------------------- | ------------------------------------------ |
+| 关系型数据库  | MySQL, PostgreSQL, SQLite, MSSQL | 使用结构化查询语言（SQL）操作，有表结构和约束。适合强一致性场景。         |
+| 非关系型数据库 | MongoDB, Redis, Cassandra        | 使用 JSON/BSON 或键值对，灵活、扩展性强，适合大数据、高并发、缓存等场景。 |
+
+---
+
+## 🔧 Node.js 常用数据库驱动和 ORM/ODM
+
+### 1. **MongoDB + Mongoose（ODM）**
+
+* **MongoDB** 是非关系型数据库，适合 JSON 文档结构。
+* **Mongoose** 是 MongoDB 的 ORM（准确说是 ODM，Object Data Modeling）。
+
+#### 安装：
+
+```bash
+npm install mongoose
+```
+
+#### 使用示例：
+
+```js
+const mongoose = require('mongoose');
+
+mongoose.connect('mongodb://localhost:27017/mydb');
+
+const userSchema = new mongoose.Schema({
+  name: String,
+  age: Number,
+});
+
+const User = mongoose.model('User', userSchema);
+
+async function main() {
+  const user = new User({ name: 'Alice', age: 25 });
+  await user.save();
+
+  const users = await User.find();
+  console.log(users);
+}
+
+main();
+```
+
+---
+
+### 2. **MySQL / PostgreSQL + Sequelize（ORM）**
+
+* Sequelize 是支持多种 SQL 数据库的 ORM 框架。
+
+#### 安装：
+
+```bash
+npm install sequelize mysql2   # MySQL
+# or
+npm install sequelize pg pg-hstore   # PostgreSQL
+```
+
+#### 使用示例（MySQL）：
+
+```js
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = new Sequelize('testdb', 'root', 'password', {
+  host: 'localhost',
+  dialect: 'mysql'
+});
+
+const User = sequelize.define('User', {
+  name: DataTypes.STRING,
+  age: DataTypes.INTEGER
+});
+
+async function main() {
+  await sequelize.sync();
+
+  await User.create({ name: 'Bob', age: 30 });
+
+  const users = await User.findAll();
+  console.log(users.map(u => u.toJSON()));
+}
+
+main();
+```
+
+---
+
+### 3. **Prisma（现代化 ORM）**
+
+Prisma 是近年来非常流行的类型安全 ORM，适用于 PostgreSQL、MySQL、SQLite 等。
+
+#### 安装并初始化：
+
+```bash
+npm install prisma --save-dev
+npx prisma init
+```
+
+编辑 `prisma/schema.prisma`：
+
+```prisma
+model User {
+  id    Int     @id @default(autoincrement())
+  name  String
+  email String  @unique
+}
+```
+
+然后生成客户端并执行迁移：
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+#### 使用：
+
+```js
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+async function main() {
+  await prisma.user.create({
+    data: {
+      name: 'Charlie',
+      email: 'charlie@example.com',
+    },
+  });
+
+  const users = await prisma.user.findMany();
+  console.log(users);
+}
+
+main();
+```
+
+---
+
+## 📦 ORM 与原生驱动对比
+
+| 特性   | ORM（如 Sequelize, Prisma） | 原生驱动（如 mysql2, pg） |
+| ---- | ------------------------ | ------------------ |
+| 开发效率 | ✅ 高                      | ❌ 低                |
+| 类型安全 | ✅ Prisma 非常好             | ❌ 手动处理             |
+| 可移植性 | ✅ 多数据库支持                 | ❌ 限定某个数据库          |
+| 性能控制 | ❌ 被抽象层包裹                 | ✅ 精细控制查询           |
+| 学习曲线 | 中等                       | 简单但容易出错            |
+
+---
+
+## 🛠 数据库操作建议
+
+1. **开发期**：推荐使用 ORM 快速建模（Prisma / Sequelize / Mongoose）。
+2. **生产期**：
+
+   * 使用数据库连接池。
+   * 对大查询使用原生 SQL（如通过 Prisma 的 `queryRaw`）。
+   * 避免 N+1 查询，使用关联预加载（include / populate）。
+3. **安全性**：
+
+   * 防 SQL 注入（ORM 默认会处理）。
+   * 校验用户输入（推荐使用 `Joi`, `zod` 等库）。
+4. **性能调优**：
+
+   * 添加索引。
+   * 使用缓存（如 Redis）。
+   * 分页、批量插入、事务控制等。
+
+---
+
+## ✅ 总结
+
+| 场景          | 推荐技术栈                       |
+| ----------- | --------------------------- |
+| 文档型存储       | MongoDB + Mongoose          |
+| 结构化关系型数据    | PostgreSQL / MySQL + Prisma |
+| 快速开发 + 类型安全 | Prisma                      |
+| 低层控制        | 原生驱动（如 `pg`, `mysql2`）      |
+
+如你有特定的数据库场景（比如 Redis 缓存、SQL 查询优化、多租户架构等），我可以继续深入讲。是否有具体需求？

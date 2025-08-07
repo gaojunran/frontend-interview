@@ -1,0 +1,147 @@
+---
+title: 什么是 Node.js 的垃圾回收机制？如何手动触发垃圾回收？
+---
+
+Node.js 的垃圾回收机制（Garbage Collection，GC）是通过 **V8 引擎** 实现的，它负责自动管理内存的分配与释放，避免内存泄漏和程序崩溃。
+
+---
+
+## 一、Node.js 的垃圾回收机制是什么？
+
+### 背景：V8 引擎
+
+Node.js 使用 Google 的 [V8 引擎](https://v8.dev/)，这是一个高性能的 JavaScript 引擎，负责：
+
+* 解释执行 JS 代码
+* 管理内存：自动垃圾回收
+
+---
+
+## 二、V8 中的内存结构
+
+V8 将内存分为几代：
+
+### 1. 新生代（New Space）
+
+* 容量小（几 MB）
+* 存储 **短生命周期对象**
+* 回收频率高（Minor GC）
+
+### 2. 老生代（Old Space）
+
+* 容量大（百 MB \~ 几 GB）
+* 存储 **长生命周期对象**
+* 回收频率低（Major GC）
+
+### 3. 大对象空间（Large Object Space）
+
+* 存储特别大的对象（超过特定大小阈值）
+* 独立管理回收
+
+---
+
+## 三、常见的垃圾回收算法
+
+V8 使用多种优化算法进行垃圾回收：
+
+| 类型             | 区域  | 算法                        | 特点            |
+| -------------- | --- | ------------------------- | ------------- |
+| Minor GC       | 新生代 | Scavenge + Semi Space     | 快速，复制算法，频繁触发  |
+| Major GC       | 老生代 | Mark-Sweep / Mark-Compact | 慢，适用于大对象，伴随压缩 |
+| Incremental GC | 老生代 | 增量标记                      | 减少 GC 造成的阻塞时间 |
+| Concurrent GC  | 老生代 | 并发标记                      | 多线程回收，减少主线程阻塞 |
+
+---
+
+## 四、如何手动触发垃圾回收？
+
+默认情况下，Node.js 不允许直接调用 `gc()`，因为自动 GC 足够智能。但在某些场景（如性能调优、内存泄漏排查）中，**你可以手动触发 GC**：
+
+### ✅ 步骤如下：
+
+#### 1. 启用显式 GC 权限
+
+启动 Node.js 时，加上 `--expose-gc` 参数：
+
+```bash
+node --expose-gc your_script.js
+```
+
+#### 2. 手动调用 `global.gc()`
+
+```js
+if (global.gc) {
+  global.gc();
+  console.log('手动触发 GC 完成');
+} else {
+  console.log('请使用 --expose-gc 启动 Node.js');
+}
+```
+
+---
+
+## 五、监控和调试 GC（可选）
+
+### 使用 `--trace-gc`
+
+可以查看 GC 日志：
+
+```bash
+node --expose-gc --trace-gc your_script.js
+```
+
+示例输出：
+
+```
+[GC] [MarkSweepCompact: 1234K->567K (2048K)] [allocation failure] ...
+```
+
+### 使用 Chrome DevTools 调试 GC
+
+1. 启动 Node.js 带调试：
+
+```bash
+node --inspect your_script.js
+```
+
+2. 打开 Chrome，访问：`chrome://inspect`
+3. 连接到 Node 进程，手动点击 "Collect garbage"
+
+---
+
+## 六、垃圾回收注意事项
+
+### ✅ 优点
+
+* 自动化，开发者不需要显式释放内存
+* 基于对象引用关系判断是否可回收
+
+### ⚠️ 限制
+
+* GC 是**阻塞操作**，会暂停主线程
+* 大量内存占用时回收慢，容易引发卡顿
+* 闭包、全局变量等容易造成内存泄漏
+
+---
+
+## 七、如何优化 GC 行为？
+
+| 优化手段     | 描述                                           |
+| -------- | -------------------------------------------- |
+| 减少全局变量   | 避免长期占用内存                                     |
+| 合理拆分作用域  | 避免闭包泄漏                                       |
+| 手动触发 GC  | 在大量临时对象操作后调用 `global.gc()`                   |
+| 增加内存限制   | 如 `--max-old-space-size=4096`                |
+| 使用内存监控工具 | 如 `heapdump`、`v8-profiler`、Chrome DevTools 等 |
+
+---
+
+## 结论
+
+Node.js 的垃圾回收机制由 V8 引擎自动管理，通常不需要人工干预。但在调试或性能优化场景下，可以：
+
+* 使用 `--expose-gc` 开启手动 GC
+* 用 `global.gc()` 手动触发
+* 通过 `--trace-gc` 或 DevTools 观察行为
+
+如需进一步学习内存调试工具、泄漏分析、heap snapshot 等，也可以继续提问。

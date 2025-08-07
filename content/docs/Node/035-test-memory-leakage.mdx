@@ -1,0 +1,225 @@
+---
+title: 如何在 Node.js 中检测和处理内存泄漏问题？
+---
+
+在 Node.js 中，**内存泄漏（Memory Leak）**是一个重要但不易察觉的问题，通常指的是应用程序持续消耗内存而未能释放，最终导致性能下降甚至崩溃。下面详细讲讲如何在 Node.js 中**检测、定位和处理内存泄漏**的问题。
+
+---
+
+## 一、常见的内存泄漏原因
+
+1. **全局变量误用**
+
+   * 没有使用 `let/const/var` 声明变量，自动提升为全局。
+   * 比如：
+
+     ```js
+     function leaky() {
+       leakedVar = "I'm leaking!";
+     }
+     ```
+
+2. **闭包滥用**
+
+   * 某些对象被闭包引用而无法释放。
+
+     ```js
+     function leakyClosure() {
+       const bigData = new Array(1e6).fill('leak');
+       return function () {
+         console.log(bigData.length);
+       };
+     }
+     ```
+
+3. **事件监听未清理**
+
+   * `EventEmitter` 添加监听器后未移除，引用无法释放。
+
+     ```js
+     const emitter = new EventEmitter();
+     emitter.on('data', () => console.log('data'));
+     // 没有使用 `emitter.removeListener` 清理
+     ```
+
+4. **缓存无限增长**
+
+   * 使用对象/Map 缓存数据时，未设置上限或过期策略。
+
+     ```js
+     const cache = {};
+     function getData(key) {
+       if (!cache[key]) {
+         cache[key] = fetchFromDatabase(key);
+       }
+       return cache[key];
+     }
+     ```
+
+5. **定时器未清理**
+
+   * `setInterval` 或 `setTimeout` 没有 `clear`，引用一直保留。
+
+---
+
+## 二、检测内存泄漏的方法
+
+### 1. **使用内建的内存分析工具**
+
+#### ✅ `process.memoryUsage()`
+
+```js
+console.log(process.memoryUsage());
+```
+
+返回堆的使用情况，比如：
+
+```json
+{
+  rss: 4935680,
+  heapTotal: 1826816,
+  heapUsed: 650472,
+  external: 49879
+}
+```
+
+你可以定时记录这些值来观察内存是否持续增长。
+
+#### ✅ `--inspect` 和 Chrome DevTools
+
+启动 Node.js 带调试：
+
+```bash
+node --inspect app.js
+```
+
+然后在 Chrome 打开：`chrome://inspect`
+你可以：
+
+* 拍快照（Heap Snapshot）
+* 使用 Allocation Timeline
+* 查看内存对象引用路径
+
+#### ✅ `--inspect-brk`（初始断点）
+
+```bash
+node --inspect-brk app.js
+```
+
+---
+
+### 2. **使用专业工具和库**
+
+#### 🔹 [clinic.js](https://clinicjs.org/)
+
+* 安装：
+
+  ```bash
+  npm install -g clinic
+  ```
+* 使用：
+
+  ```bash
+  clinic doctor -- node app.js
+  ```
+* 可以可视化地分析内存增长、事件循环延迟等。
+
+#### 🔹 [memwatch-next](https://www.npmjs.com/package/memwatch-next)
+
+```js
+const memwatch = require('memwatch-next');
+
+memwatch.on('leak', (info) => {
+  console.log('Memory leak detected:\n', info);
+});
+```
+
+---
+
+## 三、定位内存泄漏：实践指南
+
+### ✅ 1. 制作最小复现用例
+
+简化代码逻辑，将可能泄漏的模块或组件隔离。
+
+### ✅ 2. 拍摄多张 Heap Snapshot
+
+在 Chrome DevTools 中操作：
+
+* 拍三张快照：
+
+  1. 初始化后
+  2. 模拟一定时间后（如 1 分钟请求）
+  3. GC 之后再拍
+* 对比 Retainers（保留对象链）
+* 查看 Detached DOM trees（在 Web 场景）
+
+### ✅ 3. 使用 Timeline 工具（Chrome DevTools 的 Performance 选项）
+
+可以查看 memory 使用曲线，是否持续增长且未回收。
+
+---
+
+## 四、预防和修复建议
+
+| 场景   | 处理方法                             |
+| ---- | -------------------------------- |
+| 事件监听 | 使用 `once()`、或手动 `removeListener` |
+| 缓存   | 引入缓存淘汰机制，如 LRU                   |
+| 闭包引用 | 减少大对象进入闭包范围                      |
+| 全局变量 | 严格使用 `"use strict"`              |
+| 定时器  | 组件销毁时清理所有 `setInterval`          |
+
+---
+
+## 五、真实案例举例
+
+```js
+const EventEmitter = require('events');
+const emitter = new EventEmitter();
+
+function createLeak() {
+  const huge = new Array(1e6).fill('leak');
+  emitter.on('event', () => {
+    console.log(huge[0]);
+  });
+}
+
+// 每秒创建一个 listener，没有清除旧的
+setInterval(createLeak, 1000);
+```
+
+这个例子中，`huge` 永远被闭包引用、且监听器不断堆积，内存会持续上升。
+
+---
+
+## 六、补充：Node.js GC 原理简述
+
+* Node.js 使用 V8 引擎的垃圾回收器（GC）
+* V8 主要使用**分代收集（Generational GC）**：
+
+  * 新生代（New space）：存短期对象，使用 Scavenge 算法。
+  * 老生代（Old space）：存活较长对象，使用 Mark-Sweep & Mark-Compact。
+* 手动触发 GC：
+
+  ```bash
+  node --expose-gc app.js
+  ```
+
+  ```js
+  global.gc();
+  ```
+
+---
+
+## 总结
+
+| 步骤 | 工具                                | 目标       |
+| -- | --------------------------------- | -------- |
+| 监控 | `process.memoryUsage()`、clinic.js | 定位是否存在泄漏 |
+| 分析 | Chrome DevTools、heap snapshot     | 查看泄漏对象   |
+| 修复 | 关闭闭包、清理监听、设置缓存限制                  | 根除泄漏源    |
+
+内存泄漏难以一次排查完毕，建议在开发过程中持续监控，并通过工具辅助分析。
+
+如果你有项目代码结构或可疑模块，我可以帮你具体分析。需要的话可以贴一下。

@@ -1,0 +1,173 @@
+---
+title: Node.js 中的 Async Hooks 是什么？它有什么应用场景？
+---
+
+`Async Hooks` 是 Node.js 中用于 **跟踪异步资源生命周期** 的一个核心模块，提供了一种机制，可以在 JavaScript 层面捕捉和追踪异步操作的创建、执行、销毁等过程。
+
+---
+
+## 一、什么是 Async Hooks？
+
+Node.js 中的大部分操作都是异步的，比如：
+
+* 文件系统（fs）
+* 网络请求（http）
+* 定时器（setTimeout）
+* Promise、async/await
+* 数据库操作
+
+这些异步操作在底层由 **libuv 和 V8** 创建了不同的资源来调度与执行。而 `async_hooks` 模块就是 Node.js 提供的一个 API，让我们可以追踪这些异步资源的生命周期。
+
+通过它，我们可以知道：
+
+* 异步资源是何时创建的？
+* 是谁触发了这个异步资源？
+* 这个异步资源的生命周期是如何变化的？
+
+---
+
+## 二、核心概念
+
+`async_hooks` 模块主要通过创建一个 `AsyncHook` 实例来实现跟踪，其核心是 4 个生命周期回调：
+
+```js
+const async_hooks = require('async_hooks');
+
+const hook = async_hooks.createHook({
+  init(asyncId, type, triggerAsyncId, resource) {
+    // 异步资源创建时触发
+  },
+  before(asyncId) {
+    // 异步资源执行前触发
+  },
+  after(asyncId) {
+    // 异步资源执行后触发
+  },
+  destroy(asyncId) {
+    // 异步资源销毁时触发
+  }
+});
+
+hook.enable(); // 启用 hook
+```
+
+| 钩子函数      | 作用说明       |
+| --------- | ---------- |
+| `init`    | 初始化异步资源时触发 |
+| `before`  | 异步回调执行前    |
+| `after`   | 异步回调执行后    |
+| `destroy` | 异步资源被销毁时   |
+
+另外还有：
+
+* `promiseResolve(asyncId)`：仅用于追踪 Promise 被解析的事件
+
+---
+
+## 三、举个例子
+
+```js
+const fs = require('fs');
+const async_hooks = require('async_hooks');
+
+const hook = async_hooks.createHook({
+  init(asyncId, type, triggerAsyncId) {
+    console.log(`[init] asyncId=${asyncId}, type=${type}, triggerAsyncId=${triggerAsyncId}`);
+  },
+  before(asyncId) {
+    console.log(`[before] asyncId=${asyncId}`);
+  },
+  after(asyncId) {
+    console.log(`[after] asyncId=${asyncId}`);
+  },
+  destroy(asyncId) {
+    console.log(`[destroy] asyncId=${asyncId}`);
+  }
+});
+
+hook.enable();
+
+fs.readFile(__filename, () => {
+  console.log('File read complete');
+});
+```
+
+输出类似：
+
+```
+[init] asyncId=6, type=FSREQCALLBACK, triggerAsyncId=1
+[before] asyncId=6
+File read complete
+[after] asyncId=6
+[destroy] asyncId=6
+```
+
+这说明 `readFile` 异步操作创建了一个 ID 为 6 的异步资源，其生命周期被完整追踪到了。
+
+---
+
+## 四、应用场景
+
+### 1. **异步调用链追踪 / 请求上下文**
+
+Node.js 是单线程事件驱动的，多个请求共用一个线程，在异步执行中传递请求上下文是非常困难的。
+
+可以借助 `AsyncLocalStorage`（基于 async\_hooks）实现类似“ThreadLocal”的功能：
+
+```js
+const { AsyncLocalStorage } = require('async_hooks');
+
+const storage = new AsyncLocalStorage();
+
+function logRequestId() {
+  const store = storage.getStore();
+  console.log('Request ID:', store?.requestId);
+}
+
+// 模拟 HTTP 请求
+function handleRequest(reqId) {
+  storage.run({ requestId: reqId }, () => {
+    setTimeout(() => {
+      logRequestId(); // 打印当前请求的 requestId
+    }, 100);
+  });
+}
+
+handleRequest('req-123');
+handleRequest('req-456');
+```
+
+### 2. **性能分析工具**
+
+可以用 async\_hooks 构建性能监控器，比如追踪每个异步资源的生命周期、耗时、调用栈等，结合 profiling 工具分析异步调用延迟来源。
+
+### 3. **调试异步行为**
+
+* 调试异步资源的嵌套关系（triggerAsyncId 可以表示父子关系）
+* 分析难以追踪的 Bug，比如资源泄漏或执行顺序问题
+
+### 4. **构建异步上下文工具库**
+
+如 [cls-hooked](https://github.com/Jeff-Lewis/cls-hooked)、[AsyncLocalStorage](https://nodejs.org/api/async_hooks.html#class-asynclocalstorage) 都是基于 async\_hooks 构建的，常用于日志记录、事务上下文管理、请求 ID 追踪等。
+
+---
+
+## 五、注意事项
+
+* **性能开销大**：使用 async\_hooks 会增加显著的性能开销，尤其是在高并发场景下。
+* **不要在钩子函数内执行异步代码**，否则容易引发循环调用、栈溢出等问题。
+* **生产环境使用要谨慎**，推荐使用封装好的库（如 `AsyncLocalStorage`）而不是手写 hooks。
+
+---
+
+## 六、总结
+
+| 项目   | 描述                           |
+| ---- | ---------------------------- |
+| 模块名称 | `async_hooks`                |
+| 核心功能 | 跟踪异步资源的生命周期                  |
+| 应用场景 | 请求上下文、异步调试、性能分析              |
+| 替代方式 | 使用 `AsyncLocalStorage` 更简洁安全 |
+| 注意事项 | 不可在 hook 内写异步代码，注意性能影响       |
+
+是否需要我进一步演示如何用 `AsyncLocalStorage` 跟踪一次 HTTP 请求上下文？
