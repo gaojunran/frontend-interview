@@ -1,0 +1,149 @@
+---
+title: 什么是 CSS 中的包含块？
+---
+
+好的，我们来详细讲讲 **CSS 中的包含块（containing block）**。这是一个 CSS 布局中的核心概念，但它比较抽象，容易被初学者忽略。下面我会从概念、形成规则、实例和注意事项几方面详细解释。
+
+---
+
+## 1️⃣ 概念
+
+在 CSS 中，每个 **元素的布局和尺寸计算**都是基于它的 **包含块（containing block）** 的。
+
+* **定义**：包含块就是用来 **定位和计算元素位置、尺寸** 的参考框（reference box）。
+* **作用**：
+
+  * `width` / `height` 百分比值：是相对于包含块计算的。
+  * `position: absolute/fixed` 元素的定位：是相对于包含块的 `top/right/bottom/left` 偏移量。
+  * `min-width`, `max-width`, `min-height`, `max-height` 等也基于包含块。
+
+> 简单理解：包含块是元素“参照物”的矩形区域。
+
+---
+
+## 2️⃣ 包含块的形成规则
+
+### 2.1 默认情况（普通流元素）
+
+对于普通的 `static` 或 `relative` 元素，它的包含块是 **最近的块级祖先元素的内容区域**（content box）。
+
+```css
+div.parent {
+  width: 300px;
+  height: 200px;
+}
+div.child {
+  width: 50%; /* 这里的 50% 是相对于 parent 的宽度计算的 */
+}
+```
+
+* `child` 的宽度 = 50% × 300px = 150px
+* 这里的 `parent` 就是 `child` 的包含块。
+
+---
+
+### 2.2 `position: absolute` 的元素
+
+* 包含块是**最近的已定位祖先元素**（`position` 不为 `static` 的祖先）。
+* 如果没有已定位祖先，则相对于 **初始包含块（initial containing block）**，通常是 `html` 元素。
+
+```css
+.parent {
+  position: relative;
+  width: 300px;
+  height: 200px;
+}
+.child {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+```
+
+* `child` 的 `top` 和 `left` 是相对于 `.parent` 的边框区域计算的。
+* 这里 `.parent` 就是包含块。
+
+---
+
+### 2.3 `position: fixed` 的元素
+
+* 包含块是 **视口（viewport）**，忽略祖先元素。
+* 在 `transform` / `filter` / `perspective` 等属性作用下，包含块可能会被改变（变成 **最近的有变换的祖先**）。
+
+---
+
+### 2.4 `position: sticky` 的元素
+
+* 包含块和 `relative` 元素类似，基于最近的块级祖先。
+* 但在滚动时，粘性元素会根据滚动偏移而改变位置。
+
+---
+
+### 2.5 百分比尺寸的特殊情况
+
+* 百分比 `width` / `height` 是相对于 **包含块的内容区域**。
+* `min-width` / `max-width` 同理。
+* `padding` 和 `margin` 百分比：
+
+  * `padding-top` / `padding-bottom` 是基于 **包含块的宽度**，不是高度。
+  * `margin-top` / `margin-bottom` 是基于包含块的 **宽度**，百分比也是按宽度算。
+
+> 这个是很多初学者容易踩坑的地方。
+
+---
+
+## 3️⃣ 包含块的层级示意图
+
+```
+html (initial containing block)
+ └─ body
+     └─ div.parent (position: relative)  <-- child 的包含块
+         └─ div.child (position: absolute)
+```
+
+* `child` 绝对定位时，参照 `.parent` 的边框。
+* `child` 百分比尺寸也基于 `.parent` 内容区域。
+
+---
+
+## 4️⃣ 特殊情况
+
+1. **transform/filters/perspective 会创建新的包含块**
+
+   ```css
+   .parent {
+     transform: rotate(10deg); /* 形成新的包含块 */
+   }
+   .child {
+     position: absolute;
+     top: 0; /* 相对于 .parent 的边框 */
+   }
+   ```
+2. **flex/grid 布局中**
+
+   * 百分比 `height` 不一定有意义，如果父元素高度未明确设定，百分比高度可能无法计算。
+3. **inline-block** 元素
+
+   * 它的包含块仍然是父元素内容区域。
+
+---
+
+## 5️⃣ 总结表格
+
+| 元素类型                                     | 包含块来源                |
+| ---------------------------------------- | -------------------- |
+| `position: static/relative`              | 最近块级祖先元素的内容区域        |
+| `position: absolute`                     | 最近已定位祖先的 padding-box |
+| `position: fixed`                        | 视口，或者最近的已变换祖先        |
+| 百分比宽高                                    | 相对于包含块的内容区域计算        |
+| padding-top/bottom, margin-top/bottom（%） | 相对于包含块宽度计算           |
+
+---
+
+✅ **核心记忆点**：
+
+1. 包含块是元素**布局、定位、尺寸计算的参照物**。
+2. 普通元素 → 父元素内容区域；绝对定位 → 最近已定位祖先；固定定位 → 视口。
+3. 百分比尺寸和 padding/margin 的计算都基于包含块。
+4. CSS 中有一些属性会**创建新的包含块**（如 `transform`、`filter`、`perspective`）。
+

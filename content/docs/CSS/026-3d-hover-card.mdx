@@ -1,0 +1,218 @@
+---
+title: 用 CSS 和 JS 实现 3D 鼠标悬停卡片？
+---
+
+好的，我们来系统讲讲 **3D Hover Card** 的前端实现。我会从原理、思路、交互逻辑，到具体代码示例，一步步展开。我们以一个可交互的卡片为例，当鼠标移动到卡片上时，卡片会出现旋转、倾斜、甚至深度浮动的 3D 效果。
+
+---
+
+## **1️⃣ 3D Hover Card 原理**
+
+3D Hover Card 本质上是 **利用 CSS 的 3D 变换（transform）和 perspective**，结合 **鼠标位置** 来实现卡片在 X/Y 方向的旋转。
+
+### 核心概念：
+
+1. **Perspective（透视）**
+
+   * 决定观察者与元素之间的距离，增强 3D 立体感。
+   * CSS 示例：
+
+     ```css
+     .card-container {
+       perspective: 1000px; /* 越小，3D 越夸张 */
+     }
+     ```
+
+2. **Transform-style: preserve-3d**
+
+   * 让子元素在 3D 空间中保持立体层次。
+
+     ```css
+     .card {
+       transform-style: preserve-3d;
+     }
+     ```
+
+3. **Transform: rotateX / rotateY / translateZ**
+
+   * 根据鼠标位置旋转卡片：
+
+     ```css
+     transform: rotateX(10deg) rotateY(-15deg);
+     ```
+   * `translateZ` 可让卡片内部元素浮出，形成“层次感”。
+
+4. **过渡（Transition）**
+
+   * 鼠标移入/移出时平滑动画：
+
+     ```css
+     transition: transform 0.2s ease;
+     ```
+
+---
+
+## **2️⃣ 交互逻辑**
+
+为了实现动态 3D 效果，我们需要 **捕获鼠标在卡片上的位置**：
+
+1. 获取卡片中心点 `(cx, cy)`
+2. 获取鼠标位置 `(mx, my)`
+3. 计算偏移量：
+
+   ```js
+   const dx = mx - cx;
+   const dy = my - cy;
+   ```
+4. 根据偏移量映射到旋转角度：
+
+   ```js
+   const rotateX = (-dy / height) * maxRotate;
+   const rotateY = (dx / width) * maxRotate;
+   ```
+5. 给卡片设置 transform：
+
+   ```js
+   card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+   ```
+
+---
+
+## **3️⃣ 加强 3D 效果**
+
+1. **卡片内容分层（depth layer）**
+
+   * 卡片内部元素可设置不同 `translateZ` 值，制造层次感：
+
+     ```css
+     .card img {
+       transform: translateZ(50px);
+     }
+     .card h2 {
+       transform: translateZ(30px);
+     }
+     ```
+2. **光影效果**
+
+   * 使用 `box-shadow` 和 `hover` 动画增强立体感：
+
+     ```css
+     .card:hover {
+       box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+     }
+     ```
+
+---
+
+## **4️⃣ 基本 HTML 结构**
+
+```html
+<div class="card-container">
+  <div class="card">
+    <img src="avatar.jpg" alt="Avatar" class="card-img">
+    <h2 class="card-title">3D Hover Card</h2>
+    <p class="card-desc">This is an interactive 3D card.</p>
+  </div>
+</div>
+```
+
+---
+
+## **5️⃣ CSS 样式**
+
+```css
+.card-container {
+  perspective: 1000px; /* 透视距离 */
+  width: 300px;
+  height: 400px;
+}
+
+.card {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  border-radius: 20px;
+  transform-style: preserve-3d;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.card img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  transform: translateZ(50px);
+  transition: transform 0.2s ease;
+}
+
+.card h2 {
+  transform: translateZ(30px);
+}
+
+.card p {
+  transform: translateZ(20px);
+}
+```
+
+---
+
+## **6️⃣ JS 实现鼠标跟随旋转**
+
+```js
+const card = document.querySelector('.card');
+
+card.addEventListener('mousemove', (e) => {
+  const { width, height, left, top } = card.getBoundingClientRect();
+  const x = e.clientX - left;
+  const y = e.clientY - top;
+
+  const rotateX = ((y - height/2) / height) * -20; // 倾斜角度
+  const rotateY = ((x - width/2) / width) * 20;
+
+  card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+});
+
+card.addEventListener('mouseleave', () => {
+  card.style.transform = `rotateX(0deg) rotateY(0deg)`;
+});
+```
+
+---
+
+## **7️⃣ 可选增强效果**
+
+1. **增加卡片内元素浮出**
+
+   * 鼠标进入时，内部元素 `translateZ` 放大：
+
+     ```js
+     card.querySelector('img').style.transform = 'translateZ(80px)';
+     ```
+
+2. **增加光效或背景反射**
+
+   * 可用伪元素 `::before`，随鼠标移动光斑。
+
+3. **多卡片叠加**
+
+   * 为列表或网格中的每个卡片添加独立的鼠标事件。
+
+---
+
+✅ 总结：
+
+* **核心**：`perspective + rotateX/Y + translateZ`
+* **关键**：鼠标位置映射到旋转角度
+* **增强**：阴影、层次、光效
+
+这个效果简单、易扩展，而且纯前端实现，无需复杂 3D 库。
+
+---
+
+如果你想，我可以帮你写一个 **完整可运行的 3D Hover Card 示例**，支持 **内部元素浮出、光效跟随鼠标、响应式动画**，直接拿来用。
+
+你希望我直接写这个完整示例吗？

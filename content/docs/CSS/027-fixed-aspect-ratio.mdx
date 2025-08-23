@@ -1,0 +1,116 @@
+---
+title: 怎么用 CSS 实现一个固定宽高比的容器？
+---
+
+
+实现\*\*固定宽高比（aspect ratio）\*\*的容器在前端布局中非常常见，比如视频播放器、图片展示框、卡片等。我们可以用 CSS 有几种方式做到，我给你详细讲讲原理和代码示例。
+
+---
+
+## **1️⃣ 使用 `aspect-ratio` 属性（现代做法）**
+
+CSS 最近新增了 `aspect-ratio` 属性，可以直接设置容器的宽高比，非常简单。
+
+```html
+<div class="ratio-box">
+  内容
+</div>
+```
+
+```css
+.ratio-box {
+  width: 300px;       /* 宽度固定或百分比 */
+  aspect-ratio: 16 / 9; /* 宽高比 16:9 */
+  background-color: lightblue;
+}
+```
+
+✅ **原理**：
+
+* `aspect-ratio` 告诉浏览器容器的**宽高比**。
+* 如果只指定了宽度，浏览器会自动计算高度；如果只指定了高度，则自动计算宽度。
+
+⚠️ **浏览器支持**：现代浏览器都支持，包括 Chrome、Firefox、Safari。IE 不支持。
+
+---
+
+## **2️⃣ 使用百分比 padding 技巧（兼容旧浏览器）**
+
+在 IE 和一些老旧浏览器中，`aspect-ratio` 不支持，可以用一个经典技巧：**利用 padding-top 或 padding-bottom 百分比**。
+
+```html
+<div class="ratio-box">
+  <div class="content">
+    内容
+  </div>
+</div>
+```
+
+```css
+.ratio-box {
+  width: 100%;             /* 或固定宽度 */
+  position: relative;      /* 为内部绝对定位做准备 */
+  padding-top: 56.25%;     /* 高度 = 宽度 * 9 / 16 -> 16:9 */
+  background-color: lightblue;
+}
+
+.content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+```
+
+✅ **原理**：
+
+* **padding-top/bottom 的百分比是相对于父元素宽度**的，这就可以用它来固定宽高比。
+* 内部内容使用 `position: absolute` 填充父容器。
+
+---
+
+## **3️⃣ 使用 `vw` 或 `vh` 单位（按视口比例）**
+
+如果你想让容器宽高比相对于视口计算，也可以用 `vw`/`vh`：
+
+```css
+.ratio-box {
+  width: 50vw;            /* 宽度为视口宽度的一半 */
+  height: calc(50vw * 9 / 16); /* 高度按照 16:9 比例 */
+  background-color: lightblue;
+}
+```
+
+✅ **原理**：
+
+* `calc()` 可以直接按照比例计算高度，灵活控制响应式布局。
+
+---
+
+## **4️⃣ 响应式固定比例的技巧**
+
+结合百分比宽度和 `aspect-ratio` 或 padding，可以实现**响应式固定比例容器**：
+
+```css
+.ratio-box {
+  width: 80%;          /* 宽度随父容器变化 */
+  aspect-ratio: 4 / 3; /* 高度随宽度变化 */
+  margin: 0 auto;
+  background-color: lightgreen;
+}
+```
+
+* 不用写高度，容器会根据宽度自动伸缩。
+* 非常适合图片、视频播放器等响应式布局。
+
+---
+
+### **总结对比**
+
+| 方法                   | 优点              | 缺点 / 适用        |
+| -------------------- | --------------- | -------------- |
+| `aspect-ratio`       | 简单、语义清晰、现代浏览器支持 | IE 不支持         |
+| padding 百分比          | 兼容性好，适合老浏览器     | 需要额外嵌套元素、稍微复杂  |
+| `vw` / `vh + calc()` | 响应式，可控制视口比例     | 需要手动计算比例，不够语义化 |
+
