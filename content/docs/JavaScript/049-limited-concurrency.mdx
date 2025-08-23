@@ -1,0 +1,133 @@
+---
+title: 如何实现控制并发数的并发请求？
+---
+Certainly. **Answer:**
+
+在 JavaScript 中可以通过「任务队列 + 并发限制」来实现。核心思想是：同时只运行固定数量的任务，等有任务完成再补充新的任务。
+
+### 实现步骤
+
+1. 定义一个函数 `limitConcurrency(tasks, limit)`，其中 `tasks` 是一组返回 Promise 的函数。
+2. 使用一个索引指针，按顺序启动任务。
+3. 控制同时运行的 Promise 数量不超过 `limit`。
+4. 收集所有结果（成功或失败），最终返回结果数组。
+
+### 代码示例
+
+```js
+function limitConcurrency(tasks, limit) {
+  const results = new Array(tasks.length); // 存放结果
+  let i = 0; // 下一个要执行的任务下标
+  let running = 0; // 当前正在运行的数量
+
+  return new Promise((resolve, reject) => {
+    function runNext() {
+      if (i === tasks.length && running === 0) {
+        resolve(results); // 所有完成
+        return;
+      }
+      while (running < limit && i < tasks.length) {
+        const currentIndex = i++;
+        running++;
+        tasks[currentIndex]()
+          .then(res => {
+            results[currentIndex] = { status: "fulfilled", value: res };
+          })
+          .catch(err => {
+            results[currentIndex] = { status: "rejected", reason: err };
+          })
+          .finally(() => {
+            running--;
+            runNext(); // 补充新任务
+          });
+      }
+    }
+    runNext();
+  });
+}
+```
+
+### 使用示例
+
+```js
+// 模拟异步任务
+function createTask(id, delay, succeed = true) {
+  return () =>
+    new Promise((resolve, reject) => {
+      setTimeout(() => {
+        succeed ? resolve(`done ${id}`) : reject(`error ${id}`);
+      }, delay);
+    });
+}
+
+const tasks = [
+  createTask(1, 1000),
+  createTask(2, 500, false),
+  createTask(3, 200),
+  createTask(4, 800),
+  createTask(5, 300)
+];
+
+limitConcurrency(tasks, 2).then(results => {
+  console.log(results);
+});
+```
+
+### 输出示例
+
+```js
+[
+  { status: 'fulfilled', value: 'done 1' },
+  { status: 'rejected', reason: 'error 2' },
+  { status: 'fulfilled', value: 'done 3' },
+  { status: 'fulfilled', value: 'done 4' },
+  { status: 'fulfilled', value: 'done 5' }
+]
+```
+
+这样就实现了「限制并发数」的并发请求管理。
+
+---
+
+## 补充：并发任务队列的实现
+
+```js
+class TaskQueue {
+  constructor(concurrency = 2) {
+    this.concurrency = concurrency; // 最大并发数
+    this.running = 0;               // 当前运行中的任务数
+    this.queue = [];                // 等待中的任务队列
+  }
+
+  add(task) {
+    return new Promise((resolve, reject) => {
+      // 入队
+      this.queue.push({ task, resolve, reject });
+      // 尝试执行
+      this._next();
+    });
+  }
+
+  _next() {
+    // 并发已满 或 队列为空 -> 不执行
+    if (this.running >= this.concurrency || this.queue.length === 0) {
+      return;
+    }
+
+    const { task, resolve, reject } = this.queue.shift();
+    this.running++;
+
+    // 执行任务
+    Promise.resolve()
+      .then(task)
+      .then(resolve, reject)
+      .finally(() => {
+        this.running--;
+        this._next(); // 执行下一个
+      });
+
+    // 继续填满并发池
+    this._next();
+  }
+}
+```

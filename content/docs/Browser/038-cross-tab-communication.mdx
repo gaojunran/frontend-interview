@@ -1,0 +1,80 @@
+---
+title: 浏览器 JS 怎么实现通知另一个页面更新数据？
+---
+
+在浏览器环境中，如果你有两个页面（比如同域下的 `tab1.html` 和 `tab2.html`），想让一个页面的操作通知另一个页面更新数据，可以用几种常见方法：
+
+---
+
+### 方法一：`BroadcastChannel`（现代浏览器支持）
+
+1. 在两个页面都创建一个 `BroadcastChannel`。
+2. 一个页面发送消息，另一个页面接收并更新数据。
+
+```js
+// 页面 A 和 页面 B 都有
+const channel = new BroadcastChannel("my_channel");
+
+// 页面 A 发送通知
+channel.postMessage({ type: "update", data: "新的数据" });
+
+// 页面 B 接收通知
+channel.onmessage = (event) => {
+  if (event.data.type === "update") {
+    console.log("收到更新：", event.data.data);
+    // 执行更新逻辑
+  }
+};
+```
+
+---
+
+### 方法二：`localStorage` 事件（兼容性较好）
+
+1. 在一个页面写入 `localStorage`。
+2. 另一个页面监听 `storage` 事件（只在跨页面时触发）。
+
+```js
+// 页面 A 更新数据
+localStorage.setItem("update", JSON.stringify({ time: Date.now(), data: "新的数据" }));
+
+// 页面 B 监听
+window.addEventListener("storage", (event) => {
+  if (event.key === "update") {
+    const payload = JSON.parse(event.newValue);
+    console.log("收到更新：", payload.data);
+    // 执行更新逻辑
+  }
+});
+```
+
+---
+
+### 方法三：`SharedWorker`（更强大，但使用较少）
+
+1. 两个页面共享同一个 `SharedWorker`。
+2. 通过 `port` 通信实现数据同步。
+
+---
+
+### 方法四：`postMessage` + `window.open`/`window.opener`
+
+如果页面之间有 `window.open` 打开的关系，可以用 `postMessage` 通信。
+
+```js
+// 子页面接收
+window.addEventListener("message", (event) => {
+  console.log("收到:", event.data);
+});
+
+// 父页面发送
+childWindow.postMessage({ type: "update", data: "新的数据" }, "*");
+```
+
+---
+
+### 推荐方案
+
+* **同源 Tab 通信** → 首选 `BroadcastChannel`。
+* **兼容性要求高** → 用 `localStorage` + `storage` 事件。
+

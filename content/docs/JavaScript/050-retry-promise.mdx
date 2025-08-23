@@ -1,0 +1,142 @@
+---
+title: 如何实现支持最大重试次数的重试请求？
+---
+
+在 JavaScript 里实现一个支持 **最大重试次数** 的重试请求逻辑，可以用 `Promise` + `async/await` 来封装。关键点是：
+
+1. 设置 **最大重试次数**。
+2. 请求失败时进入下一次重试。
+3. 若超过最大次数仍失败，则抛出错误。
+4. 可选：加入 **重试间隔（退避策略）**。
+
+下面我给你几个常见实现：
+
+---
+
+### ✅ 基础版本（固定最大次数）
+
+```js
+async function retryRequest(fn, maxRetries = 3) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn(); // 调用传入的请求函数
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxRetries) {
+        throw err; // 超过最大次数，抛出错误
+      }
+      console.warn(`第 ${attempt} 次请求失败，重试中...`);
+    }
+  }
+}
+
+// 示例：传入一个请求函数
+retryRequest(() => fetch("https://api.example.com/data").then(res => res.json()), 3)
+  .then(data => console.log("请求成功：", data))
+  .catch(err => console.error("最终失败：", err));
+```
+
+---
+
+### ✅ 带 **重试间隔**（简单延时）
+
+```js
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function retryRequest(fn, maxRetries = 3, delay = 1000) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn();
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      console.warn(`第 ${attempt} 次请求失败，${delay}ms 后重试...`);
+      await sleep(delay);
+    }
+  }
+}
+```
+
+---
+
+### ✅ 带 **指数退避**（常用于网络请求）
+
+指数退避策略：第 `n` 次失败后等待 `baseDelay * 2^(n-1)` 毫秒。
+
+```js
+async function retryRequest(fn, maxRetries = 3, baseDelay = 500) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      const delay = baseDelay * (2 ** (attempt - 1)); // 退避时间
+      console.warn(`第 ${attempt} 次失败，${delay}ms 后重试...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+```
+
+---
+
+### 用法示例
+
+```js
+retryRequest(
+  () => fetch("https://api.example.com/data").then(r => r.json()), 
+  5, // 最大重试次数
+  1000 // 初始延迟
+).then(console.log)
+  .catch(console.error);
+```
+
+---
+
+## 使用 `Promise` 链实现
+
+你想要**不使用 `async/await`**，而是基于 **Promise 链** 的写法。下面给你一个完整示例，支持 **最大重试次数** 和可选延迟：
+
+---
+
+```js
+function retryRequest(fn, maxRetries = 3, delay = 0) {
+  let attempt = 0;
+
+  function tryRequest() {
+    return fn().catch(err => {
+      attempt++;
+      if (attempt >= maxRetries) {
+        return Promise.reject(err); // 超过最大次数，抛出错误
+      }
+      console.warn(`第 ${attempt} 次请求失败，${delay}ms 后重试...`);
+      return new Promise(resolve => setTimeout(resolve, delay))
+        .then(tryRequest); // 延迟后继续重试
+    });
+  }
+
+  return tryRequest();
+}
+```
+
+---
+
+### 使用示例
+
+```js
+retryRequest(() => fetch("https://api.example.com/data").then(res => res.json()), 3, 1000)
+  .then(data => console.log("请求成功:", data))
+  .catch(err => console.error("最终失败:", err));
+```
+
+---
+
+这个写法的特点：
+
+1. 完全不使用 `async/await`，纯 Promise 链实现。
+2. 每次请求失败后可选择延迟重试。
+3. 支持自定义最大重试次数。

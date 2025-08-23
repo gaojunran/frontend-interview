@@ -1,0 +1,172 @@
+---
+title: 如何在浏览器中执行一个耗时任务，同时不让页面产生卡顿？
+---
+
+在浏览器中执行耗时任务，如果直接在主线程执行，会导致页面卡顿甚至无响应。解决思路主要是把耗时计算**从主线程拆出去**，或者**分块执行任务**。下面我给你几种常用方法，并分析优缺点：
+
+---
+
+### **1. 使用 Web Worker（多线程）**
+
+Web Worker 是浏览器提供的多线程方案，可以把耗时任务放到后台线程执行，主线程仍可响应用户交互。
+
+**示例：**
+
+```js
+// worker.js
+self.onmessage = function(e) {
+  const n = e.data;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += i;
+  postMessage(sum);
+}
+
+// main.js
+const worker = new Worker('worker.js');
+worker.onmessage = (e) => console.log('Result:', e.data);
+worker.postMessage(1e8); // 发送耗时任务
+```
+
+**优点：**
+
+* 真正多线程，不阻塞 UI。
+* 可以处理大计算量。
+
+**缺点：**
+
+* 线程间通信是异步的。
+* Worker 不能访问 DOM。
+
+---
+
+### **2. 使用 requestIdleCallback（浏览器空闲执行）**
+
+`requestIdleCallback` 会在浏览器空闲时执行回调，适合分块处理非紧急任务。
+
+```js
+let i = 0;
+function chunk() {
+  const end = i + 100000; // 分块处理
+  while (i < end && i < 1e7) {
+    // 模拟耗时任务
+    Math.sqrt(i);
+    i++;
+  }
+  if (i < 1e7) {
+    requestIdleCallback(chunk);
+  } else {
+    console.log('Done');
+  }
+}
+requestIdleCallback(chunk);
+```
+
+**优点：**
+
+* 主线程可响应用户操作。
+* 不需要 Worker。
+
+**缺点：**
+
+* 任务执行时间不可控，浏览器可能延迟执行。
+* 不适合实时计算。
+
+---
+
+### **3. 使用 setTimeout / setImmediate / setInterval 分块执行**
+
+把大任务拆成小块，利用异步调度让主线程有机会渲染。
+
+```js
+let i = 0;
+function doChunk() {
+  const end = i + 100000;
+  while (i < end && i < 1e7) {
+    Math.sqrt(i);
+    i++;
+  }
+  if (i < 1e7) setTimeout(doChunk, 0); // 下一块延迟调度
+  else console.log('Done');
+}
+doChunk();
+```
+
+**优点：**
+
+* 简单，不依赖 Worker。
+* 可在旧浏览器使用。
+
+**缺点：**
+
+* 主线程仍然参与计算，分块太大还是会卡顿。
+* 精准控制不如 Worker。
+
+---
+
+### **4. 使用 WebAssembly**
+
+对于复杂计算任务，可以用 WebAssembly 来加速。
+
+```js
+// wasm 模块可以通过 Rust/C/C++ 编译生成
+// 在 JS 中调用耗时计算
+import init, { heavyTask } from './heavy_task_wasm.js';
+
+async function run() {
+  await init();
+  const result = heavyTask(1e8);
+  console.log(result);
+}
+
+run();
+```
+
+**优点：**
+
+* 比 JS 更快。
+* 可以结合 Worker 达到最优性能。
+
+**缺点：**
+
+* 编译、调试复杂。
+* 仍然需要考虑主线程阻塞问题。
+
+---
+
+### **5. 分步协程 + async/await**
+
+利用 `await` 将任务拆成异步片段，让事件循环处理 UI。
+
+```js
+async function doHeavyTask() {
+  for (let i = 0; i < 1e7; i++) {
+    Math.sqrt(i);
+    if (i % 1e5 === 0) await Promise.resolve(); // 暂停一次事件循环
+  }
+  console.log('Done');
+}
+
+doHeavyTask();
+```
+
+**优点：**
+
+* 易于在已有 JS 代码中使用。
+* 主线程不卡死。
+
+**缺点：**
+
+* 性能比 Worker 差。
+* 仍在主线程中执行，分块太大可能卡顿。
+
+---
+
+💡 **总结思路**：
+
+1. **真多线程** → Web Worker + WebAssembly（最快、不卡 UI）
+2. **分块执行** → `setTimeout` / `requestIdleCallback` / async+await（适合轻量任务）
+3. **组合优化** → 大计算放 Worker，小计算用分块执行，UI 仍流畅
+
+---
+
+如果你想，我可以帮你画一张\*\*“耗时任务不卡页面的实现路线图”\*\*，一眼就能看出各种方法的适用场景。你希望我画吗？

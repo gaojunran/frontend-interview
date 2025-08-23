@@ -1,0 +1,60 @@
+---
+title: 怎么触发迅雷下载？
+---
+
+在网页里想要“触发迅雷下载”，其实就是生成一个 **迅雷专用链**（`thunder://` 协议的 URL），然后放到 `<a>` 标签里。只要用户安装了迅雷并注册了协议，点击时就会调起迅雷。
+
+### 🔑 基本思路
+
+迅雷的链接格式是：
+
+```
+thunder://base64("AA" + 原始链接 + "ZZ")
+```
+
+也就是说：
+
+1. 在下载地址前加上 `AA`，结尾加上 `ZZ`。
+2. 对整个字符串做 **Base64 编码**。
+3. 在前面加上协议头 `thunder://`。
+
+### 📌 JS 代码示例
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>迅雷下载示例</title>
+</head>
+<body>
+  <script>
+    function toThunderLink(url) {
+      // 拼接 AA + url + ZZ
+      const encoded = btoa("AA" + url + "ZZ"); 
+      return "thunder://" + encoded;
+    }
+
+    // 举例
+    const realUrl = "http://example.com/file.zip";
+    const thunderUrl = toThunderLink(realUrl);
+
+    // 创建一个下载按钮
+    const a = document.createElement("a");
+    a.href = thunderUrl;
+    a.textContent = "用迅雷下载";
+    document.body.appendChild(a);
+  </script>
+</body>
+</html>
+```
+
+这样，点击“用迅雷下载”就会触发迅雷（前提：客户端已安装迅雷，并且注册了 `thunder://` 协议）。
+
+---
+
+⚠️ 注意：
+
+* `btoa` 在 JS 里做的是 **Base64 编码**，适合 ASCII 字符串。如果 URL 里包含中文，建议先用 `encodeURIComponent` 再处理。
+* 这种方式并不跨浏览器保证生效（有些浏览器可能会拦截自定义协议）。
+
