@@ -1,0 +1,192 @@
+---
+title: 事件循环代码输出题
+---
+
+好的！事件循环是前端面试的高频考点。我给你准备几道**典型的事件循环题**，包含：
+
+* 宏任务 vs 微任务
+* Promise、setTimeout、async/await
+* Node.js 和浏览器环境区别
+
+每道题我都会给出**代码 + 你的预期答案 + 解析**，方便你学习和记忆。
+
+---
+
+## 题目 1：宏任务和微任务的基本顺序
+
+```js
+console.log('A');
+
+setTimeout(() => {
+  console.log('B');
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('C');
+});
+
+console.log('D');
+```
+
+**你的任务：写出输出顺序**
+
+---
+
+**答案：**
+
+```
+A
+D
+C
+B
+```
+
+**解析：**
+
+1. `console.log('A')` → 同步任务，立即执行
+2. `setTimeout(..., 0)` → 放入宏任务队列
+3. `Promise.resolve().then(...)` → 微任务，加入当前宏任务的微任务队列
+4. `console.log('D')` → 同步任务，立即执行
+5. 当前宏任务执行完毕，清空微任务队列 → 输出 `C`
+6. 事件循环进入下一个宏任务 → 输出 `B`
+
+---
+
+## 题目 2：Promise + async/await 混合
+
+```js
+async function foo() {
+  console.log('A');
+  await Promise.resolve();
+  console.log('B');
+}
+
+console.log('C');
+
+foo();
+
+console.log('D');
+```
+
+**答案：**
+
+```
+C
+A
+D
+B
+```
+
+**解析：**
+
+* `console.log('C')` 先执行
+* 调用 `foo()` → 执行到 `console.log('A')`，输出 `A`
+* 遇到 `await`，相当于 `Promise.resolve().then(...)`，后面的代码加入微任务队列
+* `console.log('D')` 继续执行
+* 当前宏任务结束，执行微任务，输出 `B`
+
+---
+
+## 题目 3：Promise 链 + setTimeout
+
+```js
+Promise.resolve()
+  .then(() => {
+    console.log('A');
+    setTimeout(() => console.log('B'), 0);
+  })
+  .then(() => {
+    console.log('C');
+  });
+
+setTimeout(() => console.log('D'), 0);
+```
+
+**答案：**
+
+```
+A
+C
+D
+B
+```
+
+**解析：**
+
+1. `Promise.resolve()` → then 回调加入微任务
+2. 先执行微任务：输出 `A`，注册 `setTimeout B`
+3. then 链的下一个回调也是微任务，输出 `C`
+4. 当前宏任务完成，开始执行宏任务队列：
+
+   * `setTimeout D` 先注册 → 先执行，输出 `D`
+   * `setTimeout B` 后注册 → 后执行，输出 `B`
+
+---
+
+## 题目 4：Node.js 特有：`process.nextTick` vs Promise
+
+```js
+console.log('A');
+
+process.nextTick(() => console.log('B'));
+
+Promise.resolve().then(() => console.log('C'));
+
+console.log('D');
+```
+
+**答案 (Node.js 环境)：**
+
+```
+A
+D
+B
+C
+```
+
+**解析：**
+
+* `process.nextTick` 的回调**优先于 Promise 微任务**执行
+* 因此在当前宏任务结束后，先执行 `B`，再执行 `C`
+
+---
+
+## 题目 5：async 函数嵌套
+
+```js
+async function foo() {
+  console.log('A');
+  await bar();
+  console.log('B');
+}
+
+async function bar() {
+  console.log('C');
+}
+
+console.log('D');
+
+foo();
+
+console.log('E');
+```
+
+**答案：**
+
+```
+D
+A
+C
+E
+B
+```
+
+**解析：**
+
+* `D` 先执行
+* 调用 `foo` → 输出 `A`
+* 调用 `bar` → 输出 `C`，返回一个已解决的 Promise
+* `await bar()` 后面的代码加入微任务
+* 继续执行 `console.log('E')`
+* 最后执行微任务，输出 `B`
+

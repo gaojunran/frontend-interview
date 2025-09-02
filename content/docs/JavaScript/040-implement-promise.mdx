@@ -250,9 +250,7 @@ static all(promises) {
             resolve(acc)
           }
           return acc
-        }, err => {
-          reject(err)
-        })
+        }, reject)
       }, [])
     })
 }
