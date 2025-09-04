@@ -1,0 +1,153 @@
+---
+title: Koa 的中间件机制是如何实现的？其底层原理是什么？
+---
+
+好的，我们来深入讲解 **Koa 的中间件机制**，尤其是它的底层实现原理。Koa 的中间件机制是它区别于 Express 的一个核心设计，它非常依赖 **async/await** 和 **Promise 链式调用**。我会分层次讲：
+
+---
+
+## 1️⃣ Koa 中间件机制概述
+
+Koa 的中间件机制可以总结为：
+
+* Koa 使用 **洋葱模型（Onion Model）** 来处理请求。
+* 每个中间件接收两个参数：`ctx` 和 `next`。
+
+  ```js
+  app.use(async (ctx, next) => {
+      console.log('before 1');
+      await next();
+      console.log('after 1');
+  });
+  ```
+* 调用 `await next()` 后，控制权会进入下一个中间件，等下一个中间件执行完毕再回来继续执行。
+
+**洋葱模型**的执行顺序：
+
+```text
+Middleware 1 start
+  Middleware 2 start
+    Middleware 3 start
+    Middleware 3 end
+  Middleware 2 end
+Middleware 1 end
+```
+
+这意味着中间件可以在请求前后做处理，非常灵活。
+
+---
+
+## 2️⃣ 中间件堆栈（Stack）存储
+
+Koa 内部维护了一个 **中间件数组**：
+
+```js
+this.middleware = [];
+```
+
+* `app.use(fn)` 就是把 `fn` push 到数组里。
+* 最终处理请求时，Koa 会把数组中的中间件组合成一个 **Promise 链**，然后执行。
+
+---
+
+## 3️⃣ 核心函数：`compose`
+
+Koa 核心实现是 `koa-compose`，作用是把中间件数组组合成一个函数：
+
+```js
+function compose(middleware) {
+    return function (ctx, next) {
+        let index = -1;
+        function dispatch(i) {
+            if (i <= index) return Promise.reject(new Error('next() called multiple times'));
+            index = i;
+            let fn = middleware[i];
+            if (i === middleware.length) fn = next;
+            if (!fn) return Promise.resolve();
+            try {
+                return Promise.resolve(fn(ctx, () => dispatch(i + 1)));
+            } catch (err) {
+                return Promise.reject(err);
+            }
+        }
+        return dispatch(0);
+    };
+}
+```
+
+### 解析：
+
+1. `dispatch(i)` 会依次调用第 `i` 个中间件。
+2. 每个中间件都可以调用 `await next()`，此时会递归调用下一个中间件。
+3. 如果中间件没有调用 `next()`，链就会提前结束。
+4. Promise 的链保证了 **洋葱模型** 的顺序执行。
+
+---
+
+## 4️⃣ 洋葱模型原理
+
+举个例子：
+
+```js
+app.use(async (ctx, next) => {
+    console.log('1 before');
+    await next();
+    console.log('1 after');
+});
+
+app.use(async (ctx, next) => {
+    console.log('2 before');
+    await next();
+    console.log('2 after');
+});
+
+app.use(async (ctx, next) => {
+    console.log('3');
+});
+```
+
+执行过程：
+
+1. 调用 `dispatch(0)`，进入中间件 1。
+2. 打印 `1 before`，调用 `await next()` → `dispatch(1)`。
+3. 进入中间件 2，打印 `2 before`，调用 `await next()` → `dispatch(2)`。
+4. 进入中间件 3，打印 `3`，没有 `next()`，返回。
+5. 回到中间件 2，打印 `2 after`。
+6. 回到中间件 1，打印 `1 after`。
+
+这就是 **洋葱模型**的核心原理：控制流先深入，再逐层返回。
+
+---
+
+## 5️⃣ next() 的底层原理
+
+* `next()` 本质上是一个函数，它返回下一个中间件的 Promise。
+* 因为 Koa 中间件都是 async 函数或者返回 Promise，所以 `await next()` 会暂停当前中间件的执行，等下一个中间件完成后再继续。
+* 这也是为什么 Koa 可以做类似 **前置处理 → 业务逻辑 → 后置处理** 的操作。
+
+---
+
+## 6️⃣ 错误处理机制
+
+* 因为每个中间件都是 Promise 链，Koa 可以在最外层统一 `try/catch`。
+* 如果中间件抛错，会沿着链向上冒泡，可以在顶层 `app.use` 或 `app.on('error', ...)` 处理。
+
+---
+
+## 7️⃣ 小结
+
+Koa 中间件机制的底层原理可以归纳为：
+
+1. **中间件数组堆栈**：存储所有中间件。
+2. **compose 函数**：递归调用中间件并返回 Promise 链。
+3. **洋葱模型**：控制流先深入，再逐层返回。
+4. **next()**：递归调用下一个中间件，返回 Promise。
+5. **错误统一处理**：利用 Promise 捕获异步错误。
+
+> 可以理解为：Koa 的中间件是 **异步函数链 + 递归调用** 的组合，实现了洋葱模型和灵活的请求前后处理。
+
+---
+
+如果你想，我可以帮你画一个 **完整的 Koa 中间件调用流程图**，从外层 `app.listen()` 到每个中间件的进出顺序，能更直观理解洋葱模型。
+
+你希望我画吗？

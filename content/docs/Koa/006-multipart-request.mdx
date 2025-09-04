@@ -1,0 +1,191 @@
+---
+title: 在 Koa 中如何处理多部分（multipart）请求？
+---
+
+在 **Koa** 中处理多部分（`multipart/form-data`）请求，也就是通常用来上传文件的请求，需要额外的中间件来解析请求体。Koa 自身是一个轻量级框架，不内置文件上传处理能力。下面我给你详细讲讲整个流程和常用方法。
+
+---
+
+## 1️⃣ 多部分请求的特点
+
+`multipart/form-data` 请求通常用于表单上传文件，结构上是将普通字段和文件分块编码（boundary 分隔），例如：
+
+```
+POST /upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary12345
+
+------WebKitFormBoundary12345
+Content-Disposition: form-data; name="username"
+
+nebula
+------WebKitFormBoundary12345
+Content-Disposition: form-data; name="avatar"; filename="avatar.png"
+Content-Type: image/png
+
+(binary data)
+------WebKitFormBoundary12345--
+```
+
+特点：
+
+* **包含文本字段**（name=value）
+* **包含文件字段**（name + filename + binary content）
+* **boundary** 分隔每个部分
+* 不能直接用 `ctx.request.body` 获取，需要解析器
+
+---
+
+## 2️⃣ 常用中间件
+
+Koa 中常用两类中间件来处理 multipart 请求：
+
+### (1) `koa-body`
+
+最常用，支持 JSON、表单、文件上传。
+
+```bash
+npm install koa-body
+```
+
+示例：
+
+```js
+const Koa = require('koa');
+const koaBody = require('koa-body');
+const path = require('path');
+const fs = require('fs');
+
+const app = new Koa();
+
+app.use(koaBody({
+  multipart: true, // 支持 multipart/form-data
+  formidable: {
+    uploadDir: path.join(__dirname, '/uploads'), // 上传文件目录
+    keepExtensions: true, // 保留文件扩展名
+    maxFileSize: 10 * 1024 * 1024, // 最大 10MB
+  }
+}));
+
+app.use(async ctx => {
+  const { fields, files } = ctx.request.body;
+  
+  console.log('字段信息:', fields);
+  console.log('文件信息:', files);
+  
+  ctx.body = { message: '上传成功', files };
+});
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+解析：
+
+* `ctx.request.body.fields` → 普通表单字段
+* `ctx.request.body.files` → 文件对象
+* 文件对象包含：
+
+```js
+{
+  size: 12345,
+  path: '/tmp/upload_xyz',
+  name: 'avatar.png',
+  type: 'image/png',
+  mtime: Date
+}
+```
+
+---
+
+### (2) `koa-multer`
+
+如果你熟悉 Express 的 `multer`，Koa 也有对应版本 `koa-multer`。
+
+```bash
+npm install koa-multer
+```
+
+示例：
+
+```js
+const Koa = require('koa');
+const Router = require('@koa/router');
+const multer = require('@koa/multer');
+
+const app = new Koa();
+const router = new Router();
+
+const upload = multer({ dest: 'uploads/' });
+
+router.post('/upload', upload.single('avatar'), async ctx => {
+  console.log('文件信息:', ctx.file); // 单文件
+  ctx.body = { message: '上传成功', file: ctx.file };
+});
+
+router.post('/uploads', upload.array('photos', 5), async ctx => {
+  console.log('文件列表:', ctx.files); // 多文件
+  ctx.body = { message: '上传成功', files: ctx.files };
+});
+
+app.use(router.routes()).use(router.allowedMethods());
+
+app.listen(3000);
+```
+
+特点：
+
+* `upload.single('fieldname')` → 上传单文件
+* `upload.array('fieldname', maxCount)` → 上传多个文件
+* 自动将文件保存到指定目录，并在 `ctx.file` / `ctx.files` 中返回信息
+
+---
+
+## 3️⃣ 处理 multipart 的流程
+
+无论使用哪种中间件，基本流程都是：
+
+1. **解析请求头**：检查 `Content-Type: multipart/form-data` 和 boundary
+2. **分块读取请求体**：流式读取文件和字段
+3. **保存文件到临时目录**
+4. **把普通字段和文件信息挂载到 ctx.request.body 或 ctx.file/ctx.files**
+5. **在业务逻辑中使用**（存储文件、写入数据库等）
+
+> ⚠️ 注意事项：
+>
+> * 文件上传可能很大，要限制大小，否则可能导致内存溢出
+> * 文件存储位置和权限要合理
+> * 如果需要做云存储上传，可以在读取流的过程中直接上传到云服务（如 S3、七牛云）
+
+---
+
+## 4️⃣ 流式处理（大文件上传）
+
+对于大文件，可以不保存到本地，而是直接处理流：
+
+```js
+app.use(async ctx => {
+  if (ctx.is('multipart')) {
+    const parts = ctx.req; // 原生 Node.js request
+    // 使用 busboy 或 formidable 的 stream API 处理大文件
+  }
+});
+```
+
+* 这样做可以避免在服务器上占用大量磁盘空间
+* 适合视频、音频等大文件上传
+
+---
+
+## ✅ 总结
+
+* Koa 默认不支持 multipart，需要中间件（`koa-body` / `koa-multer`）
+* 文件和表单字段可以区分处理
+* 大文件建议使用流式处理避免内存压力
+* 上传后可进一步处理（重命名、存数据库、云存储）
+
+---
+
+如果你需要，我可以给你写一个**完整的 Koa 文件上传示例**，支持 **多文件、字段、大小限制和重命名**，非常实战的版本。
+
+你希望我直接写吗？

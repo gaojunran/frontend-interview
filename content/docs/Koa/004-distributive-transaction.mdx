@@ -1,0 +1,197 @@
+---
+title: 如何在 Koa 中实现分布式事务？
+---
+
+你问的是 **在 Koa 中实现分布式事务**，这个话题其实很复杂，因为 Koa 本身只是一个 **Node.js 的轻量级 HTTP 框架**，它并没有内置数据库或者事务管理能力。分布式事务的实现主要依赖 **数据库、消息队列或者分布式协调机制**。我给你详细拆解一下：
+
+---
+
+## 1. 分布式事务是什么
+
+在单体应用中，事务通常由数据库提供，保证 **ACID**：
+
+* **A**tomic 原子性：操作要么全部成功，要么全部失败
+* **C**onsistent 一致性：事务执行前后数据保持一致
+* **I**solated 隔离性：事务互不干扰
+* **D**urable 持久性：事务提交后结果不会丢失
+
+在分布式系统中，可能涉及多个数据库或微服务，单个数据库的事务无法保证全局一致性，这就出现了 **分布式事务**。
+
+常用解决方案有：
+
+1. **2PC（二阶段提交）**
+2. **TCC（Try-Confirm-Cancel）**
+3. **最终一致性（基于消息队列、事件驱动）**
+
+---
+
+## 2. Koa 中实现分布式事务的思路
+
+Koa 本身是 **中间件驱动的异步框架**，我们可以利用中间件拦截请求、统一管理事务逻辑。一般步骤如下：
+
+### 2.1 准备工作
+
+假设你有一个场景：用户下单，需要同时操作 **订单数据库** 和 **库存数据库**。
+
+1. 安装数据库客户端，例如 MySQL：
+
+```bash
+npm install mysql2
+```
+
+2. 对于分布式事务，如果是 TCC 或 2PC，可能需要用 **消息队列**（如 RabbitMQ、Kafka）做事务协调：
+
+```bash
+npm install amqplib
+```
+
+---
+
+### 2.2 利用中间件管理本地事务
+
+Koa 可以在请求开始时开启数据库事务，在响应结束时统一提交或回滚。
+
+```js
+import Koa from 'koa';
+import mysql from 'mysql2/promise';
+
+const app = new Koa();
+
+// 数据库连接池
+const pool = mysql.createPool({
+  host: 'localhost',
+  user: 'root',
+  password: '123456',
+  database: 'shop'
+});
+
+// 本地事务中间件
+app.use(async (ctx, next) => {
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+  ctx.db = conn;
+
+  try {
+    await next();  // 执行后续中间件
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+});
+
+app.use(async (ctx) => {
+  // 假设有两个操作需要事务
+  await ctx.db.query('INSERT INTO orders (user_id, amount) VALUES (?, ?)', [1, 100]);
+  await ctx.db.query('UPDATE inventory SET stock = stock - 1 WHERE product_id = ?', [1]);
+
+  ctx.body = 'Order created';
+});
+
+app.listen(3000);
+```
+
+这个是 **单机事务**，Koa 的中间件模式可以保证请求生命周期内事务的一致性。
+
+---
+
+### 2.3 扩展到分布式事务
+
+> “分布式事务是指一个事务操作涉及多个独立的资源或服务（如不同的数据库、微服务），需要保证这些操作在逻辑上要么全部成功，要么全部失败，从而保证系统数据的一致性。
+
+> 它是对传统单机事务 ACID 特性的扩展，但由于涉及网络、不同系统的协调，无法像单机事务那样直接依赖数据库完成，需要额外的协调机制。”
+
+单机事务无法跨数据库或跨服务，我们可以用以下策略：
+
+#### 方法 1：2PC（二阶段提交）
+
+1. **准备阶段**：各个参与节点尝试执行事务并锁定资源，但不提交。
+2. **提交阶段**：协调者决定全局提交或回滚。
+
+Node.js 中没有现成库，需要自己实现协调器，或者使用 **XA 事务数据库支持**。代码类似：
+
+```js
+// Pseudocode
+async function twoPhaseCommit(operations) {
+  // phase 1: prepare
+  for (let op of operations) {
+    const result = await op.prepare();
+    if (!result.success) {
+      // 回滚所有已准备的操作
+      await Promise.all(operations.map(o => o.rollback()));
+      return false;
+    }
+  }
+
+  // phase 2: commit
+  await Promise.all(operations.map(o => o.commit()));
+  return true;
+}
+```
+
+#### 方法 2：TCC（Try-Confirm-Cancel）
+
+1. **Try**：尝试预留资源
+2. **Confirm**：确认提交
+3. **Cancel**：取消预留
+
+适合微服务场景，每个服务提供三个接口。
+
+```js
+// orderService.js
+async function tryCreateOrder(order) { /* reserve resources */ }
+async function confirmCreateOrder(order) { /* commit */ }
+async function cancelCreateOrder(order) { /* rollback */ }
+```
+
+#### 方法 3：最终一致性 + 消息队列
+
+解耦业务逻辑：支付服务完成本地事务后，不直接去更新订单系统，而是发送一条消息到 MQ。这样支付和订单系统是“异步解耦”的，互不阻塞。
+
+确保消息可靠传递：MQ 会保存消息，即使订单服务暂时不可用，消息仍然在队列里，待服务恢复后再消费。这就是最终一致性的核心：支付成功 → 消息入队 → 订单服务异步处理 → 系统状态最终一致。
+
+支持重试和补偿机制：如果消费消息失败（比如订单服务挂了），可以通过 MQ 的重试机制或 DLQ（死信队列）来保证消息不会丢失。这样就算中间环节出错，系统也能最终恢复一致状态。
+
+1. 使用 **事务消息**或 **可靠消息投递**（Outbox pattern）
+2. 服务处理消息保证最终一致性
+
+```js
+// 在订单服务中创建订单后发送消息
+await db.transaction(async (trx) => {
+  await trx('orders').insert(order);
+  await trx('outbox').insert({ type: 'order_created', payload: order });
+});
+
+// 消息消费者消费 outbox，更新库存服务
+```
+
+这种方式 **不需要全局锁**，性能更好，但只能保证最终一致性。
+
+---
+
+## 3. Koa 的角色
+
+在分布式事务中，Koa **本身只是一个中间件承载者**，主要负责：
+
+1. 管理 **请求生命周期**
+2. 对本地事务做封装（begin / commit / rollback）
+3. 调用分布式事务协调器或者消息队列接口
+
+分布式事务的核心逻辑一般在 **服务层** 或 **独立协调器**，Koa 只是触发和传递上下文。
+
+---
+
+## 4. 实践建议
+
+1. 尽量避免强分布式事务，优先考虑 **最终一致性 + 异步补偿**。
+2. 如果必须强一致性，可以选择 **数据库原生支持的 XA / 2PC**。
+3. 对于微服务，**TCC** 是可控方案，但实现复杂。
+4. 使用 Koa 时，把本地事务封装成中间件，方便组合分布式事务逻辑。
+
+---
+
+我可以帮你画一张 **Koa + 分布式事务的调用流程图**，让你直观理解请求到多服务事务的全流程。
+
+你想让我画吗？

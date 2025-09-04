@@ -1,0 +1,179 @@
+---
+title: 如何在 Koa 中实现中间件的依赖注入？
+---
+
+在 **Koa** 里实现“依赖注入”（Dependency Injection, DI），其实就是解决 **中间件/业务逻辑函数如何优雅地获取到外部依赖**（例如数据库连接、配置、缓存客户端、日志工具等等），而不是在每个中间件里硬编码 `require` 或 `import`，这样可以提高可测试性和可维护性。
+
+我分几个层次详细讲一下：
+
+---
+
+## 1. Koa 中中间件的本质
+
+Koa 的中间件本质是一个函数：
+
+```js
+async function middleware(ctx, next) {
+  // ... do something with ctx
+  await next()
+}
+```
+
+它的依赖默认通过两个渠道获得：
+
+* `ctx`：每个请求独有的上下文
+* `app.context`：全局共享的上下文（会被挂到 `ctx` 上）
+
+所以我们要做“依赖注入”，核心思路就是 **在合适的地方把依赖注入到 ctx 或中间件参数里**。
+
+---
+
+## 2. 最基础的方式：在 `app.context` 挂载依赖
+
+```js
+const Koa = require('koa');
+const app = new Koa();
+
+// 假设我们有一个数据库实例
+const db = require('./db');
+
+// 注入到全局 context
+app.context.db = db;
+
+app.use(async (ctx, next) => {
+  const users = await ctx.db.getUsers();
+  ctx.body = users;
+  await next();
+});
+
+app.listen(3000);
+```
+
+特点：
+
+* **简单**：不需要额外库。
+* **全局单例**：所有请求共享同一个依赖。
+* **不够灵活**：如果依赖有作用域（比如 request-scoped logger），就不太好管理。
+
+---
+
+## 3. 工厂函数模式（更灵活的依赖传递）
+
+写中间件时，不直接返回 `(ctx, next)`，而是用 **工厂函数**生成：
+
+```js
+function createUserMiddleware({ userService }) {
+  return async (ctx, next) => {
+    const users = await userService.getUsers();
+    ctx.body = users;
+    await next();
+  };
+}
+
+// ---- 使用 ----
+const userService = require('./services/userService');
+
+app.use(createUserMiddleware({ userService }));
+```
+
+特点：
+
+* **依赖清晰**：中间件依赖什么，一目了然。
+* **更利于测试**：可以在单测里传 mock。
+* **灵活**：可以每次调用时传不同依赖。
+
+---
+
+## 4. 借助 IoC/DI 容器
+
+如果依赖多，手动传参很啰嗦，可以引入 IoC 容器（如 [awilix](https://github.com/jeffijoe/awilix)、[inversify](https://github.com/inversify/InversifyJS)）。
+
+### 使用 `awilix` 举例
+
+```js
+const Koa = require('koa');
+const { createContainer, asClass, asValue } = require('awilix');
+const { scopePerRequest } = require('awilix-koa');
+
+const app = new Koa();
+
+// 1. 创建 DI 容器
+const container = createContainer();
+container.register({
+  userService: asClass(require('./services/UserService')).scoped(),
+  config: asValue(require('./config'))
+});
+
+// 2. 每个请求生成一个作用域容器
+app.use(scopePerRequest(container));
+
+// 3. 在中间件中取依赖
+app.use(async (ctx, next) => {
+  const { userService } = ctx.state.container.cradle;
+  ctx.body = await userService.getUsers();
+  await next();
+});
+```
+
+特点：
+
+* **自动化**：不需要手工传依赖。
+* **作用域管理**：可以区分单例、请求级别依赖。
+* **更适合大项目**。
+
+---
+
+## 5. 装饰器/注解风格（TypeScript 项目常见）
+
+结合 `reflect-metadata` + `inversify` 可以写出类似 Spring 的依赖注入：
+
+```ts
+import { injectable, inject, Container } from 'inversify';
+
+@injectable()
+class UserService {
+  getUsers() { return ['Alice', 'Bob']; }
+}
+
+@injectable()
+class UserController {
+  constructor(@inject('UserService') private userService: UserService) {}
+  async getUsers(ctx) {
+    ctx.body = this.userService.getUsers();
+  }
+}
+
+// 创建容器
+const container = new Container();
+container.bind<UserService>('UserService').to(UserService);
+container.bind<UserController>('UserController').to(UserController);
+
+const userController = container.get<UserController>('UserController');
+
+// 在路由里使用
+router.get('/users', userController.getUsers.bind(userController));
+```
+
+---
+
+## 6. 各方式对比
+
+| 方式            | 优点         | 缺点         | 适用场景      |
+| ------------- | ---------- | ---------- | --------- |
+| `app.context` | 简单，快速      | 全局单例，不够灵活  | 小项目、临时依赖  |
+| 工厂函数          | 显式依赖，易测试   | 依赖多时传参冗长   | 中小项目，结构清晰 |
+| IoC 容器        | 自动注入，作用域管理 | 学习成本，额外依赖  | 中大型项目     |
+| 装饰器风格         | 类型安全，结构清晰  | 强依赖 TS/装饰器 | 企业级/TS 项目 |
+
+---
+
+✅ 总结
+在 **Koa 中实现依赖注入**，最常用的实践是：
+
+1. 小项目：`app.context` 挂依赖就够。
+2. 中等规模：用工厂函数组织依赖。
+3. 大型项目：引入 IoC 容器（awilix/inversify），配合作用域管理。
+
+---
+
+要不要我给你写一个 **完整的 Koa + awilix 的示例项目结构**（包含 service、controller、middleware 分层）？这样你能直接照着搭框架。
